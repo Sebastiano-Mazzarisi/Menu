@@ -126,31 +126,79 @@ def last_outcome() -> tuple[str, str]:
     return when, "in corso…" if LOCK.exists() else "completato"
 
 
-def make_badge(updated: int, total: int, size: int, master=None):
-    """Disegna il quadratino colorato con il numero (richiede Pillow)."""
-    from PIL import Image, ImageDraw, ImageFont, ImageTk
+DIGITS = {  # cifre 5x7 disegnate a mano: niente librerie esterne
+    "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
+    "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
+    "2": ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
+    "3": ["11110", "00001", "00001", "01110", "00001", "00001", "11110"],
+    "4": ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
+    "5": ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],
+    "6": ["00110", "01000", "10000", "11110", "10001", "10001", "01110"],
+    "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
+    "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
+    "9": ["01110", "10001", "10001", "01111", "00001", "00010", "01100"],
+}
+ICON_DIR = ROOT / "dati" / "icone_monitor"
 
-    scale = 4  # disegno grande e poi rimpicciolisco: bordi più puliti
-    big = size * scale
+
+def badge_pixels(updated: int, total: int, size: int) -> list[list[str]]:
+    """Matrice di colori del quadratino: bordo colorato, fondo scuro, numero bianco."""
     colour = GREEN if total and updated == total else ORANGE if updated else "#64748b"
-    image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((0, 0, big - 1, big - 1), radius=big // 6, fill=colour)
-    inset = big // 10
-    draw.rounded_rectangle((inset, inset, big - 1 - inset, big - 1 - inset), radius=big // 9, fill=BG)
+    border = max(1, size // 10)
+    grid = [[colour if min(x, y, size - 1 - x, size - 1 - y) < border else BG for x in range(size)]
+            for y in range(size)]
     text = str(updated)
-    font_size = int(big * (0.72 if len(text) == 1 else 0.55))
-    font = None
-    for name in ("arialbd.ttf", "segoeuib.ttf", "DejaVuSans-Bold.ttf"):
-        try:
-            font = ImageFont.truetype(name, font_size)
-            break
-        except OSError:
-            continue
-    if font is None:
-        font = ImageFont.load_default(font_size)
-    draw.text((big / 2, big / 2), text, fill="white", font=font, anchor="mm")
-    return ImageTk.PhotoImage(image.resize((size, size), Image.LANCZOS), master=master)
+    inner = size - 2 * border
+    scale = max(1, min(inner // 7, inner // (6 * len(text) - 1)))  # numero il più grande possibile
+    width, height = (6 * len(text) - 1) * scale, 7 * scale
+    left, top = (size - width) // 2, (size - height) // 2
+    for index, char in enumerate(text):
+        for row, bits in enumerate(DIGITS[char]):
+            for col, bit in enumerate(bits):
+                if bit == "1":
+                    for dy in range(scale):
+                        for dx in range(scale):
+                            x = left + (index * 6 + col) * scale + dx
+                            y = top + row * scale + dy
+                            if 0 <= x < size and 0 <= y < size:
+                                grid[y][x] = "#ffffff"
+    return grid
+
+
+def make_badge(updated: int, total: int, size: int, master=None) -> tk.PhotoImage:
+    """Quadratino come immagine tkinter (solo libreria standard)."""
+    image = tk.PhotoImage(master=master, width=size, height=size)
+    rows = badge_pixels(updated, total, size)
+    image.put(" ".join("{" + " ".join(row) + "}" for row in rows), to=(0, 0))
+    return image
+
+
+def write_ico(images: list[tk.PhotoImage], path: Path) -> None:
+    """File .ico con le immagini PNG dentro (Windows usa il .ico anche per la barra delle applicazioni)."""
+    import struct
+    import tempfile
+
+    blobs = []
+    for image in images:
+        with tempfile.TemporaryDirectory() as folder:
+            png = Path(folder) / "i.png"
+            image.write(str(png), format="png")
+            blobs.append((image.width(), png.read_bytes()))
+    header = struct.pack("<HHH", 0, 1, len(blobs))
+    offset = 6 + 16 * len(blobs)
+    entries, data = b"", b""
+    for size, blob in blobs:
+        entries += struct.pack("<BBBBHHII", size % 256, size % 256, 0, 0, 1, 32, len(blob), offset + len(data))
+        data += blob
+    path.write_bytes(header + entries + data)
+
+
+def log_error(text: str) -> None:
+    try:
+        with (ROOT / "dati" / "monitor.log").open("a", encoding="utf-8") as stream:
+            stream.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} {text}\n")
+    except OSError:
+        pass
 
 
 class Monitor(tk.Tk):
@@ -279,17 +327,26 @@ class Monitor(tk.Tk):
         """Icona della barra delle applicazioni: quadratino con il numero di rosticcerie aggiornate.
 
         Bordo verde se sono tutte aggiornate, arancione se ne manca qualcuna, grigio se zero.
-        Anche il titolo riporta il conteggio (es. "4/8 Menu")."""
+        Anche il titolo riporta il conteggio (es. "4/8 Menu"). Eventuali errori finiscono
+        in dati/monitor.log."""
         if self.icon_count == (updated, total):
             return
         self.icon_count = (updated, total)
         self.title(f"{updated}/{total} Menu" if total else "Menu")
         try:
-            images = [make_badge(updated, total, size, self) for size in (64, 32, 16)]
+            images = [make_badge(updated, total, size, self) for size in (64, 48, 32, 16)]
+            self.icon_images = images
             self.iconphoto(True, *images)
-        except Exception:
-            return  # senza Pillow resta l'icona standard
-        self.icon_images = images
+            if sys.platform == "win32":
+                # su Windows la barra delle applicazioni usa l'icona .ico della finestra
+                ICON_DIR.mkdir(parents=True, exist_ok=True)
+                ico = ICON_DIR / f"badge_{updated}_{total}.ico"
+                if not ico.exists():
+                    write_ico(images, ico)
+                self.iconbitmap(default=str(ico))
+        except Exception as exc:
+            import traceback
+            log_error(f"icona non impostata: {exc!r}\n{traceback.format_exc()}")
 
     def say(self, message: str) -> None:
         """Messaggio temporaneo (10 secondi) sotto l'esito dell'ultimo giro."""

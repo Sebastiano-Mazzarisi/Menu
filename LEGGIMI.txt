@@ -124,8 +124,9 @@ Riduci a icona (il trattino "_" in alto a destra): la finestra va nella
 barra delle applicazioni come quadratino con il numero di rosticcerie
 aggiornate oggi (da 0 a 8): bordo verde = tutte aggiornate, arancione =
 solo alcune, grigio = nessuna. Anche il titolo lo riporta, es. "4/8 Menu".
-Per il quadratino serve Pillow (già in requirements.txt); senza, resta
-l'icona standard e solo il titolo mostra il conteggio.
+Il quadratino è disegnato con il solo Python standard (nessuna libreria
+in più) e salvato come file .ico in dati/icone_monitor. Se qualcosa va
+storto l'errore è scritto in dati/monitor.log.
 Per averla sempre all'accensione del PC: Win+R, scrivere shell:startup,
 INVIO, e copiare lì un collegamento a Monitor.bat.
 
