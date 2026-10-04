@@ -29,6 +29,9 @@ STATE = DATA / "stato.json"
 OUTPUT = ROOT / "Menu.html"
 WEB_PAGE = ROOT / "index.html"  # pagina pubblicata su GitHub Pages (cellulare)
 WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
+ICONS = ROOT / "icone"
+APP_LOGO = LOGOS / "Menu.jpg"
+ICON_SIZES = {"icona-512.png": 512, "icona-192.png": 192, "icona-180.png": 180, "favicon.png": 64}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 TEXT_EXTENSION = ".json"  # menu testuali letti da un sito (es. Pane & Co)
 MENU_EXTENSIONS = IMAGE_EXTENSIONS | {TEXT_EXTENSION}
@@ -366,11 +369,21 @@ def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
     return captured, date.today()
 
 
-def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool) -> Result:
+def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool,
+            skip_if_today: str | None = None) -> Result:
+    """Cerca il menu del locale provando le fonti nell'ordine.
+
+    skip_if_today: se non è None e in ingresso c'è già un menu di oggi, non va online
+    (modalità automatica: evita accessi inutili a Facebook/Instagram); il valore è
+    il nome della fonte da mostrare."""
     checked = datetime.now().astimezone().isoformat(timespec="seconds")
     errors: list[str] = []
     folder = INPUT / shop["id"]
     folder.mkdir(parents=True, exist_ok=True)
+    if online and skip_if_today is not None:
+        latest = newest_image(folder)
+        if latest and image_date(latest) == date.today():
+            return Result(latest, date.today(), skip_if_today, checked)
     for source in shop.get("fonti", [{"tipo": "cartella"}]):
         if not source.get("attiva", True):
             continue
@@ -420,6 +433,27 @@ def status_label(menu_day: date | None, error: str) -> tuple[str, str]:
     return (("Errore" if error else "Non disponibile"), "missing")
 
 
+def write_manifest() -> str:
+    """Scrive manifest.webmanifest con le icone "versionate" e restituisce la versione.
+
+    La versione (?v=...) dipende dal contenuto dell'icona: quando il logo cambia
+    l'indirizzo cambia e iPhone/Android non possono usare l'icona vecchia in cache."""
+    icon = ICONS / "icona-512.png"
+    iv = file_hash(icon)[:10] if icon.exists() else "0"
+    manifest = {
+        "name": "Menu", "short_name": "Menu", "description": "Menu del giorno delle rosticcerie",
+        "start_url": "./", "scope": "./", "display": "standalone",
+        "background_color": "#0b1220", "theme_color": "#0b1220", "lang": "it",
+        "icons": [
+            {"src": f"icone/icona-192.png?v={iv}", "sizes": "192x192", "type": "image/png"},
+            {"src": f"icone/icona-512.png?v={iv}", "sizes": "512x512", "type": "image/png"},
+            {"src": f"icone/icona-512.png?v={iv}", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+    }
+    (ROOT / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    return iv
+
+
 def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results: list[dict[str, Any]]) -> None:
     cards = []
     for index, (shop, result) in enumerate(zip(shops, results)):
@@ -432,21 +466,25 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
   <span class="status {css}">{label}</span>
 </button>''')
     public_shops = [{key: shop.get(key, "") for key in ("nome", "telefono", "indirizzo", "url")} for shop in shops]
-    version = datetime.now().strftime("%Y%m%d%H%M%S")
+    # niente orari di controllo nella pagina: se i menu non cambiano la pagina resta identica
+    # e la pubblicazione automatica non crea un nuovo invio ogni 15 minuti
+    public_results = [{key: value for key, value in result.items() if key != "checked_at"} for result in results]
+    version = hashlib.sha1(json.dumps(public_results, sort_keys=True).encode()).hexdigest()[:10]
     title_tpl = settings.get("titolo", "Menu - {data}")
-    payload = json.dumps({"shops": public_shops, "results": results, "v": version, "titolo": title_tpl}, ensure_ascii=False).replace("</", "<\\/")
+    payload = json.dumps({"shops": public_shops, "results": public_results, "v": version, "titolo": title_tpl}, ensure_ascii=False).replace("</", "<\\/")
     days = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
     today = date.today()
     today_text = f"{days[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}"
     title = html.escape(settings.get("titolo", "Menu - {data}").replace("{data}", today_text))
+    iv = write_manifest()  # versione delle icone: cambia quando cambia il logo
     document = f'''<!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1220"><title>Menu</title>
 <meta property="og:title" content="Menu"><meta property="og:description" content="Menu del giorno delle rosticcerie">
 <meta property="og:type" content="website"><meta property="og:url" content="{WEB_URL}">
-<meta property="og:image" content="{WEB_URL}icone/icona-512.png"><meta property="og:image:width" content="512"><meta property="og:image:height" content="512">
-<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icone/favicon.png">
-<link rel="apple-touch-icon" href="icone/icona-180.png"><meta name="apple-mobile-web-app-title" content="Menu">
+<meta property="og:image" content="{WEB_URL}icone/icona-512.png?v={iv}"><meta property="og:image:width" content="512"><meta property="og:image:height" content="512">
+<link rel="manifest" href="manifest.webmanifest?v={iv}"><link rel="icon" type="image/png" href="icone/favicon.png?v={iv}">
+<link rel="apple-touch-icon" sizes="180x180" href="icone/icona-180.png?v={iv}"><meta name="apple-mobile-web-app-title" content="Menu">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
@@ -471,9 +509,6 @@ dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:1
     WEB_PAGE.write_text(document, encoding="utf-8")
 
 
-ICONS = ROOT / "icone"
-APP_LOGO = LOGOS / "Menu.jpg"
-ICON_SIZES = {"icona-512.png": 512, "icona-192.png": 192, "icona-180.png": 180, "favicon.png": 64}
 
 
 def make_icons(force: bool = False) -> bool:
@@ -511,7 +546,8 @@ def publish() -> None:
 
     def git(*args: str) -> subprocess.CompletedProcess:
         return subprocess.run(["git", *args], cwd=ROOT, text=True, capture_output=True,
-                              encoding="utf-8", errors="replace")
+                              encoding="utf-8", errors="replace",
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
     def commit() -> None:
         git("add", "-A")
@@ -559,6 +595,36 @@ def add_shop(config: dict[str, Any]) -> None:
     print(f"Creato ingresso/{shop_id}. Inserisci lì una foto del menu e rilancia Menu.py.")
 
 
+AUTO_LOG = DATA / "automatico.log"
+AUTO_LOCK = DATA / "automatico.lock"
+
+
+def in_time_window(settings: dict[str, Any]) -> bool:
+    """True se adesso è dentro la fascia "automatico" di locali.json (predefinita 08:00-14:00)."""
+    window = settings.get("automatico", {})
+    now = datetime.now().strftime("%H:%M")
+    return window.get("dalle", "08:00") <= now <= window.get("alle", "14:00")
+
+
+def start_auto_log() -> None:
+    """In modalità automatica (pythonw, senza finestra) scrive i messaggi in dati/automatico.log."""
+    DATA.mkdir(exist_ok=True)
+    if AUTO_LOG.exists() and AUTO_LOG.stat().st_size > 500_000:  # tiene il log piccolo
+        lines = AUTO_LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-2000:]
+        AUTO_LOG.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    stream = AUTO_LOG.open("a", encoding="utf-8", buffering=1)
+    sys.stdout = sys.stderr = stream
+    print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} ===")
+
+
+def take_lock() -> bool:
+    """Evita due esecuzioni contemporanee (un giro lento che si sovrappone al successivo)."""
+    if AUTO_LOCK.exists() and datetime.now().timestamp() - AUTO_LOCK.stat().st_mtime < 30 * 60:
+        return False
+    AUTO_LOCK.write_text(str(os.getpid()), encoding="utf-8")
+    return True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Raccoglie e pubblica menu da fonti configurabili.")
     parser.add_argument("--aggiungi", action="store_true", help="Aggiunge una rosticceria con procedura guidata.")
@@ -566,9 +632,31 @@ def main() -> None:
     parser.add_argument("--visibile", action="store_true", help="Mostra il browser durante le acquisizioni online.")
     parser.add_argument("--pubblica", action="store_true", help="Dopo l'aggiornamento invia la pagina a GitHub Pages.")
     parser.add_argument("--login", action="store_true", help="Apre Facebook e Instagram per salvare la sessione.")
+    parser.add_argument("--automatico", action="store_true",
+                        help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
     make_folders()
     config = read_json(CONFIG, {"impostazioni": {}, "locali": []})
+    if args.automatico:
+        if not in_time_window(config.get("impostazioni", {})):
+            return  # fuori fascia: nessun accesso, nessun log
+        start_auto_log()
+        if not take_lock():
+            print("Esecuzione precedente ancora in corso: salto questo giro.")
+            return
+        args.pubblica, args.solo_html, args.visibile, args.aggiungi, args.login = True, False, False, False, False
+        try:
+            run(args, config)
+        except BaseException as exc:  # nel log, non in una finestra che nessuno vede
+            import traceback
+            print(f"ERRORE: {exc!r}\n{traceback.format_exc()}")
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
+    run(args, config)
+
+
+def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     if args.aggiungi:
         add_shop(config)
         config = read_json(CONFIG, config)
@@ -583,9 +671,12 @@ def main() -> None:
         browser.stop()
         return
     results: list[dict[str, Any]] = []
+    previous_sources = {item.get("id"): item.get("source", "") for item in read_json(STATE, {}).get("results", [])}
     try:
         for shop in shops:
-            result = acquire(shop, browser, online=not args.solo_html)
+            previous = previous_sources.get(shop["id"]) or "già acquisito oggi"
+            result = acquire(shop, browser, online=not args.solo_html,
+                             skip_if_today=previous if args.automatico else None)
             show_old = bool(settings.get("mostra_menu_vecchi", False))
             publishable = bool(result.image and result.menu_day and (show_old or result.menu_day == date.today()))
             current = copy_current(shop, result.image, result.menu_day) if publishable else None

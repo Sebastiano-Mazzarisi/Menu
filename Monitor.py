@@ -1,0 +1,227 @@
+"""Monitor.py - piccola finestra per tenere d'occhio l'aggiornamento automatico dei menu.
+
+Mostra, sempre in primo piano e spostabile sul desktop:
+  - quanto manca al prossimo controllo automatico (attività pianificata "Menu" di Windows)
+  - se un controllo è in corso in questo momento
+  - per ogni rosticceria: aggiornata oggi (verde) oppure no (arancione/rosso)
+  - l'esito dell'ultimo giro (pubblicato, nessuna modifica, errore)
+
+Avvio: doppio clic su Monitor.bat (oppure: pythonw Monitor.py).
+Usa solo la libreria standard di Python (tkinter). Vedi LEGGIMI.txt.
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import webbrowser
+from datetime import date, datetime, timedelta
+from pathlib import Path
+import tkinter as tk
+
+ROOT = Path(__file__).resolve().parent
+CONFIG = ROOT / "locali.json"
+STATE = ROOT / "dati" / "stato.json"
+LOG = ROOT / "dati" / "automatico.log"
+LOCK = ROOT / "dati" / "automatico.lock"
+POSITION = ROOT / "dati" / "monitor.json"
+TASK = "Menu"
+INTERVAL = timedelta(minutes=15)
+WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+BG, FG, MUTED = "#0b1220", "#e2e8f0", "#94a3b8"
+GREEN, ORANGE, RED, BLUE = "#22c55e", "#f97316", "#ef4444", "#60a5fa"
+
+
+def read_json(path: Path, default):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return default
+
+
+def task_info() -> tuple[datetime | None, str]:
+    """Chiede a Windows la prossima esecuzione dell'attività "Menu" (formato indipendente dalla lingua)."""
+    command = (f"$i = Get-ScheduledTaskInfo -TaskName '{TASK}' -ErrorAction Stop; "
+               f"$t = Get-ScheduledTask -TaskName '{TASK}'; "
+               "$i.NextRunTime.ToString('yyyy-MM-ddTHH:mm:ss') + '|' + $t.State")
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", command], capture_output=True,
+                             text=True, timeout=20, creationflags=NO_WINDOW).stdout.strip()
+        when, state = out.split("|", 1)
+        return datetime.fromisoformat(when), state
+    except Exception:
+        return None, "assente"
+
+
+def in_window(moment: datetime, settings: dict) -> bool:
+    window = settings.get("automatico", {})
+    hhmm = moment.strftime("%H:%M")
+    return window.get("dalle", "00:00") <= hhmm <= window.get("alle", "23:59")
+
+
+def next_effective(next_run: datetime, settings: dict) -> datetime:
+    """Prima esecuzione che cade dentro la fascia oraria (fuori fascia Menu.py non fa nulla)."""
+    moment = next_run
+    for _ in range(200):
+        if in_window(moment, settings):
+            return moment
+        moment += INTERVAL
+    return next_run
+
+
+def last_outcome() -> tuple[str, str]:
+    """Ora ed esito dell'ultimo giro, letti dal registro dati/automatico.log."""
+    try:
+        lines = LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-200:]
+    except OSError:
+        return "", "nessun giro registrato"
+    start = max((i for i, line in enumerate(lines) if line.startswith("=== ")), default=None)
+    if start is None:
+        return "", "nessun giro registrato"
+    when = lines[start].strip("= ").strip()[11:16]
+    block = lines[start + 1:]
+    for line in block:
+        if line.startswith("ERRORE") or "NON riuscita" in line:
+            return when, "errore (vedi registro)"
+    for line in block:
+        if line.startswith("Pubblicato"):
+            return when, "pubblicato"
+        if "nessuna modifica" in line:
+            return when, "nessuna novità"
+        if "ancora in corso" in line:
+            return when, "saltato (giro precedente in corso)"
+    return when, "in corso…" if LOCK.exists() else "completato"
+
+
+class Monitor(tk.Tk):
+    def __init__(self) -> None:
+        super().__init__()
+        self.title("Menu")
+        self.configure(bg=BG)
+        self.resizable(False, False)
+        self.attributes("-topmost", True)
+        if sys.platform == "win32":
+            self.attributes("-toolwindow", True)  # barra del titolo piccola, niente icona in taskbar
+        icon = ROOT / "icone" / "favicon.png"
+        if icon.exists():
+            try:
+                self.iconphoto(True, tk.PhotoImage(file=str(icon)))
+            except tk.TclError:
+                pass
+        saved = read_json(POSITION, {})
+        if "x" in saved:
+            self.geometry(f"+{saved['x']}+{saved['y']}")
+        self.protocol("WM_DELETE_WINDOW", self.close)
+
+        font = ("Segoe UI", 10)
+        self.countdown = tk.Label(self, font=("Segoe UI", 20, "bold"), bg=BG, fg=FG)
+        self.countdown.pack(padx=14, pady=(10, 0), anchor="w")
+        self.subtitle = tk.Label(self, font=font, bg=BG, fg=MUTED, justify="left")
+        self.subtitle.pack(padx=14, anchor="w")
+        self.summary = tk.Label(self, font=("Segoe UI", 10, "bold"), bg=BG, fg=FG)
+        self.summary.pack(padx=14, pady=(8, 2), anchor="w")
+        self.rows = tk.Frame(self, bg=BG)
+        self.rows.pack(padx=14, anchor="w", fill="x")
+        self.outcome = tk.Label(self, font=font, bg=BG, fg=MUTED, justify="left")
+        self.outcome.pack(padx=14, pady=(8, 4), anchor="w")
+
+        buttons = tk.Frame(self, bg=BG)
+        buttons.pack(padx=10, pady=(2, 10), anchor="w")
+        for text, action in (("Controlla ora", self.run_now), ("Registro", self.open_log), ("Sito", self.open_site)):
+            tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
+                      activebackground="#334155", activeforeground=FG, relief="flat", padx=8).pack(side="left", padx=4)
+
+        self.next_run: datetime | None = None
+        self.task_state = ""
+        self.last_query = datetime.min
+        self.tick()
+
+    # --- aggiornamento --------------------------------------------------------------------------
+    def tick(self) -> None:
+        now = datetime.now()
+        config = read_json(CONFIG, {})
+        settings = config.get("impostazioni", {})
+        # chiede a Windows ogni minuto, oppure subito dopo che l'esecuzione prevista è passata
+        if (now - self.last_query).total_seconds() > 60 or (self.next_run and now > self.next_run + timedelta(seconds=5)):
+            self.next_run, self.task_state = task_info()
+            self.last_query = now
+
+        if LOCK.exists():
+            self.countdown.config(text="Controllo in corso…", fg=BLUE)
+            self.subtitle.config(text="sto leggendo Facebook, Instagram e i siti")
+        elif self.next_run is None:
+            self.countdown.config(text="Non pianificato", fg=RED)
+            self.subtitle.config(text="manca l'attività \"Menu\": lancia Pianifica.bat")
+        elif self.task_state.lower() == "disabled":
+            self.countdown.config(text="Disattivato", fg=RED)
+            self.subtitle.config(text="attività \"Menu\" disabilitata in Utilità di pianificazione")
+        else:
+            target = next_effective(self.next_run, settings)
+            seconds = max(0, int((target - now).total_seconds()))
+            hours, rest = divmod(seconds, 3600)
+            text = f"{hours}:{rest // 60:02d}:{rest % 60:02d}" if hours else f"{rest // 60:02d}:{rest % 60:02d}"
+            self.countdown.config(text=text, fg=FG)
+            self.subtitle.config(text=f"al prossimo controllo (ore {target:%H:%M})")
+
+        self.show_shops(config)
+        when, outcome = last_outcome()
+        colour = RED if outcome.startswith("errore") else MUTED
+        self.outcome.config(text=f"Ultimo giro {when}: {outcome}" if when else outcome, fg=colour)
+        self.after(1000, self.tick)
+
+    def show_shops(self, config: dict) -> None:
+        results = {item.get("id"): item for item in read_json(STATE, {}).get("results", [])}
+        today = date.today().isoformat()
+        signature = (today, json.dumps(config.get("locali", [])), json.dumps(results, sort_keys=True))
+        if signature == getattr(self, "_signature", None):
+            return  # niente di nuovo: non ridisegno (evita lo sfarfallio)
+        self._signature = signature
+        for child in self.rows.winfo_children():
+            child.destroy()
+        updated = 0
+        shops = config.get("locali", [])
+        for shop in shops:
+            result = results.get(shop.get("id"), {})
+            day = result.get("menu_date", "")
+            if day == today:
+                updated += 1
+                mark, colour, info = "●", GREEN, "oggi"
+            elif day:
+                mark, colour, info = "●", ORANGE, "/".join(reversed(day.split("-")[1:]))
+            else:
+                mark, colour, info = "●", RED, "nessuno"
+            row = tk.Frame(self.rows, bg=BG)
+            row.pack(fill="x")
+            tk.Label(row, text=mark, fg=colour, bg=BG, font=("Segoe UI", 11)).pack(side="left")
+            tk.Label(row, text=shop.get("nome", "?"), fg=FG, bg=BG, font=("Segoe UI", 10), width=22,
+                     anchor="w").pack(side="left")
+            tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10)).pack(side="left")
+        self.summary.config(text=f"Aggiornate oggi: {updated} su {len(shops)}")
+
+    # --- pulsanti -------------------------------------------------------------------------------
+    def run_now(self) -> None:
+        """Lancia subito un giro completo nella sua finestra (come Avvia.bat)."""
+        bat = ROOT / "Avvia.bat"
+        if bat.exists() and sys.platform == "win32":
+            subprocess.Popen(["cmd", "/c", "start", "", str(bat)], cwd=ROOT, creationflags=NO_WINDOW)
+
+    def open_log(self) -> None:
+        if LOG.exists() and sys.platform == "win32":
+            os.startfile(LOG)  # type: ignore[attr-defined]
+
+    def open_site(self) -> None:
+        webbrowser.open(WEB_URL)
+
+    def close(self) -> None:
+        try:
+            POSITION.parent.mkdir(exist_ok=True)
+            POSITION.write_text(json.dumps({"x": self.winfo_x(), "y": self.winfo_y()}), encoding="utf-8")
+        finally:
+            self.destroy()
+
+
+if __name__ == "__main__":
+    Monitor().mainloop()

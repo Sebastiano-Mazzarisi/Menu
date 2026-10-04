@@ -57,8 +57,11 @@ come una app con la scritta "Menu".
 - Logo dell'app: basta sostituire loghi/Menu.jpg (sul PC oppure caricandolo
   sul sito di GitHub). Al successivo Avvia.bat le icone della cartella icone
   vengono rigenerate da sole (serve Pillow: pip install -r requirements.txt).
-  Sull'iPhone l'icona cambia solo rimuovendo l'app dalla Home e aggiungendola
-  di nuovo.
+  Gli indirizzi delle icone contengono un codice (?v=...) che cambia con il
+  logo, così il telefono non può riusare l'icona vecchia. Menu.py riscrive
+  anche manifest.webmanifest. Sull'iPhone l'icona cambia solo rimuovendo
+  l'app dalla Home e aggiungendola di nuovo (aspettare 2-3 minuti dopo
+  Avvia.bat, il tempo che GitHub aggiorni il sito).
 - Se si modifica qualcosa direttamente sul sito di GitHub, Avvia.bat prima
   scarica quelle modifiche e poi invia le proprie; in caso di conflitto
   prevale la versione del PC.
@@ -66,6 +69,25 @@ come una app con la scritta "Menu".
 - Data nel titolo ed etichette "Oggi"/"Non di oggi" sono ricalcolate dal
   telefono all'apertura: se il PC non ha aggiornato la pagina, il giorno
   dopo i menu compaiono correttamente come "Non di oggi" (fascia arancione).
+
+Aggiornamento automatico (ogni 15 minuti)
+-----------------------------------------
+- Attivazione, una volta sola: doppio clic su Pianifica.bat. Crea in
+  Utilità di pianificazione di Windows l'attività "Menu", che ogni 15 minuti
+  esegue, senza aprire finestre:
+      pythonw Menu.py --automatico
+- Fascia oraria: in locali.json, sezione impostazioni:
+      "automatico": {"dalle": "08:00", "alle": "14:00"}
+  Fuori fascia il programma si chiude subito senza fare nulla. Per cambiare
+  orario basta modificare questi valori (non serve rilanciare Pianifica.bat).
+- In ogni giro: aggiorna i menu, ricrea la pagina e la pubblica su GitHub.
+  I locali che hanno già il menu di oggi non vengono ricontrollati online
+  (meno accessi a Facebook/Instagram). Se nessun menu è cambiato non viene
+  inviato nulla a GitHub.
+- Registro: dati/automatico.log (ora di ogni giro, esito per locale, errori).
+- Funziona solo con il PC acceso e con l'utente collegato (non in standby).
+- Per fermarlo: doppio clic su Rimuovi_pianificazione.bat.
+- Avvia.bat resta per un aggiornamento manuale immediato, a qualunque ora.
 
 Aggiungere una rosticceria
 --------------------------
