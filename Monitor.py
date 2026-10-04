@@ -126,6 +126,33 @@ def last_outcome() -> tuple[str, str]:
     return when, "in corso…" if LOCK.exists() else "completato"
 
 
+def make_badge(updated: int, total: int, size: int, master=None):
+    """Disegna il quadratino colorato con il numero (richiede Pillow)."""
+    from PIL import Image, ImageDraw, ImageFont, ImageTk
+
+    scale = 4  # disegno grande e poi rimpicciolisco: bordi più puliti
+    big = size * scale
+    colour = GREEN if total and updated == total else ORANGE if updated else "#64748b"
+    image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((0, 0, big - 1, big - 1), radius=big // 6, fill=colour)
+    inset = big // 10
+    draw.rounded_rectangle((inset, inset, big - 1 - inset, big - 1 - inset), radius=big // 9, fill=BG)
+    text = str(updated)
+    font_size = int(big * (0.72 if len(text) == 1 else 0.55))
+    font = None
+    for name in ("arialbd.ttf", "segoeuib.ttf", "DejaVuSans-Bold.ttf"):
+        try:
+            font = ImageFont.truetype(name, font_size)
+            break
+        except OSError:
+            continue
+    if font is None:
+        font = ImageFont.load_default(font_size)
+    draw.text((big / 2, big / 2), text, fill="white", font=font, anchor="mm")
+    return ImageTk.PhotoImage(image.resize((size, size), Image.LANCZOS), master=master)
+
+
 class Monitor(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -133,14 +160,10 @@ class Monitor(tk.Tk):
         self.configure(bg=BG)
         self.resizable(False, False)
         self.attributes("-topmost", True)
-        if sys.platform == "win32":
-            self.attributes("-toolwindow", True)  # barra del titolo piccola, niente icona in taskbar
-        icon = ROOT / "icone" / "favicon.png"
-        if icon.exists():
-            try:
-                self.iconphoto(True, tk.PhotoImage(file=str(icon)))
-            except tk.TclError:
-                pass
+        # finestra normale: ha il pulsante "riduci a icona" e compare nella barra delle applicazioni
+        self.icon_images: list = []  # riferimenti alle icone (altrimenti tkinter le cancella)
+        self.icon_count: tuple[int, int] | None = None
+        self.set_icon(0, 0)
         saved = read_json(POSITION, {})
         if "x" in saved:
             self.geometry(f"+{saved['x']}+{saved['y']}")
@@ -243,6 +266,7 @@ class Monitor(tk.Tk):
                      anchor="w").pack(side="left")
             tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10)).pack(side="left")
         self.summary.config(text=f"Aggiornate oggi: {updated} su {len(shops)}")
+        self.set_icon(updated, len(shops))
 
     def is_active(self) -> bool:
         """Attività attiva e con orari fissi (:00, :15, :30, :45). Una vecchia attività creata
@@ -250,6 +274,22 @@ class Monitor(tk.Tk):
         running = self.task_state.lower() in ("ready", "running", "queued")
         aligned = self.next_run is None or self.next_run.minute % 15 == 0
         return running and aligned
+
+    def set_icon(self, updated: int, total: int) -> None:
+        """Icona della barra delle applicazioni: quadratino con il numero di rosticcerie aggiornate.
+
+        Bordo verde se sono tutte aggiornate, arancione se ne manca qualcuna, grigio se zero.
+        Anche il titolo riporta il conteggio (es. "4/8 Menu")."""
+        if self.icon_count == (updated, total):
+            return
+        self.icon_count = (updated, total)
+        self.title(f"{updated}/{total} Menu" if total else "Menu")
+        try:
+            images = [make_badge(updated, total, size, self) for size in (64, 32, 16)]
+            self.iconphoto(True, *images)
+        except Exception:
+            return  # senza Pillow resta l'icona standard
+        self.icon_images = images
 
     def say(self, message: str) -> None:
         """Messaggio temporaneo (10 secondi) sotto l'esito dell'ultimo giro."""
@@ -295,4 +335,11 @@ class Monitor(tk.Tk):
 
 
 if __name__ == "__main__":
+    if sys.platform == "win32":
+        # identità propria per la barra delle applicazioni: mostra la nostra icona, non quella di Python
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Mazzarisi.Menu.Monitor")
+        except Exception:
+            pass
     Monitor().mainloop()
