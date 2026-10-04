@@ -1,0 +1,115 @@
+{
+  "impostazioni": {
+    "titolo": "Menu - {data}",
+    "mostra_menu_vecchi": false
+  },
+  "locali": [
+    {
+      "id": "fantasia",
+      "nome": "Fantasia",
+      "telefono": "080-405.41.39",
+      "indirizzo": "Via Nicola Losavio 10, Putignano",
+      "url": "https://www.facebook.com/RosticceriaFantasia",
+      "logo": "fantasia.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/RosticceriaFantasia", "attiva": false},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "cibaria",
+      "nome": "Cibària",
+      "telefono": "080-645.07.99",
+      "indirizzo": "Via Estramurale a Levante 11, Putignano",
+      "url": "https://www.facebook.com/cibaria.asporto",
+      "logo": "cibaria.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/cibaria.asporto", "attiva": false},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "impastamo",
+      "nome": "Impastamò",
+      "telefono": "392-536.15.36",
+      "indirizzo": "Via Conversano 34, Putignano",
+      "url": "https://www.facebook.com/profile.php?id=61560452176728",
+      "logo": "impastamo.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=61560452176728", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "michela",
+      "nome": "Le delizie di Michela",
+      "telefono": "080-521.42.33",
+      "indirizzo": "Corso Umberto I 87, Putignano",
+      "url": "https://www.facebook.com/profile.php?id=100045208848338",
+      "logo": "michela.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Storia Facebook", "url": "https://www.facebook.com/stories/186699229513704/", "apri_storia": false, "attiva": false},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "aufer",
+      "nome": "Aufer Gastronomia",
+      "telefono": "368-38.30.313",
+      "indirizzo": "Via Estramurale a Mezzogiorno 83, Putignano",
+      "url": "https://www.instagram.com/aufergastronomia/",
+      "logo": "aufer.jpg",
+      "fonti": [
+        {
+          "tipo": "browser",
+          "nome": "Storia Instagram",
+          "url": "https://www.instagram.com/aufergastronomia/",
+          "utente": "aufergastronomia",
+          "apri_storia": true,
+          "richiede_recente": true,
+          "profilo": "%LOCALAPPDATA%\\AuferInstagram\\chrome",
+          "canale": "chrome",
+          "attesa_secondi": 5,
+          "attiva": true
+        },
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "santoro",
+      "nome": "Santoro (Castellana)",
+      "telefono": "080-859.83.13",
+      "indirizzo": "Via Mazzini 28, Castellana Grotte",
+      "url": "https://www.facebook.com/santorogastronomia",
+      "logo": "santoro.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/santorogastronomia", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "pane-co",
+      "nome": "Pane & Co",
+      "telefono": "080-405.49.00",
+      "indirizzo": "Viale Federico II 49, Putignano",
+      "url": "https://www.paneeco.it/menu",
+      "logo": "pane-co.jpg",
+      "fonti": [
+        {"tipo": "pagina", "nome": "Sito ufficiale", "url": "https://www.paneeco.it/menu", "sezioni": ["del giorno"], "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "bollenti-piatti",
+      "nome": "Bollenti piatti",
+      "telefono": "334-318.58.44",
+      "indirizzo": "Via Noci 48, Putignano",
+      "url": "https://www.facebook.com/BollentiPiatti",
+      "logo": "bollenti-piatti.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/BollentiPiatti", "attiva": false},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+MENU - STRUTTURA MINIMALE
+=========================
+
+Avvio normale
+-------------
+Eseguire:
+
+    python Menu.py
+
+Il programma legge locali.json, aggiorna i menu disponibili e ricrea sempre
+Menu.html. Per aprire la pagina basta fare doppio clic su Menu.html.
+
+Come si usa Menu.html
+---------------------
+La pagina mostra una scheda compatta per ogni rosticceria con il nome e la
+data dell'ultimo menu disponibile, più un'etichetta di stato:
+- Oggi (verde): il menu è di oggi
+- Non di oggi (giallo): l'ultimo menu è di un giorno precedente
+- Non disponibile (rosso): nessun menu trovato
+Il titolo della pagina è "titolo" in locali.json: {data} viene sostituito
+con la data di oggi, es. "Menu - {data}" -> "Menu - Domenica 4 ottobre".
+La pagina mostra soltanto il titolo e le schede (niente sottotitolo né note).
+Fascia sul lato sinistro della scheda: verde se il menu è di oggi,
+arancione in tutti gli altri casi.
+Cliccando su una scheda si apre la finestra con l'immagine del menu, il
+telefono, Google Maps e la fonte. Si chiude con ✕, con ESC o cliccando fuori.
+
+Versione per cellulare (GitHub Pages)
+-------------------------------------
+Indirizzo: https://sebastiano-mazzarisi.github.io/Menu/
+Repository: https://github.com/Sebastiano-Mazzarisi/Menu
+
+Menu.py crea, oltre a Menu.html, anche index.html: è la stessa pagina, con
+in più manifest.webmanifest e le icone della cartella icone (ricavate da
+loghi/Menu.jpg), così sul telefono si può aggiungere alla schermata Home
+come una app con la scritta "Menu".
+
+- Prima volta: doppio clic su Collega_GitHub.bat (collega la cartella al
+  repository; serve git installato e l'accesso a GitHub già fatto sul PC).
+- Sempre una sola volta, su github.com: repository Menu > Settings > Pages >
+  "Deploy from a branch", Branch: main, cartella: / (root) > Save.
+  Senza questo passaggio l'indirizzo del sito risponde "404".
+  Se git chiede nome ed email al primo commit:
+      git config --global user.name "Sebastiano Mazzarisi"
+      git config --global user.email "s.mazzarisi@gmail.com"
+- Ogni aggiornamento: doppio clic su Avvia.bat, che esegue
+      python Menu.py --pubblica
+  cioè aggiorna i menu e li invia a GitHub. Il sito si aggiorna in 1-2 minuti.
+- Su GitHub vanno solo pagina, menu correnti, loghi, icone e programma.
+  Restano sul PC (vedi .gitignore): profilo (sessione Facebook), ingresso,
+  archivio, errori, dati.
+- iPhone: apri l'indirizzo in Safari > Condividi > Aggiungi a Home.
+  Android: Chrome > menu ⋮ > Aggiungi a schermata Home.
+- Riaprendo l'app dopo più di 5 minuti la pagina si ricarica da sola.
+- Data nel titolo ed etichette "Oggi"/"Non di oggi" sono ricalcolate dal
+  telefono all'apertura: se il PC non ha aggiornato la pagina, il giorno
+  dopo i menu compaiono correttamente come "Non di oggi" (fascia arancione).
+
+Aggiungere una rosticceria
+--------------------------
+Eseguire:
+
+    python Menu.py --aggiungi
+
+La procedura modifica locali.json e crea automaticamente la relativa cartella
+in ingresso. Copiare una foto del menu in quella cartella e rilanciare Menu.py.
+
+Nomi delle cartelle
+-------------------
+- ingresso: immagini ricevute o acquisite, una sottocartella per locale
+- menu: copia corrente usata da Menu.html
+- archivio: copie storiche, create soltanto quando l'immagine cambia
+- loghi: loghi dei locali
+- profilo: sessione persistente del browser (cookie Facebook/Instagram)
+- errori: schermate di diagnostica delle acquisizioni fallite
+- dati: stato dell'ultima esecuzione
+
+Data del menu
+-------------
+È preferibile chiamare le immagini AAAA-MM-GG.jpg, per esempio 2026-10-04.jpg.
+Se nel nome non è presente una data viene utilizzata la data di modifica del
+file. Menu.html indica chiaramente i menu non appartenenti alla data odierna.
+
+Accesso Facebook e Instagram
+----------------------------
+Installare prima i requisiti:
+
+    pip install -r requirements.txt
+    playwright install chromium
+
+Poi salvare una sessione autenticata:
+
+    python Menu.py --login
+
+Le fonti browser in locali.json sono inizialmente disattivate, perché una
+cattura non verificata potrebbe scambiare una pubblicità per il menu. Per
+provarne una impostare "attiva": true e avviare:
+
+    python Menu.py --visibile
+
+Ogni locale può avere più fonti. Vengono provate nell'ordine indicato; la
+cartella locale deve restare come ultima fonte di riserva.
+
+Per sicurezza, i menu appartenenti a giorni precedenti non vengono mostrati
+in Menu.html. Restano disponibili nell'archivio e lo stato mostra la loro data.
+
+Tipi di fonte
+-------------
+- cartella: usa l'immagine più recente presente in ingresso/<id>
+- immagine: scarica un indirizzo che restituisce direttamente un'immagine
+- browser: apre una pagina e cattura il contenuto visivo più grande
+- pagina: legge un menu scritto come testo su un sito (oggi usato per
+  Pane & Co, www.paneeco.it/menu). Prende la data in alto ("4 Ottobre") e
+  le sole sezioni il cui titolo contiene una delle parole in "sezioni"
+  (predefinito: "del giorno" -> antipasti, primi e secondi del giorno).
+  Il risultato viene salvato in ingresso/<id>/AAAA-MM-GG_sito.json, quindi
+  anche --solo-html lo ritrova. Cliccando la scheda il menu appare come
+  elenco piatti/prezzi invece che come foto.
+
+Ultimo post Facebook (oggi usato per Impastamò)
+-----------------------------------------------
+Fonte browser con queste opzioni:
+- "selettore": "[aria-posinset='1'] a[href*='/photo'] img" -> la foto del
+  primo post della pagina
+- "scorri": true -> scorre la pagina finché il post non è caricato
+- "data": "novita" -> Facebook nasconde la data dei post, quindi il menu
+  prende la data del giorno in cui la foto compare per la prima volta. Se
+  la foto è identica a una già scaricata, resta la data vecchia (il menu
+  non viene spacciato per quello di oggi).
+- "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']"
+  -> legge il testo del post; se contiene una data ("menù del giorno
+  4 Ottobre" oppure "4/10") si usa quella, che è più affidabile di
+  "novita". Oggi usato per Santoro.
+Serve la sessione Facebook salvata nella cartella profilo:
+
+    python Menu.py --login
+
+Se il primo post non ha una foto, si usa la cartella ingresso come riserva.
+Le schermate degli errori finiscono nella cartella errori.
+
+Esempio di fonte pagina (Pane & Co):
+
+    {"tipo": "pagina", "nome": "Sito ufficiale",
+     "url": "https://www.paneeco.it/menu", "sezioni": ["del giorno"],
+     "attiva": true}
+
+Esempio di fonte immagine:
+
+    {"tipo": "immagine", "url": "https://esempio.it/menu.jpg", "attiva": true}
+
+Esempio di fonte browser con selettore preciso:
+
+    {"tipo": "browser", "url": "https://esempio.it/menu",
+     "selettore": ".menu-del-giorno", "attiva": true}
+
+Modalità sicura
+---------------
+Per rigenerare soltanto Menu.html senza effettuare accessi online:
+
+    python Menu.py --solo-html

@@ -1,0 +1,570 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import html
+import json
+import os
+import re
+import shutil
+import sys
+import unicodedata
+import urllib.request
+from dataclasses import dataclass
+from datetime import date, datetime
+from pathlib import Path
+from typing import Any
+
+
+ROOT = Path(__file__).resolve().parent
+CONFIG = ROOT / "locali.json"
+INPUT = ROOT / "ingresso"
+CURRENT = ROOT / "menu"
+ARCHIVE = ROOT / "archivio"
+LOGOS = ROOT / "loghi"
+PROFILE = ROOT / "profilo"
+ERRORS = ROOT / "errori"
+DATA = ROOT / "dati"
+STATE = DATA / "stato.json"
+OUTPUT = ROOT / "Menu.html"
+WEB_PAGE = ROOT / "index.html"  # pagina pubblicata su GitHub Pages (cellulare)
+WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+TEXT_EXTENSION = ".json"  # menu testuali letti da un sito (es. Pane & Co)
+MENU_EXTENSIONS = IMAGE_EXTENSIONS | {TEXT_EXTENSION}
+MONTHS = {"gennaio": 1, "febbraio": 2, "marzo": 3, "aprile": 4, "maggio": 5, "giugno": 6, "luglio": 7,
+          "agosto": 8, "settembre": 9, "ottobre": 10, "novembre": 11, "dicembre": 12}
+
+
+def slugify(value: str) -> str:
+    clean = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", clean.lower()).strip("-") or "locale"
+
+
+def make_folders() -> None:
+    for folder in (INPUT, CURRENT, ARCHIVE, LOGOS, PROFILE, ERRORS, DATA):
+        folder.mkdir(parents=True, exist_ok=True)
+
+
+def read_json(path: Path, default: Any) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default
+
+
+def save_json(path: Path, value: Any) -> None:
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def file_hash(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def image_date(path: Path) -> date:
+    patterns = (r"(20\d{2})[-_](\d{2})[-_](\d{2})", r"(\d{2})[-_](\d{2})[-_](20\d{2})")
+    for index, pattern in enumerate(patterns):
+        match = re.search(pattern, path.stem)
+        if match:
+            parts = [int(piece) for piece in match.groups()]
+            try:
+                return date(parts[0], parts[1], parts[2]) if index == 0 else date(parts[2], parts[1], parts[0])
+            except ValueError:
+                pass
+    return datetime.fromtimestamp(path.stat().st_mtime).date()
+
+
+def newest_image(folder: Path) -> Path | None:
+    images = [item for item in folder.glob("*") if item.is_file() and item.suffix.lower() in MENU_EXTENSIONS]
+    return max(images, key=lambda item: (image_date(item), item.stat().st_mtime), default=None)
+
+
+def copy_current(shop: dict[str, Any], source: Path, menu_day: date) -> Path:
+    extension = source.suffix.lower() if source.suffix.lower() in MENU_EXTENSIONS else ".jpg"
+    for old in CURRENT.glob(f"{shop['id']}.*"):
+        if old.suffix.lower() != extension and old.suffix.lower() in MENU_EXTENSIONS:
+            old.unlink()
+    target = CURRENT / f"{shop['id']}{extension}"
+    changed = not target.exists() or file_hash(target) != file_hash(source)
+    if changed:
+        shutil.copy2(source, target)
+        archive_folder = ARCHIVE / shop["id"]
+        archive_folder.mkdir(parents=True, exist_ok=True)
+        archive = archive_folder / f"{menu_day.isoformat()}_{datetime.now():%H%M%S}{extension}"
+        shutil.copy2(source, archive)
+    return target
+
+
+def remove_current(shop: dict[str, Any]) -> None:
+    """Rimuove soltanto le copie generate; ingresso e archivio restano intatti."""
+    for candidate in CURRENT.glob(f"{shop['id']}.*"):
+        if candidate.is_file() and candidate.suffix.lower() in MENU_EXTENSIONS:
+            candidate.unlink()
+
+
+@dataclass
+class Result:
+    image: Path | None
+    menu_day: date | None
+    source: str
+    checked_at: str
+    error: str = ""
+
+
+class BrowserCollector:
+    def __init__(self, visible: bool) -> None:
+        self.visible = visible
+        self.playwright = None
+        self.context = None
+        self.profile_key = ""
+        self.last_text = ""
+
+    def start(self, source: dict[str, Any] | None = None) -> None:
+        source = source or {}
+        configured_profile = source.get("profilo", "")
+        profile = Path(os.path.expandvars(configured_profile)) if configured_profile else PROFILE
+        profile_key = str(profile.resolve())
+        if self.context and self.profile_key == profile_key:
+            return
+        if self.context:
+            self.stop()
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError as exc:
+            raise RuntimeError("Playwright non installato: pip install -r requirements.txt") from exc
+        self.playwright = sync_playwright().start()
+        options: dict[str, Any] = {
+            "headless": not self.visible,
+            "viewport": {"width": 1280, "height": 900},
+            "locale": "it-IT",
+        }
+        if source.get("canale"):
+            options["channel"] = source["canale"]
+        self.context = self.playwright.chromium.launch_persistent_context(str(profile), **options)
+        self.profile_key = profile_key
+
+    def stop(self) -> None:
+        if self.context:
+            self.context.close()
+            self.context = None
+        if self.playwright:
+            self.playwright.stop()
+            self.playwright = None
+        self.profile_key = ""
+
+    def login(self) -> None:
+        self.start()
+        page = self.context.pages[0] if self.context.pages else self.context.new_page()
+        page.goto("https://www.facebook.com/", wait_until="domcontentloaded", timeout=60000)
+        page = self.context.new_page()
+        page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=60000)
+        input("Accedi nei due siti, poi torna qui e premi INVIO...")
+
+    def capture(self, shop: dict[str, Any], source: dict[str, Any]) -> Path:
+        self.start(source)
+        page = self.context.new_page()
+        try:
+            page.goto(source["url"], wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(int(source.get("attesa_secondi", 6)) * 1000)
+            if source.get("apri_storia"):
+                opened = False
+                if source.get("utente"):
+                    try:
+                        avatar = page.locator(
+                            f'img[alt*="profilo di {source["utente"]}" i]'
+                        ).first
+                        avatar.locator("..").click(timeout=5000)
+                        page.wait_for_timeout(5000)
+                        opened = "/stories/" in page.url and "/highlights/" not in page.url
+                    except Exception:
+                        pass
+                for selector in source.get(
+                    "selettori_apertura",
+                    ["a[href*='/stories/']:not([href*='/highlights/'])", "header img"],
+                ):
+                    if opened:
+                        break
+                    try:
+                        candidate = page.locator(selector).first
+                        if candidate.is_visible(timeout=1500):
+                            candidate.click(timeout=3000)
+                            page.wait_for_timeout(5000)
+                            opened = "/stories/" in page.url
+                            if opened:
+                                break
+                    except Exception:
+                        continue
+                if not opened:
+                    raise RuntimeError("la Storia non si è aperta")
+                if source.get("richiede_recente"):
+                    visible_text = page.locator("body").inner_text(timeout=5000)
+                    recent = re.search(
+                        r"\b(?:\d{1,2}\s*(?:m|min|h|ora|ore)|adesso)\b",
+                        visible_text,
+                        re.IGNORECASE,
+                    )
+                    if not recent:
+                        raise RuntimeError("la Storia non risulta pubblicata nelle ultime 24 ore")
+            selector = source.get("selettore", "")
+            if selector and source.get("scorri"):
+                # Facebook carica i post solo scorrendo la pagina
+                for _ in range(int(source.get("scorri_max", 12))):
+                    if page.locator(selector).count():
+                        break
+                    page.mouse.wheel(0, 1200)
+                    page.wait_for_timeout(1500)
+            if selector and not page.locator(selector).count():
+                raise RuntimeError(f"nessun elemento trovato con il selettore {selector}")
+            self.last_text = ""
+            if source.get("selettore_testo"):
+                try:
+                    self.last_text = page.locator(source["selettore_testo"]).first.inner_text(timeout=3000)
+                except Exception:
+                    pass
+            target = page.locator(selector).first if selector else self._largest_media(page)
+            if target is None:
+                raise RuntimeError("nessuna immagine grande visibile")
+            destination = INPUT / shop["id"] / f"{date.today().isoformat()}_online.jpg"
+            media_url = target.evaluate("element => element.currentSrc || element.src || ''")
+            if media_url:
+                response = self.context.request.get(media_url, timeout=30000)
+                content_type = response.headers.get("content-type", "").split(";")[0].lower()
+                if response.ok and content_type in {"image/jpeg", "image/png", "image/webp"}:
+                    destination.write_bytes(response.body())
+                else:
+                    target.screenshot(path=str(destination), type="jpeg", quality=92)
+            else:
+                target.screenshot(path=str(destination), type="jpeg", quality=92)
+            return destination
+        except Exception:
+            debug = ERRORS / f"{shop['id']}_{datetime.now():%Y%m%d_%H%M%S}.png"
+            try:
+                page.screenshot(path=str(debug), full_page=False)
+            except Exception:
+                pass
+            raise
+        finally:
+            page.close()
+
+    @staticmethod
+    def _largest_media(page: Any) -> Any:
+        best = None
+        best_score = 0.0
+        for css in ("img", "video"):
+            items = page.locator(css)
+            for index in range(min(items.count(), 100)):
+                item = items.nth(index)
+                try:
+                    box = item.bounding_box()
+                    if not box or box["width"] < 280 or box["height"] < 280:
+                        continue
+                    score = box["width"] * box["height"]
+                    if score > best_score:
+                        best, best_score = item, score
+                except Exception:
+                    continue
+        return best
+
+
+def download_image(url: str, destination: Path) -> Path:
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 Menu/1.0"})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        content_type = response.headers.get("Content-Type", "")
+        if not content_type.startswith("image/"):
+            raise RuntimeError(f"la risposta non è un'immagine ({content_type})")
+        destination.write_bytes(response.read())
+    return destination
+
+
+def menu_page_date(day_text: str) -> date:
+    """Converte '4 Ottobre' in una data, scegliendo l'anno più vicino a oggi."""
+    match = re.search(r"(\d{1,2})\s+([a-zà]+)", day_text.lower())
+    if not match or match.group(2) not in MONTHS:
+        raise RuntimeError(f"data non riconosciuta: {day_text!r}")
+    today = date.today()
+    found = date(today.year, MONTHS[match.group(2)], int(match.group(1)))
+    if (found - today).days > 180:
+        found = found.replace(year=today.year - 1)
+    elif (today - found).days > 180:
+        found = found.replace(year=today.year + 1)
+    return found
+
+
+def clean_text(fragment: str) -> str:
+    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", fragment))).strip()
+
+
+def parse_paneeco(page: str, keywords: list[str]) -> tuple[date, list[dict[str, Any]]]:
+    """Estrae data e sezioni 'del giorno' dalla pagina menu di paneeco.it."""
+    header = re.search(r'class="menu-header__title"[^>]*>(.*?)</h1>', page, re.S)
+    if not header:
+        raise RuntimeError("data del menu non trovata nella pagina")
+    menu_day = menu_page_date(clean_text(header.group(1)))
+    sections = []
+    for block in page.split('<section class="menu-category')[1:]:
+        title_match = re.search(r'class="menu-category__title"[^>]*>(.*?)</h2>', block, re.S)
+        title = clean_text(title_match.group(1)) if title_match else ""
+        if not title or not any(key.lower() in title.lower() for key in keywords):
+            continue
+        items = []
+        for article in re.findall(r'<article class="menu-item".*?</article>', block, re.S):
+            def field(css: str) -> str:
+                found = re.search(rf'class="menu-item__{css}"[^>]*>(.*?)</(?:p|span)>', article, re.S)
+                return clean_text(found.group(1)) if found else ""
+            if field("name"):
+                items.append({"nome": field("name"), "prezzo": field("price"), "descrizione": field("description")})
+        if items:
+            sections.append({"titolo": title, "piatti": items})
+    if not sections:
+        raise RuntimeError("nessuna sezione 'del giorno' trovata")
+    return menu_day, sections
+
+
+def download_menu_page(shop: dict[str, Any], source: dict[str, Any]) -> tuple[Path, date]:
+    request = urllib.request.Request(source["url"], headers={"User-Agent": "Mozilla/5.0 Menu/1.0"})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        page = response.read().decode("utf-8", errors="replace")
+    menu_day, sections = parse_paneeco(page, source.get("sezioni", ["del giorno"]))
+    destination = INPUT / shop["id"] / f"{menu_day.isoformat()}_sito.json"
+    save_json(destination, {"data": menu_day.isoformat(), "fonte": source["url"], "sezioni": sections})
+    return destination, menu_day
+
+
+def date_in_text(text: str) -> date | None:
+    """Cerca nel testo una data tipo '4 Ottobre' o '04/10'."""
+    if not text:
+        return None
+    for number, month in re.findall(r"(\d{1,2})\s+([a-zà]+)", text.lower()):
+        if month in MONTHS:
+            try:
+                return menu_page_date(f"{number} {month}")
+            except (RuntimeError, ValueError):
+                pass
+    match = re.search(r"\b(\d{1,2})[/.-](\d{1,2})\b", text)
+    if match:
+        try:
+            return menu_page_date(f"{int(match.group(1))} {list(MONTHS)[int(match.group(2)) - 1]}")
+        except (IndexError, RuntimeError, ValueError):
+            pass
+    return None
+
+
+def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
+    """Se l'immagine catturata è identica a una già presente, non è un menu nuovo:
+    elimina la copia appena scaricata e mantiene la data della prima volta in cui è comparsa."""
+    digest = file_hash(captured)
+    earlier = [item for item in folder.glob("*") if item.is_file() and item != captured
+               and item.suffix.lower() in IMAGE_EXTENSIONS and file_hash(item) == digest]
+    if earlier:
+        first = min(earlier, key=lambda item: (image_date(item), item.stat().st_mtime))
+        captured.unlink()
+        return first, image_date(first)
+    return captured, date.today()
+
+
+def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool) -> Result:
+    checked = datetime.now().astimezone().isoformat(timespec="seconds")
+    errors: list[str] = []
+    folder = INPUT / shop["id"]
+    folder.mkdir(parents=True, exist_ok=True)
+    for source in shop.get("fonti", [{"tipo": "cartella"}]):
+        if not source.get("attiva", True):
+            continue
+        kind = source.get("tipo", "cartella")
+        try:
+            if kind == "cartella":
+                image = newest_image(folder)
+                if image:
+                    return Result(image, image_date(image), "cartella", checked, "; ".join(errors))
+                raise RuntimeError("nessuna immagine")
+            if not online:
+                continue
+            destination = folder / f"{date.today().isoformat()}_online.jpg"
+            if kind == "immagine":
+                image = download_image(source["url"], destination)
+            elif kind == "pagina":
+                image, page_day = download_menu_page(shop, source)
+                return Result(image, page_day, source.get("nome", kind), checked)
+            elif kind == "browser":
+                if browser is None:
+                    raise RuntimeError("browser non disponibile")
+                image = browser.capture(shop, source)
+                text_day = date_in_text(browser.last_text)
+                if text_day:
+                    # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
+                    dated = folder / f"{text_day.isoformat()}_online{image.suffix}"
+                    if dated != image:
+                        image.replace(dated)
+                    return Result(dated, text_day, source.get("nome", kind), checked)
+                if source.get("data") == "novita":
+                    image, new_day = keep_first_seen(folder, image)
+                    return Result(image, new_day, source.get("nome", kind), checked)
+            else:
+                raise RuntimeError(f"tipo fonte sconosciuto: {kind}")
+            return Result(image, date.today(), source.get("nome", kind), checked)
+        except Exception as exc:
+            errors.append(f"{kind}: {exc}")
+    old = newest_image(folder)
+    return Result(old, image_date(old) if old else None, "ultimo disponibile" if old else "nessuna", checked, "; ".join(errors))
+
+
+def status_label(menu_day: date | None, error: str) -> tuple[str, str]:
+    if menu_day == date.today():
+        return ("Oggi", "fresh")
+    if menu_day:
+        return ("Non di oggi", "stale")
+    return (("Errore" if error else "Non disponibile"), "missing")
+
+
+def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results: list[dict[str, Any]]) -> None:
+    cards = []
+    for index, (shop, result) in enumerate(zip(shops, results)):
+        label, css = status_label(date.fromisoformat(result["menu_date"]) if result.get("menu_date") else None, result.get("error", ""))
+        menu_day = date.fromisoformat(result["menu_date"]) if result.get("menu_date") else None
+        day_text = menu_day.strftime("%d/%m/%Y") if menu_day else "nessun menu"
+        cards.append(f'''<button type="button" class="card {'band-ok' if css == 'fresh' else 'band-old'}" data-index="{index}">
+  <h2>{html.escape(shop['nome'])}</h2>
+  <span class="day">Ultimo menu: <strong>{day_text}</strong></span>
+  <span class="status {css}">{label}</span>
+</button>''')
+    public_shops = [{key: shop.get(key, "") for key in ("nome", "telefono", "indirizzo", "url")} for shop in shops]
+    version = datetime.now().strftime("%Y%m%d%H%M%S")
+    title_tpl = settings.get("titolo", "Menu - {data}")
+    payload = json.dumps({"shops": public_shops, "results": results, "v": version, "titolo": title_tpl}, ensure_ascii=False).replace("</", "<\\/")
+    days = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
+    today = date.today()
+    today_text = f"{days[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}"
+    title = html.escape(settings.get("titolo", "Menu - {data}").replace("{data}", today_text))
+    document = f'''<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220"><title>{title}</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icone/favicon.png">
+<link rel="apple-touch-icon" href="icone/icona-180.png"><meta name="apple-mobile-web-app-title" content="Menu">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{{--bg:#0b1220;--card:#fff;--ink:#172033;--muted:#64748b;--accent:#16a34a}}
+*{{box-sizing:border-box}}body{{margin:0;background:linear-gradient(150deg,#09111f,#172033);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:white;min-height:100vh}}
+header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:space-between;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px)}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
+main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}}
+.card{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;width:100%;background:var(--card);color:var(--ink);border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;cursor:pointer;transition:.18s transform,.18s box-shadow;font:inherit}}.card:hover,.card:focus-visible{{transform:translateY(-3px);box-shadow:0 14px 32px #0008;outline:3px solid var(--accent)}}
+.band-ok{{border-left:10px solid #16a34a}}.band-old{{border-left:10px solid #f97316}}
+.card h2{{font-size:21px;margin:0}}.day{{color:var(--muted);font-size:15px}}.day strong{{color:var(--ink)}}.status{{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:750}}.fresh{{background:#dcfce7;color:#166534}}.stale{{background:#fef3c7;color:#92400e}}.missing{{background:#fee2e2;color:#991b1b}}
+#text{{max-height:68vh;overflow:auto;padding:0 18px}}#text h3{{margin:18px 0 8px;color:#86efac}}.dish{{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-bottom:1px solid #1e293b}}.dish b{{white-space:nowrap}}.dish small{{grid-column:1/-1;color:#94a3b8}}.dish small:empty{{display:none}}
+#nomenu{{padding:40px 18px;text-align:center;color:#cbd5e1}}
+dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b}}dialog::backdrop{{background:#000c}}.modal-head{{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #334155}}.modal-head h2{{margin:0}}button{{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}}#close{{background:#334155;color:white;font-size:18px}}#full{{display:block;max-width:100%;max-height:68vh;margin:auto;object-fit:contain}}.actions{{padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}}.actions a{{color:white;text-decoration:none;background:#166534;padding:10px 14px;border-radius:10px;font-weight:700}}.actions .source{{background:#1d4ed8}}#meta{{color:#cbd5e1;margin-right:auto}}footer{{text-align:center;color:#94a3b8;padding:0 20px 28px;font-size:13px}}
+@media(max-width:600px){{header{{align-items:start;flex-direction:column}}main{{grid-template-columns:1fr;padding-inline:12px}}}}
+</style></head><body>
+<header><h1>{title}</h1></header>
+<main>{''.join(cards)}</main>
+<dialog id="detail"><div class="modal-head"><h2 id="name"></h2><button id="close" aria-label="Chiudi">✕</button></div><img id="full" alt=""><div id="text"></div><p id="nomenu" hidden>Il menu di questa data non è pubblicato (vedi archivio).</p><div class="actions"><span id="meta"></span><a id="phone" hidden></a><a id="map" target="_blank" rel="noopener" hidden>Google Maps</a><a id="source" class="source" target="_blank" rel="noopener" hidden>Fonte</a></div></dialog>
+<script>const DATA={payload};const dlg=document.querySelector('#detail');function openCard(i){{const s=DATA.shops[i],r=DATA.results[i];document.querySelector('#name').textContent=s.nome;const img=document.querySelector('#full');img.src=r.image?r.image+'?v='+DATA.v:'';img.hidden=!r.image;const tx=document.querySelector('#text');tx.innerHTML='';(r.sections||[]).forEach(sec=>{{const h=document.createElement('h3');h.textContent=sec.titolo;tx.append(h);sec.piatti.forEach(p=>{{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b><small></small>';d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;d.children[2].textContent=p.descrizione;tx.append(d)}})}});document.querySelector('#nomenu').hidden=!!(r.image||(r.sections||[]).length);document.querySelector('#meta').textContent=r.menu_date?'Menu: '+r.menu_date.split('-').reverse().join('/'):'Menu non disponibile';const phone=document.querySelector('#phone');phone.hidden=!s.telefono;phone.textContent=s.telefono||'';phone.href='tel:'+(s.telefono||'').replace(/[^+\\d]/g,'');const map=document.querySelector('#map');map.hidden=!s.indirizzo;map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.indirizzo||'');const source=document.querySelector('#source');source.hidden=!s.url;source.href=s.url||'';dlg.showModal()}}document.querySelectorAll('.card').forEach((c,i)=>{{c.onclick=()=>openCard(i)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{{data}}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.title=t;document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach((c,i)=>{{const r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}})}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})</script>
+</body></html>'''
+    OUTPUT.write_text(document, encoding="utf-8")
+    WEB_PAGE.write_text(document, encoding="utf-8")
+
+
+def publish() -> None:
+    """Invia a GitHub (repository Menu) la pagina e i menu correnti."""
+    import subprocess
+
+    def git(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", *args], cwd=ROOT, text=True, capture_output=True)
+
+    if not (ROOT / ".git").exists():
+        print("Pubblicazione saltata: la cartella non è ancora collegata a GitHub (vedi LEGGIMI.txt).")
+        return
+    git("add", "-A")
+    if not git("status", "--porcelain").stdout.strip():
+        print("Pubblicazione: nessuna modifica da inviare.")
+        return
+    git("commit", "-m", f"Menu {datetime.now():%Y-%m-%d %H:%M}")
+    pushed = git("push")
+    if pushed.returncode != 0:
+        print("Pubblicazione NON riuscita:\n" + pushed.stderr.strip())
+    else:
+        print(f"Pubblicato: {WEB_URL}")
+
+
+def add_shop(config: dict[str, Any]) -> None:
+    print("\nNuova rosticceria (INVIO lascia vuoto)")
+    name = input("Nome: ").strip()
+    if not name:
+        raise SystemExit("Nome obbligatorio.")
+    shop_id = slugify(input(f"Identificativo [{slugify(name)}]: ").strip() or name)
+    shop = {
+        "id": shop_id,
+        "nome": name,
+        "telefono": input("Telefono: ").strip(),
+        "indirizzo": input("Indirizzo: ").strip(),
+        "url": input("Pagina Facebook, Instagram o sito: ").strip(),
+        "logo": "",
+        "fonti": [{"tipo": "cartella", "attiva": True}],
+    }
+    config.setdefault("locali", []).append(shop)
+    (INPUT / shop_id).mkdir(parents=True, exist_ok=True)
+    save_json(CONFIG, config)
+    print(f"Creato ingresso/{shop_id}. Inserisci lì una foto del menu e rilancia Menu.py.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Raccoglie e pubblica menu da fonti configurabili.")
+    parser.add_argument("--aggiungi", action="store_true", help="Aggiunge una rosticceria con procedura guidata.")
+    parser.add_argument("--solo-html", action="store_true", help="Non prova fonti online; usa i file disponibili.")
+    parser.add_argument("--visibile", action="store_true", help="Mostra il browser durante le acquisizioni online.")
+    parser.add_argument("--pubblica", action="store_true", help="Dopo l'aggiornamento invia la pagina a GitHub Pages.")
+    parser.add_argument("--login", action="store_true", help="Apre Facebook e Instagram per salvare la sessione.")
+    args = parser.parse_args()
+    make_folders()
+    config = read_json(CONFIG, {"impostazioni": {}, "locali": []})
+    if args.aggiungi:
+        add_shop(config)
+        config = read_json(CONFIG, config)
+    shops = config.get("locali", [])
+    settings = config.get("impostazioni", {})
+    ids = [shop.get("id") for shop in shops]
+    if not shops or any(not value for value in ids) or len(ids) != len(set(ids)):
+        raise SystemExit("locali.json non valido: servono locali con id univoci.")
+    browser = BrowserCollector(visible=args.visibile or args.login)
+    if args.login:
+        browser.login()
+        browser.stop()
+        return
+    results: list[dict[str, Any]] = []
+    try:
+        for shop in shops:
+            result = acquire(shop, browser, online=not args.solo_html)
+            show_old = bool(settings.get("mostra_menu_vecchi", False))
+            publishable = bool(result.image and result.menu_day and (show_old or result.menu_day == date.today()))
+            current = copy_current(shop, result.image, result.menu_day) if publishable else None
+            if not publishable:
+                remove_current(shop)
+            record = {
+                "id": shop["id"], "image": current.relative_to(ROOT).as_posix() if current else "",
+                "menu_date": result.menu_day.isoformat() if result.menu_day else "", "source": result.source,
+                "checked_at": result.checked_at, "error": result.error,
+            }
+            if current and current.suffix.lower() == TEXT_EXTENSION:
+                record["image"] = ""
+                record["sections"] = read_json(current, {}).get("sezioni", [])
+            results.append(record)
+            print(f"{shop['nome']}: {record['menu_date'] or 'nessun menu'} ({result.source})")
+    finally:
+        browser.stop()
+    state = {"generated_at": datetime.now().astimezone().isoformat(timespec="seconds"), "results": results}
+    save_json(STATE, state)
+    generate_html(settings, shops, results)
+    print(f"Creato: {OUTPUT}")
+    if args.pubblica:
+        publish()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit("\nOperazione annullata.")
