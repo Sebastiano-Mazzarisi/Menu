@@ -37,12 +37,6 @@ come una app con la scritta "Menu".
 
 - Prima volta: doppio clic su Collega_GitHub.bat (collega la cartella al
   repository; serve git installato e l'accesso a GitHub già fatto sul PC).
-- Sempre una sola volta, su github.com: repository Menu > Settings > Pages >
-  "Deploy from a branch", Branch: main, cartella: / (root) > Save.
-  Senza questo passaggio l'indirizzo del sito risponde "404".
-  Se git chiede nome ed email al primo commit:
-      git config --global user.name "Sebastiano Mazzarisi"
-      git config --global user.email "s.mazzarisi@gmail.com"
 - Ogni aggiornamento: doppio clic su Avvia.bat, che esegue
       python Menu.py --pubblica
   cioè aggiorna i menu e li invia a GitHub. Il sito si aggiorna in 1-2 minuti.
@@ -51,10 +45,10 @@ come una app con la scritta "Menu".
   archivio, errori, dati.
 - iPhone: apri l'indirizzo in Safari > Condividi > Aggiungi a Home.
   Android: Chrome > menu ⋮ > Aggiungi a schermata Home.
+- Il nome della scheda/app è sempre "Menu" (la data compare solo nel titolo
+  dentro la pagina). Condividendo il link (WhatsApp ecc.) l'anteprima mostra
+  "Menu" con l'icona di loghi/Menu.jpg.
 - Riaprendo l'app dopo più di 5 minuti la pagina si ricarica da sola.
-- Data nel titolo ed etichette "Oggi"/"Non di oggi" sono ricalcolate dal
-  telefono all'apertura: se il PC non ha aggiornato la pagina, il giorno
-  dopo i menu compaiono correttamente come "Non di oggi" (fascia arancione).
 
 Aggiungere una rosticceria
 --------------------------
