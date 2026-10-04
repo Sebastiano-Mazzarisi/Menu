@@ -2,7 +2,7 @@
   "impostazioni": {
     "titolo": "Menu - {data}",
     "mostra_menu_vecchi": false,
-    "automatico": {"dalle": "08:00", "alle": "14:00"}
+    "automatico": {"dalle": "00:00", "alle": "23:59"}
   },
   "locali": [
     {

@@ -653,7 +653,34 @@ def main() -> None:
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
+    if not args.login and not args.aggiungi:
+        start_manual_log()
     run(args, config)
+
+
+class Tee:
+    """Scrive contemporaneamente a video e nel registro."""
+
+    def __init__(self, *streams: Any) -> None:
+        self.streams = [stream for stream in streams if stream is not None]
+
+    def write(self, text: str) -> int:
+        for stream in self.streams:
+            stream.write(text)
+        return len(text)
+
+    def flush(self) -> None:
+        for stream in self.streams:
+            stream.flush()
+
+
+def start_manual_log() -> None:
+    """Anche i giri lanciati a mano (Avvia.bat) finiscono in dati/automatico.log."""
+    DATA.mkdir(exist_ok=True)
+    stream = AUTO_LOG.open("a", encoding="utf-8", buffering=1)
+    sys.stdout = Tee(sys.__stdout__, stream)
+    sys.stderr = Tee(sys.__stderr__, stream)
+    print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} === (manuale)")
 
 
 def run(args: argparse.Namespace, config: dict[str, Any]) -> None:

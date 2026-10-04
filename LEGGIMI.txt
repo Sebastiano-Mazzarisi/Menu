@@ -77,7 +77,7 @@ Aggiornamento automatico (ogni 15 minuti)
   esegue, senza aprire finestre:
       pythonw Menu.py --automatico
 - Fascia oraria: in locali.json, sezione impostazioni:
-      "automatico": {"dalle": "08:00", "alle": "14:00"}
+      "automatico": {"dalle": "00:00", "alle": "23:59"}   (= 24 ore su 24)
   Fuori fascia il programma si chiude subito senza fare nulla. Per cambiare
   orario basta modificare questi valori (non serve rilanciare Pianifica.bat).
 - In ogni giro: aggiorna i menu, ricrea la pagina e la pubblica su GitHub.
@@ -85,9 +85,30 @@ Aggiornamento automatico (ogni 15 minuti)
   (meno accessi a Facebook/Instagram). Se nessun menu è cambiato non viene
   inviato nulla a GitHub.
 - Registro: dati/automatico.log (ora di ogni giro, esito per locale, errori).
+  Ci finiscono anche i giri lanciati a mano con Avvia.bat, segnati "(manuale)".
+  Il file nasce al primo giro: prima di allora il pulsante Registro della
+  finestra di controllo avvisa che non esiste ancora.
 - Funziona solo con il PC acceso e con l'utente collegato (non in standby).
 - Per fermarlo: doppio clic su Rimuovi_pianificazione.bat.
 - Avvia.bat resta per un aggiornamento manuale immediato, a qualunque ora.
+
+Finestra di controllo (Monitor.py)
+----------------------------------
+Doppio clic su Monitor.bat: si apre una piccola finestra, sempre in primo
+piano, che si sposta trascinandola dalla barra del titolo (la posizione
+viene ricordata alla chiusura, in dati/monitor.json). Mostra:
+- il conto alla rovescia al prossimo controllo automatico (letto
+  dall'attività "Menu" di Windows), oppure "Controllo in corso…" mentre
+  Menu.py sta lavorando, oppure "Non pianificato" se l'attività manca;
+- "Aggiornate oggi: X su Y" e una riga per ogni rosticceria:
+  pallino verde "oggi", arancione con la data dell'ultimo menu, rosso
+  "nessuno";
+- l'esito dell'ultimo giro (pubblicato, nessuna novità, errore).
+Pulsanti: "Controlla ora" (lancia Avvia.bat), "Registro" (apre
+dati/automatico.log), "Sito" (apre la pagina su GitHub Pages).
+Si aggiorna da sola ogni secondo. Usa solo Python standard (tkinter).
+Per averla sempre all'accensione del PC: Win+R, scrivere shell:startup,
+INVIO, e copiare lì un collegamento a Monitor.bat.
 
 Aggiungere una rosticceria
 --------------------------

@@ -82,6 +82,8 @@ def last_outcome() -> tuple[str, str]:
     if start is None:
         return "", "nessun giro registrato"
     when = lines[start].strip("= ").strip()[11:16]
+    if "(manuale)" in lines[start]:
+        when += " (manuale)"
     block = lines[start + 1:]
     for line in block:
         if line.startswith("ERRORE") or "NON riuscita" in line:
@@ -209,8 +211,12 @@ class Monitor(tk.Tk):
             subprocess.Popen(["cmd", "/c", "start", "", str(bat)], cwd=ROOT, creationflags=NO_WINDOW)
 
     def open_log(self) -> None:
-        if LOG.exists() and sys.platform == "win32":
-            os.startfile(LOG)  # type: ignore[attr-defined]
+        """Apre il registro con il Blocco note (se non esiste ancora lo dice nella finestra)."""
+        if not LOG.exists():
+            self.outcome.config(text="Registro non ancora creato:\nnessun giro fatto finora", fg=ORANGE)
+            return
+        if sys.platform == "win32":
+            subprocess.Popen(["notepad.exe", str(LOG)])
 
     def open_site(self) -> None:
         webbrowser.open(WEB_URL)
