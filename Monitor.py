@@ -15,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import webbrowser
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -44,16 +45,40 @@ def read_json(path: Path, default):
 
 def task_info() -> tuple[datetime | None, str]:
     """Chiede a Windows la prossima esecuzione dell'attività "Menu" (formato indipendente dalla lingua)."""
-    command = (f"$i = Get-ScheduledTaskInfo -TaskName '{TASK}' -ErrorAction Stop; "
-               f"$t = Get-ScheduledTask -TaskName '{TASK}'; "
-               "$i.NextRunTime.ToString('yyyy-MM-ddTHH:mm:ss') + '|' + $t.State")
+    command = (f"$t = Get-ScheduledTask -TaskName '{TASK}' -ErrorAction Stop; "
+               f"$i = Get-ScheduledTaskInfo -TaskName '{TASK}'; "
+               "$n = if ($i.NextRunTime) {{ $i.NextRunTime.ToString('yyyy-MM-ddTHH:mm:ss') }} else {{ '' }}; "
+               "$n + '|' + $t.State").replace("{{", "{").replace("}}", "}")
     try:
         out = subprocess.run(["powershell", "-NoProfile", "-Command", command], capture_output=True,
                              text=True, timeout=20, creationflags=NO_WINDOW).stdout.strip()
         when, state = out.split("|", 1)
-        return datetime.fromisoformat(when), state
+        return (datetime.fromisoformat(when) if when else None), state
     except Exception:
         return None, "assente"
+
+
+def pythonw() -> str:
+    """Percorso di pythonw.exe (Python senza finestra) accanto all'interprete in uso."""
+    exe = Path(sys.executable)
+    candidate = exe.with_name("pythonw.exe")
+    return str(candidate if candidate.exists() else exe)
+
+
+def schedule_task() -> str:
+    """Crea (o ricrea) l'attività "Menu": ogni 15 minuti a orari fissi, a partire dalle 07:00
+    (07:00, 07:15, 07:30 ...). Restituisce un messaggio di esito."""
+    action = f'"{pythonw()}" "{ROOT / "Menu.py"}" --automatico'
+    done = subprocess.run(["schtasks", "/Create", "/F", "/TN", TASK, "/SC", "MINUTE", "/MO", "15",
+                           "/ST", "07:00", "/TR", action], capture_output=True, text=True,
+                          creationflags=NO_WINDOW)
+    return "Pianificazione attivata" if done.returncode == 0 else "Pianificazione NON riuscita"
+
+
+def disable_task() -> str:
+    done = subprocess.run(["schtasks", "/Change", "/TN", TASK, "/DISABLE"], capture_output=True,
+                          text=True, creationflags=NO_WINDOW)
+    return "Pianificazione disabilitata" if done.returncode == 0 else "Disabilitazione NON riuscita"
 
 
 def in_window(moment: datetime, settings: dict) -> bool:
@@ -88,12 +113,15 @@ def last_outcome() -> tuple[str, str]:
     for line in block:
         if line.startswith("ERRORE") or "NON riuscita" in line:
             return when, "errore (vedi registro)"
+    news = next((line[8:].strip() for line in block if line.startswith("Novità:")), "")
+    if news:
+        return when, f"novità: {news}"
     for line in block:
         if line.startswith("Pubblicato"):
             return when, "pubblicato"
         if "nessuna modifica" in line:
             return when, "nessuna novità"
-        if "ancora in corso" in line:
+        if "ancora in corso" in line or "bloccat" in line:
             return when, "saltato (giro precedente in corso)"
     return when, "in corso…" if LOCK.exists() else "completato"
 
@@ -132,9 +160,14 @@ class Monitor(tk.Tk):
 
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
-        for text, action in (("Controlla ora", self.run_now), ("Registro", self.open_log), ("Sito", self.open_site)):
-            tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
-                      activebackground="#334155", activeforeground=FG, relief="flat", padx=8).pack(side="left", padx=4)
+        for text, action in (("Controlla ora", self.run_now), ("Registro", self.open_log), ("Sito", self.open_site),
+                             ("Pianifica", self.toggle_task)):
+            button = tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
+                               activebackground="#334155", activeforeground=FG, relief="flat", padx=8)
+            button.pack(side="left", padx=4)
+        self.toggle_button = button  # l'ultimo: "Pianifica" oppure "Disabilita"
+        self.message, self.message_until = "", datetime.min
+        self.querying = False
 
         self.next_run: datetime | None = None
         self.task_state = ""
@@ -147,31 +180,39 @@ class Monitor(tk.Tk):
         config = read_json(CONFIG, {})
         settings = config.get("impostazioni", {})
         # chiede a Windows ogni minuto, oppure subito dopo che l'esecuzione prevista è passata
-        if (now - self.last_query).total_seconds() > 60 or (self.next_run and now > self.next_run + timedelta(seconds=5)):
-            self.next_run, self.task_state = task_info()
+        if not self.querying and ((now - self.last_query).total_seconds() > 60
+                                  or (self.next_run and now > self.next_run + timedelta(seconds=5))):
+            self.querying = True  # domanda a Windows in un thread: la finestra non si blocca
             self.last_query = now
+            threading.Thread(target=self.query_task, daemon=True).start()
+        active = self.is_active()
+        self.toggle_button.config(text="Disabilita" if active else "Pianifica")
 
         if LOCK.exists():
             self.countdown.config(text="Controllo in corso…", fg=BLUE)
             self.subtitle.config(text="sto leggendo Facebook, Instagram e i siti")
         elif self.next_run is None:
             self.countdown.config(text="Non pianificato", fg=RED)
-            self.subtitle.config(text="manca l'attività \"Menu\": lancia Pianifica.bat")
+            self.subtitle.config(text="premi il pulsante Pianifica")
         elif self.task_state.lower() == "disabled":
             self.countdown.config(text="Disattivato", fg=RED)
-            self.subtitle.config(text="attività \"Menu\" disabilitata in Utilità di pianificazione")
+            self.subtitle.config(text="premi il pulsante Pianifica per riattivare")
         else:
             target = next_effective(self.next_run, settings)
             seconds = max(0, int((target - now).total_seconds()))
             hours, rest = divmod(seconds, 3600)
             text = f"{hours}:{rest // 60:02d}:{rest % 60:02d}" if hours else f"{rest // 60:02d}:{rest % 60:02d}"
             self.countdown.config(text=text, fg=FG)
-            self.subtitle.config(text=f"al prossimo controllo (ore {target:%H:%M})")
+            note = "" if active else "\norari non allineati ai quarti d'ora: premi Pianifica"
+            self.subtitle.config(text=f"al prossimo controllo (ore {target:%H:%M}){note}")
 
         self.show_shops(config)
         when, outcome = last_outcome()
-        colour = RED if outcome.startswith("errore") else MUTED
-        self.outcome.config(text=f"Ultimo giro {when}: {outcome}" if when else outcome, fg=colour)
+        colour = RED if outcome.startswith("errore") else GREEN if outcome.startswith("novità") else MUTED
+        text = f"Ultimo giro {when}: {outcome}" if when else outcome
+        if self.message and now < self.message_until:
+            text += f"\n{self.message}"
+        self.outcome.config(text=text, fg=colour)
         self.after(1000, self.tick)
 
     def show_shops(self, config: dict) -> None:
@@ -203,6 +244,21 @@ class Monitor(tk.Tk):
             tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10)).pack(side="left")
         self.summary.config(text=f"Aggiornate oggi: {updated} su {len(shops)}")
 
+    def is_active(self) -> bool:
+        """Attività attiva e con orari fissi (:00, :15, :30, :45). Una vecchia attività creata
+        a un'ora qualsiasi va ricreata con Pianifica."""
+        running = self.task_state.lower() in ("ready", "running", "queued")
+        aligned = self.next_run is None or self.next_run.minute % 15 == 0
+        return running and aligned
+
+    def say(self, message: str) -> None:
+        """Messaggio temporaneo (10 secondi) sotto l'esito dell'ultimo giro."""
+        self.message, self.message_until = message, datetime.now() + timedelta(seconds=10)
+
+    def query_task(self) -> None:
+        self.next_run, self.task_state = task_info()
+        self.querying = False
+
     # --- pulsanti -------------------------------------------------------------------------------
     def run_now(self) -> None:
         """Lancia subito un giro completo nella sua finestra (come Avvia.bat)."""
@@ -213,10 +269,19 @@ class Monitor(tk.Tk):
     def open_log(self) -> None:
         """Apre il registro con il Blocco note (se non esiste ancora lo dice nella finestra)."""
         if not LOG.exists():
-            self.outcome.config(text="Registro non ancora creato:\nnessun giro fatto finora", fg=ORANGE)
+            self.say("Registro non ancora creato: nessun giro finora")
             return
         if sys.platform == "win32":
             subprocess.Popen(["notepad.exe", str(LOG)])
+
+    def toggle_task(self) -> None:
+        """Pianifica (se l'attività manca o è disabilitata) oppure Disabilita."""
+        if self.is_active():
+            self.say(disable_task())
+        else:
+            self.say(schedule_task())
+        self.task_state = "..."
+        self.last_query = datetime.min  # rilegge subito lo stato da Windows
 
     def open_site(self) -> None:
         webbrowser.open(WEB_URL)

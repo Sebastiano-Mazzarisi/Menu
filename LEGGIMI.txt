@@ -72,9 +72,11 @@ come una app con la scritta "Menu".
 
 Aggiornamento automatico (ogni 15 minuti)
 -----------------------------------------
-- Attivazione, una volta sola: doppio clic su Pianifica.bat. Crea in
-  Utilità di pianificazione di Windows l'attività "Menu", che ogni 15 minuti
-  esegue, senza aprire finestre:
+- Attivazione, una volta sola: pulsante "Pianifica" nella finestra di
+  controllo (oppure doppio clic su Pianifica.bat). Crea in Utilità di
+  pianificazione di Windows l'attività "Menu", che ogni 15 minuti, a orari
+  fissi a partire dalle 07:00 (07:00, 07:15, 07:30, 07:45, 08:00 ...),
+  esegue senza aprire finestre:
       pythonw Menu.py --automatico
 - Fascia oraria: in locali.json, sezione impostazioni:
       "automatico": {"dalle": "00:00", "alle": "23:59"}   (= 24 ore su 24)
@@ -89,7 +91,15 @@ Aggiornamento automatico (ogni 15 minuti)
   Il file nasce al primo giro: prima di allora il pulsante Registro della
   finestra di controllo avvisa che non esiste ancora.
 - Funziona solo con il PC acceso e con l'utente collegato (non in standby).
-- Per fermarlo: doppio clic su Rimuovi_pianificazione.bat.
+- Gli orari fissi restano tali anche dopo un controllo manuale. Se un
+  controllo (automatico o manuale) è in corso quando ne parte un altro, il
+  secondo aspetta che il primo finisca (massimo 20 minuti) e poi parte.
+- Novità: quando un locale pubblica un menu diverso da quello già in pagina
+  (nuova data o nuova foto/testo) il PC emette tre beep bassi, uno al
+  secondo, e il registro riporta "Novità: <locali>". I menu che scadono a
+  mezzanotte non fanno suonare nulla.
+- Per fermarlo: pulsante "Disabilita" nella finestra di controllo (oppure
+  Rimuovi_pianificazione.bat, che elimina del tutto l'attività).
 - Avvia.bat resta per un aggiornamento manuale immediato, a qualunque ora.
 
 Finestra di controllo (Monitor.py)
@@ -105,7 +115,10 @@ viene ricordata alla chiusura, in dati/monitor.json). Mostra:
   "nessuno";
 - l'esito dell'ultimo giro (pubblicato, nessuna novità, errore).
 Pulsanti: "Controlla ora" (lancia Avvia.bat), "Registro" (apre
-dati/automatico.log), "Sito" (apre la pagina su GitHub Pages).
+dati/automatico.log), "Sito" (apre la pagina su GitHub Pages),
+"Pianifica"/"Disabilita": se l'attività è attiva la disabilita; se manca, è
+disabilitata o ha orari non allineati ai quarti d'ora, la (ri)crea con gli
+orari fissi dalle 07:00. L'ultimo giro con novità è scritto in verde.
 Si aggiorna da sola ogni secondo. Usa solo Python standard (tkinter).
 Per averla sempre all'accensione del PC: Win+R, scrivere shell:startup,
 INVIO, e copiare lì un collegamento a Monitor.bat.

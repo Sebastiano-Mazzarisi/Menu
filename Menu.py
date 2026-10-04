@@ -617,12 +617,49 @@ def start_auto_log() -> None:
     print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} ===")
 
 
-def take_lock() -> bool:
-    """Evita due esecuzioni contemporanee (un giro lento che si sovrappone al successivo)."""
-    if AUTO_LOCK.exists() and datetime.now().timestamp() - AUTO_LOCK.stat().st_mtime < 30 * 60:
-        return False
+def take_lock(max_wait_minutes: int = 20) -> bool:
+    """Evita due esecuzioni contemporanee (giro automatico e giro manuale).
+
+    Se un altro giro è in corso aspetta che finisca (al massimo max_wait_minutes), così
+    l'orario fisso del controllo automatico viene rispettato anche dopo un controllo
+    manuale. Un blocco più vecchio di 30 minuti è considerato abbandonato."""
+    import time
+    waited = False
+    deadline = time.time() + max_wait_minutes * 60
+    while AUTO_LOCK.exists() and time.time() - AUTO_LOCK.stat().st_mtime < 30 * 60:
+        if time.time() > deadline:
+            return False
+        if not waited:
+            print("Un altro controllo è in corso: attendo che finisca...")
+            waited = True
+        time.sleep(5)
     AUTO_LOCK.write_text(str(os.getpid()), encoding="utf-8")
     return True
+
+
+def menu_fingerprints(results: list[dict[str, Any]]) -> dict[str, str]:
+    """Impronta del menu pubblicato per ogni locale (data + contenuto immagine o testo)."""
+    prints = {}
+    for result in results:
+        image = ROOT / result["image"] if result.get("image") else None
+        if not (image and image.exists()) and not result.get("sections"):
+            continue  # nessun menu pubblicato per questo locale
+        content = file_hash(image) if image and image.exists() else json.dumps(result.get("sections"), sort_keys=True)
+        prints[result["id"]] = hashlib.sha1(f"{result.get('menu_date')}|{content}".encode()).hexdigest()
+    return prints
+
+
+def beep_three_times() -> None:
+    """Tre beep bassi a un secondo di distanza (solo Windows)."""
+    try:
+        import time
+        import winsound
+    except ImportError:
+        return
+    for index in range(3):
+        winsound.Beep(250, 400)  # 250 Hz = tono basso, 0,4 secondi
+        if index < 2:
+            time.sleep(0.6)       # 0,4 + 0,6 = un beep ogni secondo
 
 
 def main() -> None:
@@ -642,7 +679,7 @@ def main() -> None:
             return  # fuori fascia: nessun accesso, nessun log
         start_auto_log()
         if not take_lock():
-            print("Esecuzione precedente ancora in corso: salto questo giro.")
+            print("Esecuzione precedente bloccata da oltre 20 minuti: salto questo giro.")
             return
         args.pubblica, args.solo_html, args.visibile, args.aggiungi, args.login = True, False, False, False, False
         try:
@@ -653,9 +690,17 @@ def main() -> None:
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
-    if not args.login and not args.aggiungi:
-        start_manual_log()
-    run(args, config)
+    if args.login or args.aggiungi:
+        run(args, config)
+        return
+    start_manual_log()
+    if not take_lock():
+        print("Un altro controllo è bloccato da oltre 20 minuti: riprova più tardi.")
+        return
+    try:
+        run(args, config)
+    finally:
+        AUTO_LOCK.unlink(missing_ok=True)
 
 
 class Tee:
@@ -721,13 +766,23 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
             print(f"{shop['nome']}: {record['menu_date'] or 'nessun menu'} ({result.source})")
     finally:
         browser.stop()
-    state = {"generated_at": datetime.now().astimezone().isoformat(timespec="seconds"), "results": results}
+    old_state = read_json(STATE, {})
+    prints = menu_fingerprints(results)
+    names = {shop["id"]: shop["nome"] for shop in shops}
+    # novità = locale con un menu pubblicato diverso da prima (i menu che scadono a mezzanotte non contano)
+    news = [names[key] for key, value in prints.items()
+            if "firme" in old_state and old_state["firme"].get(key) != value]
+    state = {"generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+             "results": results, "firme": prints}
     save_json(STATE, state)
     make_icons()
     generate_html(settings, shops, results)
     print(f"Creato: {OUTPUT}")
     if args.pubblica:
         publish()
+    if news:
+        print("Novità: " + ", ".join(news))
+        beep_three_times()
 
 
 if __name__ == "__main__":
