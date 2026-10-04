@@ -471,24 +471,69 @@ dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:1
     WEB_PAGE.write_text(document, encoding="utf-8")
 
 
+ICONS = ROOT / "icone"
+APP_LOGO = LOGOS / "Menu.jpg"
+ICON_SIZES = {"icona-512.png": 512, "icona-192.png": 192, "icona-180.png": 180, "favicon.png": 64}
+
+
+def make_icons(force: bool = False) -> bool:
+    """Ricava le icone dell'app da loghi/Menu.jpg se il logo è più recente delle icone.
+
+    Restituisce True se le icone sono state rigenerate."""
+    if not APP_LOGO.exists():
+        return False
+    newest = ICONS / "icona-512.png"
+    if not force and newest.exists() and newest.stat().st_mtime >= APP_LOGO.stat().st_mtime:
+        return False
+    try:
+        from PIL import Image
+    except ImportError:
+        print("Icone non aggiornate: manca Pillow (pip install pillow).")
+        return False
+    ICONS.mkdir(exist_ok=True)
+    with Image.open(APP_LOGO) as logo:
+        logo = logo.convert("RGB")
+        side = min(logo.size)
+        left, top = (logo.width - side) // 2, (logo.height - side) // 2
+        square = logo.crop((left, top, left + side, top + side))
+        for name, size in ICON_SIZES.items():
+            square.resize((size, size), Image.LANCZOS).save(ICONS / name, optimize=True)
+    print("Icone dell'app rigenerate da loghi/Menu.jpg")
+    return True
+
+
 def publish() -> None:
-    """Invia a GitHub (repository Menu) la pagina e i menu correnti."""
+    """Invia a GitHub (repository Menu) la pagina e i menu correnti.
+
+    Prima di inviare scarica le eventuali modifiche fatte sul sito di GitHub
+    (es. un logo caricato dal browser). In caso di conflitto prevale il PC."""
     import subprocess
 
     def git(*args: str) -> subprocess.CompletedProcess:
-        return subprocess.run(["git", *args], cwd=ROOT, text=True, capture_output=True)
+        return subprocess.run(["git", *args], cwd=ROOT, text=True, capture_output=True,
+                              encoding="utf-8", errors="replace")
+
+    def commit() -> None:
+        git("add", "-A")
+        if git("status", "--porcelain").stdout.strip():
+            git("commit", "-m", f"Menu {datetime.now():%Y-%m-%d %H:%M}")
 
     if not (ROOT / ".git").exists():
         print("Pubblicazione saltata: la cartella non è ancora collegata a GitHub (vedi LEGGIMI.txt).")
         return
-    git("add", "-A")
-    if not git("status", "--porcelain").stdout.strip():
-        print("Pubblicazione: nessuna modifica da inviare.")
+    commit()
+    pulled = git("pull", "--rebase", "-X", "theirs")
+    if pulled.returncode != 0:
+        git("rebase", "--abort")
+        print("Pubblicazione NON riuscita (download da GitHub):\n" + (pulled.stderr or pulled.stdout).strip())
         return
-    git("commit", "-m", f"Menu {datetime.now():%Y-%m-%d %H:%M}")
-    pushed = git("push")
+    if make_icons():  # il logo può essere arrivato da GitHub
+        commit()
+    pushed = git("push", "-u", "origin", "main")
     if pushed.returncode != 0:
         print("Pubblicazione NON riuscita:\n" + pushed.stderr.strip())
+    elif "Everything up-to-date" in pushed.stderr:
+        print("Pubblicazione: nessuna modifica da inviare.")
     else:
         print(f"Pubblicato: {WEB_URL}")
 
@@ -560,6 +605,7 @@ def main() -> None:
         browser.stop()
     state = {"generated_at": datetime.now().astimezone().isoformat(timespec="seconds"), "results": results}
     save_json(STATE, state)
+    make_icons()
     generate_html(settings, shops, results)
     print(f"Creato: {OUTPUT}")
     if args.pubblica:

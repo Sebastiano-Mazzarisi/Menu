@@ -37,6 +37,12 @@ come una app con la scritta "Menu".
 
 - Prima volta: doppio clic su Collega_GitHub.bat (collega la cartella al
   repository; serve git installato e l'accesso a GitHub già fatto sul PC).
+- Sempre una sola volta, su github.com: repository Menu > Settings > Pages >
+  "Deploy from a branch", Branch: main, cartella: / (root) > Save.
+  Senza questo passaggio l'indirizzo del sito risponde "404".
+  Se git chiede nome ed email al primo commit:
+      git config --global user.name "Sebastiano Mazzarisi"
+      git config --global user.email "s.mazzarisi@gmail.com"
 - Ogni aggiornamento: doppio clic su Avvia.bat, che esegue
       python Menu.py --pubblica
   cioè aggiorna i menu e li invia a GitHub. Il sito si aggiorna in 1-2 minuti.
@@ -48,7 +54,18 @@ come una app con la scritta "Menu".
 - Il nome della scheda/app è sempre "Menu" (la data compare solo nel titolo
   dentro la pagina). Condividendo il link (WhatsApp ecc.) l'anteprima mostra
   "Menu" con l'icona di loghi/Menu.jpg.
+- Logo dell'app: basta sostituire loghi/Menu.jpg (sul PC oppure caricandolo
+  sul sito di GitHub). Al successivo Avvia.bat le icone della cartella icone
+  vengono rigenerate da sole (serve Pillow: pip install -r requirements.txt).
+  Sull'iPhone l'icona cambia solo rimuovendo l'app dalla Home e aggiungendola
+  di nuovo.
+- Se si modifica qualcosa direttamente sul sito di GitHub, Avvia.bat prima
+  scarica quelle modifiche e poi invia le proprie; in caso di conflitto
+  prevale la versione del PC.
 - Riaprendo l'app dopo più di 5 minuti la pagina si ricarica da sola.
+- Data nel titolo ed etichette "Oggi"/"Non di oggi" sono ricalcolate dal
+  telefono all'apertura: se il PC non ha aggiornato la pagina, il giorno
+  dopo i menu compaiono correttamente come "Non di oggi" (fascia arancione).
 
 Aggiungere una rosticceria
 --------------------------
