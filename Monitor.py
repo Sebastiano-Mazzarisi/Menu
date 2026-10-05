@@ -232,15 +232,19 @@ class Monitor(tk.Tk):
 
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
-        for text, action in (("Controlla ora", self.run_now), ("Registro", self.open_log), ("Sito", self.open_site),
-                             ("Accessi", self.open_accesses), ("Pianifica", self.toggle_task)):
+        # pulsanti su due righe (3 + 2), tutti larghi uguale: la finestra resta stretta
+        layout = (("Controlla ora", self.run_now, 0, 0), ("Registro", self.open_log, 0, 1),
+                  ("Sito", self.open_site, 0, 2), ("Accessi", self.open_accesses, 1, 0),
+                  ("Pianifica", self.toggle_task, 1, 1))
+        for text, action, row, column in layout:
             button = tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
-                               activebackground="#334155", activeforeground=FG, relief="flat", padx=8)
-            button.pack(side="left", padx=4)
+                               activebackground="#334155", activeforeground=FG, relief="flat", width=11)
+            button.grid(row=row, column=column, padx=3, pady=3, sticky="we")
         self.toggle_button = button  # l'ultimo: "Pianifica" oppure "Disabilita"
         self.message, self.message_until = "", datetime.min
         self.querying = False
 
+        self.own_mtime = Path(__file__).stat().st_mtime
         self.next_run: datetime | None = None
         self.task_state = ""
         self.last_query = datetime.min
@@ -249,6 +253,14 @@ class Monitor(tk.Tk):
     # --- aggiornamento --------------------------------------------------------------------------
     def tick(self) -> None:
         now = datetime.now()
+        # Monitor.py aggiornato su disco: la finestra si riapre da sola con la versione nuova
+        try:
+            if Path(__file__).stat().st_mtime != self.own_mtime:
+                subprocess.Popen([sys.executable, str(Path(__file__).resolve())], cwd=ROOT)
+                self.close()
+                return
+        except OSError:
+            pass
         config = read_json(CONFIG, {})
         settings = config.get("impostazioni", {})
         # chiede a Windows ogni minuto, oppure subito dopo che l'esecuzione prevista è passata
@@ -311,7 +323,7 @@ class Monitor(tk.Tk):
             row = tk.Frame(self.rows, bg=BG)
             row.pack(fill="x")
             tk.Label(row, text=mark, fg=colour, bg=BG, font=("Segoe UI", 11)).pack(side="left")
-            tk.Label(row, text=shop.get("nome", "?"), fg=FG, bg=BG, font=("Segoe UI", 10), width=22,
+            tk.Label(row, text=shop.get("nome", "?"), fg=FG, bg=BG, font=("Segoe UI", 10), width=20,
                      anchor="w").pack(side="left")
             tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10)).pack(side="left")
         self.summary.config(text=f"Aggiornate oggi: {updated} su {len(shops)}")

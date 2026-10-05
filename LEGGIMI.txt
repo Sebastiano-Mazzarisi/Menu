@@ -21,7 +21,8 @@ Il titolo della pagina è "titolo" in locali.json: {data} viene sostituito
 con la data di oggi, es. "Menu - {data}" -> "Menu - Domenica 4 ottobre".
 La pagina mostra soltanto il titolo e le schede (niente sottotitolo né note).
 Fascia sul lato sinistro della scheda: verde se il menu è di oggi,
-arancione in tutti gli altri casi.
+arancione in tutti gli altri casi; le schede arancioni hanno anche lo
+sfondo grigio-azzurro, più scuro del bianco delle schede di oggi.
 Cliccando su una scheda si apre la finestra con l'immagine del menu, il
 telefono, Google Maps e la fonte.
 Google Maps cerca "nome del locale, indirizzo" (il nome senza la parte tra
@@ -133,7 +134,9 @@ dati/automatico.log), "Sito" (apre la pagina su GitHub Pages),
 "Pianifica"/"Disabilita": se l'attività è attiva la disabilita; se manca, è
 disabilitata o ha orari non allineati ai quarti d'ora, la (ri)crea con gli
 orari fissi dalle 07:00. L'ultimo giro con novità è scritto in verde.
-Si aggiorna da sola ogni secondo.
+Si aggiorna da sola ogni secondo. Se Monitor.py viene modificato, la
+finestra si chiude e si riapre da sola con la versione nuova.
+Pulsanti su due righe (finestra stretta).
 Riduci a icona (il trattino "_" in alto a destra): la finestra va nella
 barra delle applicazioni come quadratino con il numero di rosticcerie
 aggiornate oggi (da 0 a 8): bordo verde = tutte aggiornate, arancione =
