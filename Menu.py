@@ -397,6 +397,38 @@ def closure_period(text: str) -> tuple[date, date] | None:
     return None
 
 
+OCR_SCRIPT = ROOT / "ocr.ps1"
+OCR_CACHE = DATA / "ocr.json"
+
+
+def ocr_image(path: Path) -> str:
+    """Testo scritto dentro la foto, letto con l'OCR integrato di Windows (ocr.ps1).
+
+    I risultati sono ricordati in dati/ocr.json per impronta del file: la stessa foto
+    non viene riletta a ogni giro. Su sistemi diversi da Windows restituisce ""."""
+    if sys.platform != "win32" or not OCR_SCRIPT.exists() or not path.exists():
+        return ""
+    import subprocess
+    key = file_hash(path)
+    cache = read_json(OCR_CACHE, {})
+    if key in cache:
+        return cache[key]
+    try:
+        done = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(OCR_SCRIPT),
+                               str(path)], capture_output=True, timeout=90, encoding="utf-8", errors="replace",
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except Exception as exc:
+        print(f"  OCR non riuscito: {exc}")
+        return ""
+    if done.returncode != 0:
+        print(f"  OCR non riuscito: {(done.stderr or '').strip()[:200]}")
+        return ""
+    text = " ".join(done.stdout.split())
+    cache[key] = text
+    save_json(OCR_CACHE, dict(list(cache.items())[-200:]))  # tiene solo le ultime 200 foto
+    return text
+
+
 def closure_note(path: Path | None) -> str:
     """"Chiuso fino al 07/10" se il file è un avviso di chiusura salvato da closure_period."""
     match = re.search(r"_chiusura_fino_(\d{4})(\d{2})(\d{2})", path.stem) if path else None
@@ -453,10 +485,11 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
                 if browser is None:
                     raise RuntimeError("browser non disponibile")
                 image = browser.capture(shop, source)
-                seen = " ".join(f"{browser.last_text} {browser.last_alt}".split())
+                photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
+                seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
                 if seen:
                     print(f"  {shop['nome']} - testo letto: {seen[:160]}")  # utile nel registro
-                closed = closure_period(f"{browser.last_text}\n{browser.last_alt}")
+                closed = closure_period(f"{browser.last_text}\n{browser.last_alt}\n{photo_text}")
                 if closed:
                     print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
                 if closed and closed[0] <= date.today() <= closed[1]:
@@ -735,11 +768,18 @@ def main() -> None:
     parser.add_argument("--pubblica", action="store_true", help="Dopo l'aggiornamento invia la pagina a GitHub Pages.")
     parser.add_argument("--login", action="store_true", help="Apre Facebook e Instagram per salvare la sessione.")
     parser.add_argument("--prova-beep", action="store_true", help="Fa sentire i tre beep e termina.")
+    parser.add_argument("--ocr", metavar="IMMAGINE", help="Mostra il testo letto in una foto e l'eventuale chiusura.")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
     if args.prova_beep:
         beep_three_times()
+        return
+    if args.ocr:
+        text = ocr_image(Path(args.ocr))
+        print(f"Testo letto: {text or '(nessuno)'}")
+        closed = closure_period(text)
+        print(f"Chiusura: dal {closed[0]:%d/%m} al {closed[1]:%d/%m}" if closed else "Chiusura: nessuna")
         return
     make_folders()
     config = read_json(CONFIG, {"impostazioni": {}, "locali": []})
