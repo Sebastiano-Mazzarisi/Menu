@@ -2,7 +2,8 @@
   "impostazioni": {
     "titolo": "Menu - {data}",
     "mostra_menu_vecchi": false,
-    "automatico": {"dalle": "07:00", "alle": "15:00"}
+    "automatico": {"dalle": "07:00", "alle": "15:00"},
+    "avvisi_ogni_minuti": 60
   },
   "locali": [
     {

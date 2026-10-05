@@ -260,6 +260,42 @@ class BrowserCollector:
         finally:
             page.close()
 
+    def first_post(self, shop: dict[str, Any], url: str) -> tuple[str, Path | None]:
+        """Testo e foto dell'ultimo post (Facebook) o dell'ultimo post (Instagram)."""
+        self.start()
+        page = self.context.new_page()
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(6000)
+            if "instagram.com" in url:
+                post, text_css, image_css = "main", "", "a[href*='/p/'] img"
+            else:
+                post = "[aria-posinset='1']"
+                text_css, image_css = f"{post} [data-ad-preview='message']", f"{post} a[href*='/photo'] img"
+            for _ in range(12):  # Facebook carica i post solo scorrendo
+                if page.locator(post).count():
+                    break
+                page.mouse.wheel(0, 1200)
+                page.wait_for_timeout(1500)
+            text = ""
+            if text_css and page.locator(text_css).count():
+                text = page.locator(text_css).first.inner_text(timeout=3000)
+            elif page.locator(post).count():
+                text = page.locator(post).first.inner_text(timeout=3000)[:1500]  # post solo testo
+            image = None
+            if page.locator(image_css).count():
+                target = page.locator(image_css).first
+                text += "\n" + (target.get_attribute("alt", timeout=2000) or "")
+                media_url = target.evaluate("element => element.currentSrc || element.src || ''")
+                if media_url:
+                    response = self.context.request.get(media_url, timeout=30000)
+                    if response.ok:
+                        image = INPUT / shop["id"] / f"{date.today().isoformat()}_avviso_controllo.jpg"
+                        image.write_bytes(response.body())
+            return text, image
+        finally:
+            page.close()
+
     @staticmethod
     def _largest_media(page: Any) -> Any:
         best = None
@@ -404,8 +440,19 @@ def closure_period(text: str) -> tuple[date, date] | None:
     2. due date qualsiasi nel testo;
     3. una sola data con "fino" -> da oggi fino a quella data.
     Il testo letto dall'OCR viene prima corretto (vedi fix_ocr_dates)."""
-    if not re.search(r"\bchius[oiae]\b|\bchiusura\b|\bferie\b", text or "", re.IGNORECASE):
-        return None
+    # cerco le date solo vicino alla parola chiave: così "aperti da lunedì a sabato,
+    # domenica chiusi" o un "chiuso il lunedì" in fondo a una pagina non diventano chiusure
+    for keyword in re.finditer(r"\bchius[oiae]\b|\bchiusura\b|\bferie\b", text or "", re.IGNORECASE):
+        segment = text[keyword.start():keyword.start() + 160]
+        segment = re.split(r"[.!?;](?:\s|$)", segment)[0]  # solo la frase dell'avviso
+        found = closure_in_segment(segment)
+        if found:
+            return found
+    return None
+
+
+def closure_in_segment(text: str) -> tuple[date, date] | None:
+    """Regole di closure_period applicate al pezzo di testo che segue la parola chiave."""
     text = fix_ocr_dates(text)
     lowered = text.lower()
     day_word = r"(lun|mar|mer|gio|ven|sab|dom)[a-zàèéìòù]*"
@@ -431,7 +478,81 @@ def closure_period(text: str) -> tuple[date, date] | None:
         return min(days[0], days[1]), max(days[0], days[1])
     if len(days) == 1 and re.search(r"\bfino\b", text, re.IGNORECASE):
         return min(date.today(), days[0]), days[0]
+    if not days and re.search(r"\boggi\b", text, re.IGNORECASE):  # "oggi siamo chiusi"
+        return date.today(), date.today()
     return None
+
+
+def closure_today(text: str) -> tuple[date, date] | None:
+    """Periodo di chiusura solo se comprende oggi."""
+    closed = closure_period(text)
+    return closed if closed and closed[0] <= date.today() <= closed[1] else None
+
+
+def save_closure(folder: Path, closed: tuple[date, date], image: Path | None = None, text: str = "") -> Path:
+    """Salva l'avviso come menu di oggi: AAAA-MM-GG_chiusura_fino_AAAAMMGG.jpg (la foto)
+    oppure .json (avviso solo testuale, mostrato come testo nella scheda)."""
+    stem = f"{date.today().isoformat()}_chiusura_fino_{closed[1]:%Y%m%d}"
+    if image:
+        dated = folder / f"{stem}{image.suffix}"
+        if dated != image:
+            shutil.copy2(image, dated)
+        return dated
+    dated = folder / f"{stem}{TEXT_EXTENSION}"
+    save_json(dated, {"data": date.today().isoformat(), "fonte": "avviso", "sezioni": [
+        {"titolo": "Avviso di chiusura", "piatti": [{"nome": " ".join(text.split())[:600], "prezzo": "", "descrizione": ""}]}]})
+    return dated
+
+
+NOTICE_STATE = DATA / "avvisi.json"
+NOTICE_MINUTES = 60  # ogni quanto rileggere i post per cercare avvisi (impostazioni > avvisi_ogni_minuti)
+
+
+def page_text(url: str) -> str:
+    """Testo visibile di una pagina web (senza tag), per cercare avvisi sui siti."""
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 Menu/1.0"})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        raw = response.read().decode("utf-8", errors="replace")
+    raw = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", raw)
+    return html.unescape(re.sub(r"<[^>]+>", " ", raw))
+
+
+def check_notice(shop: dict[str, Any], browser: "BrowserCollector | None", checked: str) -> Result | None:
+    """Cerca un avviso di chiusura nell'ultimo post (Facebook/Instagram) o nel sito del locale,
+    sia nel testo sia dentro la foto (OCR). Al massimo una volta ogni NOTICE_MINUTES per locale."""
+    url = shop.get("url", "")
+    if not url:
+        return None
+    state = read_json(NOTICE_STATE, {})
+    last = state.get(shop["id"], "")
+    if last and (datetime.now() - datetime.fromisoformat(last)).total_seconds() < NOTICE_MINUTES * 60:
+        return None
+    state[shop["id"]] = datetime.now().isoformat(timespec="seconds")
+    save_json(NOTICE_STATE, state)
+    folder = INPUT / shop["id"]
+    image: Path | None = None
+    try:
+        if "facebook.com" in url or "instagram.com" in url:
+            if browser is None:
+                return None
+            text, image = browser.first_post(shop, url)
+        else:
+            text = page_text(url)
+    except Exception as exc:
+        print(f"  {shop['nome']} - controllo avvisi non riuscito: {str(exc)[:120]}")
+        return None
+    photo_text = ocr_image(image) if image else ""
+    closed = closure_today(f"{text}\n{photo_text}")
+    if not closed:
+        if image:
+            image.unlink(missing_ok=True)  # foto usata solo per cercare l'avviso
+        return None
+    print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
+    from_photo = image is not None and closure_today(photo_text) is not None
+    saved = save_closure(folder, closed, image if from_photo else None, text)
+    if image:
+        image.unlink(missing_ok=True)
+    return Result(saved, date.today(), "avviso", checked)
 
 
 OCR_SCRIPT = ROOT / "ocr.ps1"
@@ -511,6 +632,25 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
         latest = newest_image(folder)
         if latest and image_date(latest) == date.today():
             return Result(latest, date.today(), skip_if_today, checked)
+    if online:
+        notice = check_notice(shop, browser, checked)
+        if notice:
+            return notice
+    result = acquire_sources(shop, browser, online, folder, checked)
+    # anche una foto messa a mano in ingresso o scaricata può essere un avviso di chiusura
+    image = result.image
+    if image and image.suffix.lower() in IMAGE_EXTENSIONS and "_chiusura_fino_" not in image.name:
+        closed = closure_today(ocr_image(image))
+        if closed:
+            print(f"  {shop['nome']} - avviso di chiusura (foto) dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
+            return Result(save_closure(folder, closed, image), date.today(), result.source, checked)
+    return result
+
+
+def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, online: bool,
+                    folder: Path, checked: str) -> Result:
+    """Prova le fonti del locale nell'ordine indicato in locali.json."""
+    errors: list[str] = []
     for source in shop.get("fonti", [{"tipo": "cartella"}]):
         if not source.get("attiva", True):
             continue
@@ -543,11 +683,10 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
                 if closed and closed[0] <= date.today() <= closed[1]:
                     # avviso di chiusura valido oggi: lo pubblico come "menu del giorno"
                     image, _ = keep_first_seen(folder, image)
-                    # nel nome del file: data di oggi + ultimo giorno di chiusura (es. ..._chiusura_fino_20261007.jpg)
-                    dated = folder / f"{date.today().isoformat()}_chiusura_fino_{closed[1]:%Y%m%d}{image.suffix}"
-                    if dated != image:
-                        shutil.copy2(image, dated)
-                    return Result(dated, date.today(), source.get("nome", kind), checked)
+                    if image.suffix.lower() in IMAGE_EXTENSIONS and closure_today(photo_text):
+                        return Result(save_closure(folder, closed, image), date.today(), source.get("nome", kind), checked)
+                    return Result(save_closure(folder, closed, None, browser.last_text), date.today(),
+                                  source.get("nome", kind), checked)
                 text_day = date_in_text(browser.last_text)
                 if text_day:
                     # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
@@ -899,6 +1038,8 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
         browser.login()
         browser.stop()
         return
+    global NOTICE_MINUTES
+    NOTICE_MINUTES = int(settings.get("avvisi_ogni_minuti", NOTICE_MINUTES))
     results: list[dict[str, Any]] = []
     previous_sources = {item.get("id"): item.get("source", "") for item in read_json(STATE, {}).get("results", [])}
     try:

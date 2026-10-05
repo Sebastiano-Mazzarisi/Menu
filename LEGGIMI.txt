@@ -214,7 +214,18 @@ Fonte browser con queste opzioni:
   -> legge il testo del post; se contiene una data ("menù del giorno
   4 Ottobre" oppure "4/10") si usa quella, che è più affidabile di
   "novita". Oggi usato per Santoro.
-Avvisi di chiusura: se il testo del post o il testo scritto dentro la
+Avvisi di chiusura (tutte le rosticcerie): per ogni locale, una volta
+ogni "avvisi_ogni_minuti" (locali.json, predefinito 60) Menu.py apre
+l'indirizzo "url" del locale e legge l'ultimo post (Facebook), l'ultimo
+post (Instagram) o il testo del sito, sia il testo scritto sia il testo
+dentro la foto (OCR). Viene letta con l'OCR anche ogni foto usata come
+menu, comprese quelle messe a mano in ingresso. Se l'avviso è scritto solo
+come testo, la scheda mostra il testo dell'avviso al posto della foto (file
+...chiusura_fino_AAAAMMGG.json).
+Le date vengono cercate solo nella frase che contiene la parola chiave,
+così "aperti da lunedì a sabato, domenica chiusi" non è una chiusura.
+"Oggi siamo chiusi" vale per il solo giorno di oggi.
+In dettaglio: se il testo del post o il testo scritto dentro la
 foto contiene "chiuso/chiusi/
 chiusura/ferie" e due date (es. "Siamo chiusi da domenica 4/10 a mercoledì
 7/10"), la foto viene pubblicata come menu del giorno per tutti i giorni
