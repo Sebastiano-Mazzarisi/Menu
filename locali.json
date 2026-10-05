@@ -51,7 +51,7 @@
       "url": "https://www.facebook.com/profile.php?id=100045208848338",
       "logo": "michela.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Storia Facebook", "url": "https://www.facebook.com/stories/186699229513704/", "apri_storia": false, "attiva": false},
+        {"tipo": "storia_facebook", "nome": "Storia Facebook", "url": "https://www.facebook.com/profile.php?id=100045208848338", "profilo": "%LOCALAPPDATA%\\StatoFacebook\\chrome", "canale": "chrome", "fuori_schermo": true, "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },

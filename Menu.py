@@ -149,6 +149,31 @@ def dismiss_dialogs(page: Any) -> None:
             continue
 
 
+# foto grande al centro del visualizzatore delle storie (non avatar né miniature laterali)
+STORY_IMAGE_JS = """() => {
+ const imgs = [...document.querySelectorAll('img')].filter(img => {
+   const r = img.getBoundingClientRect(); const s = getComputedStyle(img);
+   return img.complete && img.naturalWidth >= 200 && img.naturalHeight >= 200 && r.width >= 200
+     && r.height >= 200 && s.visibility !== 'hidden' && s.display !== 'none'
+     && r.right > innerWidth * .35 && r.left < innerWidth * .75 && r.top < innerHeight && r.bottom > 0;
+ });
+ imgs.sort((a, b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect();
+   return y.width * y.height - x.width * x.height; });
+ return imgs.length ? {src: imgs[0].currentSrc || imgs[0].src, alt: imgs[0].alt || ''} : null;
+}"""
+# "1 h", "5 min", "adesso" accanto al nome in alto nel visualizzatore = storia delle ultime ore
+STORY_RECENT_JS = """() => {
+ const re = /(^|[^\\p{L}\\p{N}])(\\d{1,2}\\s*(m|min|h)|adesso|ora)(?![\\p{L}\\p{N}])/iu;
+ return [...document.querySelectorAll('*')].some(el => {
+   const t = (el.innerText || el.textContent || '').trim();
+   if (!t || t.length > 80 || !re.test(t)) return false;
+   const r = el.getBoundingClientRect();
+   return r.width > 0 && r.height > 0 && r.height < 60 && r.top >= 0 && r.top < 140
+     && r.left > innerWidth * .35 && r.left < innerWidth;
+ });
+}"""
+
+
 class BrowserCollector:
     def __init__(self, visible: bool) -> None:
         self.visible = visible
@@ -172,11 +197,16 @@ class BrowserCollector:
         except ImportError as exc:
             raise RuntimeError("Playwright non installato: pip install -r requirements.txt") from exc
         self.playwright = sync_playwright().start()
+        offscreen = bool(source.get("fuori_schermo")) and not self.visible
         options: dict[str, Any] = {
-            "headless": not self.visible,
+            # "fuori_schermo": Chrome vero (non headless, che Facebook tratta diversamente per le
+            # storie) ma con la finestra spostata fuori dallo schermo: non si vede nulla
+            "headless": not self.visible and not offscreen,
             "viewport": {"width": 1280, "height": 900},
             "locale": "it-IT",
         }
+        if offscreen:
+            options["args"] = ["--window-position=-32000,-32000"]
         if source.get("canale"):
             options["channel"] = source["canale"]
         self.context = self.playwright.chromium.launch_persistent_context(str(profile), **options)
@@ -337,6 +367,72 @@ class BrowserCollector:
                         image = INPUT / shop["id"] / f"{date.today().isoformat()}_avviso_controllo.jpg"
                         image.write_bytes(response.body())
             return text, image
+        finally:
+            page.close()
+
+    def capture_fb_story(self, shop: dict[str, Any], source: dict[str, Any]) -> Path | None:
+        """Storia Facebook (es. Le delizie di Michela): apre il profilo, clicca la storia attiva,
+        scarica la foto grande al centro del visualizzatore. Usa il profilo Chrome già collegato
+        a Facebook (quello di Stato.py, %LOCALAPPDATA%\\StatoFacebook\\chrome).
+        Restituisce None se in questo momento non c'è nessuna storia recente (non è un errore)."""
+        self.start(source)
+        page = self.context.new_page()
+        try:
+            page.goto(source["url"], wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(int(source.get("attesa_secondi", 5)) * 1000)
+            dismiss_dialogs(page)
+            if "/login" in page.url or page.locator("input[type='password']").filter(visible=True).count():
+                raise RuntimeError("Facebook chiede l'accesso: il profilo Chrome non è collegato")
+            if "/stories/" not in page.url:
+                labelled = page.get_by_role("link", name=re.compile(r"visualizza storia|view story", re.I))
+                generic = page.locator("a[href*='/stories/']:not([href*='/stories/create'])")
+                story = labelled.or_(generic).filter(visible=True).first
+                try:
+                    story.wait_for(state="visible", timeout=20000)
+                    story.click()
+                    page.wait_for_url(re.compile(r"facebook\.com/stories/"), timeout=15000)
+                except Exception:
+                    print(f"  {shop['nome']} - nessuna storia attiva sul profilo in questo momento")
+                    return None
+            if page.get_by_text(re.compile(r"non è più disponibile|is no longer available", re.I)).count():
+                print(f"  {shop['nome']} - storia non più disponibile")
+                return None
+            open_story = page.get_by_text(re.compile(r"^(Clicca per visualizzare la storia|Click to view story)$", re.I)).first
+            pause = page.get_by_role("button", name=re.compile(r"^(Metti in pausa|Pause)$")).first
+            candidate = None
+            for _ in range(80):  # circa 20 secondi
+                try:
+                    if open_story.is_visible():
+                        open_story.click(timeout=2000)
+                    if pause.is_visible():
+                        pause.click(timeout=1000)
+                except Exception:
+                    pass
+                candidate = page.evaluate(STORY_IMAGE_JS)
+                if candidate:
+                    break
+                page.wait_for_timeout(250)
+            if not candidate:
+                raise RuntimeError("nessuna immagine nel visualizzatore della storia")
+            recent = any(page.evaluate(STORY_RECENT_JS) or page.wait_for_timeout(300) for _ in range(15))
+            if not recent:
+                print(f"  {shop['nome']} - la storia non risulta di oggi: non la uso")
+                return None
+            response = self.context.request.get(candidate["src"], timeout=30000)
+            if not response.ok or not response.body():
+                raise RuntimeError("Facebook non ha restituito l'immagine della storia")
+            destination = INPUT / shop["id"] / f"{date.today().isoformat()}_storia.jpg"
+            destination.write_bytes(response.body())
+            self.last_text = ""
+            self.last_alt = candidate.get("alt", "")
+            return destination
+        except Exception:
+            debug = ERRORS / f"{shop['id']}_{datetime.now():%Y%m%d_%H%M%S}.png"
+            try:
+                page.screenshot(path=str(debug))
+            except Exception:
+                pass
+            raise
         finally:
             page.close()
 
@@ -809,6 +905,14 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
             elif kind == "pagina":
                 image, page_day = download_menu_page(shop, source)
                 return Result(image, page_day, source.get("nome", kind), checked)
+            elif kind == "storia_facebook":
+                if browser is None:
+                    raise RuntimeError("browser non disponibile")
+                image = browser.capture_fb_story(shop, source)
+                if image is None:
+                    raise RuntimeError("nessuna storia di oggi in questo momento")
+                image, new_day = keep_first_seen(folder, image)  # stessa foto di ieri = non è il menu di oggi
+                return Result(image, new_day, source.get("nome", kind), checked)
             elif kind == "browser":
                 if browser is None:
                     raise RuntimeError("browser non disponibile")

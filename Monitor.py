@@ -166,8 +166,48 @@ def badge_pixels(updated: int, total: int, size: int) -> list[list[str]]:
     return grid
 
 
+def smooth_badge_png(updated: int, total: int, size: int) -> bytes | None:
+    """Quadratino disegnato con Pillow: carattere vero (Arial/Segoe grassetto), disegnato 8 volte
+    più grande e poi rimpicciolito, così bordi e numero sono nitidi e non seghettati.
+    Restituisce il PNG, oppure None se Pillow non c'è."""
+    try:
+        from io import BytesIO
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        return None
+    scale = 8
+    big = size * scale
+    colour = GREEN if total and updated == total else ORANGE if updated else "#64748b"
+    picture = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(picture)
+    draw.rounded_rectangle((0, 0, big - 1, big - 1), radius=big // 7, fill=colour)
+    inset = max(scale, big // 10)
+    draw.rounded_rectangle((inset, inset, big - 1 - inset, big - 1 - inset), radius=big // 10, fill=BG)
+    text = str(updated)
+    font = None
+    for name in ("segoeuib.ttf", "arialbd.ttf", "DejaVuSans-Bold.ttf"):
+        try:
+            font = ImageFont.truetype(name, int(big * (0.78 if len(text) == 1 else 0.58)))
+            break
+        except OSError:
+            continue
+    if font is None:
+        return None
+    draw.text((big / 2, big / 2 + big * 0.02), text, fill="white", font=font, anchor="mm")
+    small = picture.resize((size, size), Image.LANCZOS)
+    buffer = BytesIO()
+    small.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
 def make_badge(updated: int, total: int, size: int, master=None) -> tk.PhotoImage:
-    """Quadratino come immagine tkinter (solo libreria standard)."""
+    """Quadratino come immagine tkinter: nitido con Pillow, altrimenti cifre disegnate a pixel."""
+    png = smooth_badge_png(updated, total, size)
+    if png:
+        import base64
+        image = tk.PhotoImage(master=master, data=base64.b64encode(png).decode("ascii"), format="png")
+        image.png_bytes = png  # serve a write_ico
+        return image
     image = tk.PhotoImage(master=master, width=size, height=size)
     rows = badge_pixels(updated, total, size)
     image.put(" ".join("{" + " ".join(row) + "}" for row in rows), to=(0, 0))
@@ -181,6 +221,9 @@ def write_ico(images: list[tk.PhotoImage], path: Path) -> None:
 
     blobs = []
     for image in images:
+        if getattr(image, "png_bytes", None):
+            blobs.append((image.width(), image.png_bytes))
+            continue
         with tempfile.TemporaryDirectory() as folder:
             png = Path(folder) / "i.png"
             image.write(str(png), format="png")
@@ -353,7 +396,7 @@ class Monitor(tk.Tk):
             if sys.platform == "win32":
                 # su Windows la barra delle applicazioni usa l'icona .ico della finestra
                 ICON_DIR.mkdir(parents=True, exist_ok=True)
-                ico = ICON_DIR / f"badge_{updated}_{total}.ico"
+                ico = ICON_DIR / f"badge2_{updated}_{total}.ico"  # badge2: versione nitida
                 if not ico.exists():
                     write_ico(images, ico)
                 self.iconbitmap(default=str(ico))
