@@ -26,6 +26,11 @@ sfondo grigio-azzurro, più scuro del bianco delle schede di oggi.
 Cliccando su una scheda si apre la finestra con il nome del locale, sotto
 il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
 menu, il telefono, Google Maps e la fonte.
+Nella finestra si passa alla rosticceria precedente o successiva, in modo
+circolare (dopo l'ultima torna la prima), con le frecce ‹ › ai lati, con i
+tasti ← → della tastiera o, sul telefono, facendo scorrere il dito a
+sinistra (successiva) o a destra (precedente). Ogni rosticceria vista così
+conta come un click nel registro.
 Google Maps cerca "nome del locale, indirizzo" (il nome senza un'eventuale
 parte tra parentesi), così trova la scheda del locale e non solo la
 via. Gli indirizzi in locali.json vanno scritti completi di CAP e provincia,
