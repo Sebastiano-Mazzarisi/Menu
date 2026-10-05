@@ -417,7 +417,7 @@ class Monitor(tk.Tk):
         self.last_query = datetime.min  # rilegge subito lo stato da Windows
 
     def open_site(self) -> None:
-        webbrowser.open(WEB_URL)
+        webbrowser.open(WEB_URL + "?v=57")  # amministratore: i click non vengono registrati
 
     def close(self) -> None:
         try:

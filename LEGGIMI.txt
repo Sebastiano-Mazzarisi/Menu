@@ -144,6 +144,28 @@ storto l'errore è scritto in dati/monitor.log.
 Per averla sempre all'accensione del PC: Win+R, scrivere shell:startup,
 INVIO, e copiare lì un collegamento a Monitor.bat.
 
+Registro dei click (foglio Google "Menu")
+----------------------------------------
+Ogni click su una scheda della pagina aggiunge una riga al foglio Google
+"Menu": Data | Ora | Rosticceria | Dispositivo | Posizione approssimativa
+(città ricavata dall'indirizzo internet tramite ipwho.is, mai il GPS).
+Installazione, una volta sola:
+ 1. Google Drive > Nuovo > Fogli Google, chiamalo "Menu".
+ 2. Estensioni > Apps Script: cancella tutto, incolla il contenuto di
+    Registro_click.gs (in questa cartella) e salva.
+ 3. Esegui il deployment > Nuovo deployment > tipo "App web";
+    Esegui come: Me; Chi può accedere: Chiunque; Esegui il deployment;
+    autorizza l'accesso quando Google lo chiede.
+ 4. Copia l'URL dell'app web (finisce con /exec) in locali.json:
+        "registro_click_url": "https://script.google.com/macros/s/.../exec"
+    e lancia Avvia.bat. Finché il valore è vuoto non viene registrato nulla.
+Amministratore: aprendo la pagina con ?v=57
+    https://sebastiano-mazzarisi.github.io/Menu/?v=57
+i click non vengono registrati e il dispositivo se lo ricorda (anche
+riaprendo poi la pagina o l'app senza ?v=57). Per tornare a registrare su
+quel dispositivo: aprire una volta la pagina con ?v=0.
+Il pulsante "Sito" della finestra di controllo apre già la pagina con ?v=57.
+
 Aggiungere una rosticceria
 --------------------------
 Eseguire:
