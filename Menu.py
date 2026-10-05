@@ -126,6 +126,36 @@ class Result:
     error: str = ""
 
 
+EXPAND_JS = """(selector) => {
+ const root = document.querySelector(selector);
+ if (!root) return false;
+ const more = [...root.querySelectorAll('[role=button], span, div')].find(el =>
+   /^(altro|mostra altro|see more)\\s*(\\.\\.\\.|…)?$/i.test((el.textContent || '').trim()) && el.children.length <= 1);
+ if (!more) return false;
+ more.click();
+ return true;
+}"""
+
+
+def expand_more(page: Any, selector: str) -> None:
+    """Apre "Altro..." / "See more" finché il testo del post è completo (i menu lunghi
+    Facebook li divide in più parti). Il clic è fatto da JavaScript, così non lo blocca
+    nessuna finestra sovrapposta."""
+    for _ in range(4):
+        try:
+            if not page.evaluate(EXPAND_JS, selector):
+                return
+        except Exception:
+            return
+        page.wait_for_timeout(900)
+
+
+def clean_post_text(text: str) -> str:
+    """Toglie un eventuale "… Altro..." rimasto in fondo al testo."""
+    return re.sub(r"\s*(…|\.\.\.)?\s*(altro|mostra altro|see more)\s*(\.\.\.|…)?\s*$", "", text or "",
+                  flags=re.IGNORECASE).strip()
+
+
 def dismiss_dialogs(page: Any) -> None:
     """Chiude le finestre che coprono la pagina: cookie di Facebook/Instagram (rifiuta quelli
     facoltativi) e l'invito ad accedere. Senza questo i post restano nascosti dietro."""
@@ -285,16 +315,10 @@ class BrowserCollector:
                     page.wait_for_timeout(1500)
             self.last_text = ""
             if source.get("selettore_testo"):
-                try:  # "Altro..." / "See more": apre il testo completo del post
-                    more = page.locator(f"{source['selettore_testo']} [role='button']").filter(
-                        has_text=re.compile(r"^(Altro|Mostra altro|See more)", re.IGNORECASE)).first
-                    if more.is_visible(timeout=1000):
-                        more.click(timeout=2000)
-                        page.wait_for_timeout(800)
-                except Exception:
-                    pass
+                expand_more(page, source["selettore_testo"])
                 try:
-                    self.last_text = page.locator(source["selettore_testo"]).first.inner_text(timeout=3000)
+                    self.last_text = clean_post_text(
+                        page.locator(source["selettore_testo"]).first.inner_text(timeout=3000))
                 except Exception:
                     pass
             if selector and not page.locator(selector).count():
@@ -353,6 +377,7 @@ class BrowserCollector:
                 page.wait_for_timeout(1500)
             text = ""
             if text_css and page.locator(text_css).count():
+                expand_more(page, text_css)
                 text = page.locator(text_css).first.inner_text(timeout=3000)
             elif page.locator(post).count():
                 text = page.locator(post).first.inner_text(timeout=3000)[:1500]  # post solo testo
@@ -813,10 +838,15 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
     if words and not any(word in text.lower() for word in words):
         raise RuntimeError("l'ultimo post (solo testo) non sembra un menu")
     clean = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    written_day = plausible_menu_date(clean)  # data o giorno scritto nel post ("MENÙ DI SABATO")
     for earlier in sorted(folder.glob("*_testo.json")):  # stesso testo già visto: resta la sua data
         if read_json(earlier, {}).get("testo") == clean:
+            if written_day and written_day != image_date(earlier):
+                corrected = folder / f"{written_day.isoformat()}_testo.json"
+                earlier.replace(corrected)
+                return Result(corrected, written_day, name, checked)
             return Result(earlier, image_date(earlier), name, checked)
-    day = plausible_menu_date(clean) or date.today()
+    day = written_day or date.today()
     lines = [line for line in clean.splitlines() if not line.lower().startswith(("altro", "mostra"))]
     path = folder / f"{day.isoformat()}_testo.json"
     save_json(path, {"data": day.isoformat(), "testo": clean, "sezioni": [
@@ -835,6 +865,11 @@ def plausible_menu_date(text: str) -> date | None:
     for day in dates_in_text(fix_ocr_dates(text)):
         if -7 <= (day - date.today()).days <= 1:
             return day
+    # nessuna data ma il giorno della settimana: "MENÙ DI SABATO", "Menu del giorno lunedì"
+    match = re.search(r"\bmen[uù]\b[^\n]{0,25}?\b(lun|mar|mer|gio|ven|sab|dom)[a-zàèéìòù]*", text.lower())
+    if match:
+        today = date.today()
+        return today - timedelta(days=(today.weekday() - WEEKDAYS[match.group(1)]) % 7)
     return None
 
 
@@ -866,7 +901,8 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
         return rest_day_result(shop, folder, checked)
     if online and skip_if_today is not None:
         latest = newest_image(folder)
-        if latest and image_date(latest) == date.today():
+        # un menu solo testo viene comunque riletto: il post può essere stato completato o corretto
+        if latest and image_date(latest) == date.today() and not latest.stem.endswith("_testo"):
             return Result(latest, date.today(), skip_if_today, checked)
     if online:
         notice = check_notice(shop, browser, checked)

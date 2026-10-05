@@ -266,6 +266,11 @@ del post o il testo letto nella foto (OCR) contiene una di queste parole:
 menu, menù, primi, secondi, contorni, del giorno, piatti, antipasti
 (si cambiano per singola fonte con "parole_menu": [...]). Così una foto
 pubblicitaria o di un piatto non diventa il menu del giorno.
+Testo lungo: Facebook divide i post lunghi e mostra "Altro...": il programma
+lo apre da solo (anche più volte) per leggere il menu completo.
+Giorno della settimana: se il menu dice "MENÙ DI SABATO" o "Menu del giorno
+lunedì" senza data, vale per quel giorno (l'ultimo sabato, ecc.), non per
+il giorno in cui il programma lo legge.
 Post senza foto (menu scritto nel testo, es. Bollenti piatti): il testo
 del post viene salvato come AAAA-MM-GG_testo.json e la scheda lo mostra riga
 per riga. Lo stesso testo già visto mantiene la sua data. Il programma apre

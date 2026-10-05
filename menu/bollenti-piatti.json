@@ -1,12 +1,12 @@
 {
   "data": "2026-10-05",
-  "testo": "MENÙ DI SABATO\nPRIMI PIATTI\n●CIME DI RAPE STUFATE CON OLIO, AGLIO E POMODORINO 6,0\n●LASAGNA AL FORNO 5,0\n●TORTIGLIONI CON PISELLI, FUNGHI MISTI CON PORCINI E SPECK 5,5… Altro...",
+  "testo": "MENÙ DI LUNEDÌ\nPRIMI PIATTI\n●CICORIA ALL'OLIO 5,0\n●CANNELLONI ALLA CARNE 5,5\n●PASTA E LENTICCHIE 4,5\n●ORECCHIETTE CON POLPETTINE DI CARNE 5,5\n●RISOTTO AI FRUTTI DI MARE 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●POLPETTE DI POLLO ALLE VERDURE CON CAROTE E SPINACI IN SALSA DI PORCINI\n●ALETTE DI POLLO GRATINATE ALLA PAPRIKA\n●HAMBURGER DI VITELLO AI FUNGHI CHAMPIGNON\n●PATATE SCAVATE CON SPECK E MOZZARELLA\n●TRIANGOLO DI MERLUZZO CON IMPANATURA ALLE PATATE GRATINATO AL FORNO\n●RUSTICO TONNO, POMODORINO E MOZZARELLA\n●STRACCETTI DI POLLO IN SALSA TONNATA Vedi meno",
   "sezioni": [
     {
       "titolo": "Menu del giorno",
       "piatti": [
         {
-          "nome": "MENÙ DI SABATO",
+          "nome": "MENÙ DI LUNEDÌ",
           "prezzo": "",
           "descrizione": ""
         },
@@ -16,17 +16,72 @@
           "descrizione": ""
         },
         {
-          "nome": "●CIME DI RAPE STUFATE CON OLIO, AGLIO E POMODORINO 6,0",
+          "nome": "●CICORIA ALL'OLIO 5,0",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●LASAGNA AL FORNO 5,0",
+          "nome": "●CANNELLONI ALLA CARNE 5,5",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●TORTIGLIONI CON PISELLI, FUNGHI MISTI CON PORCINI E SPECK 5,5… Altro...",
+          "nome": "●PASTA E LENTICCHIE 4,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ORECCHIETTE CON POLPETTINE DI CARNE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RISOTTO AI FRUTTI DI MARE 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI POLLO ALLE VERDURE CON CAROTE E SPINACI IN SALSA DI PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ALETTE DI POLLO GRATINATE ALLA PAPRIKA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●HAMBURGER DI VITELLO AI FUNGHI CHAMPIGNON",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PATATE SCAVATE CON SPECK E MOZZARELLA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRIANGOLO DI MERLUZZO CON IMPANATURA ALLE PATATE GRATINATO AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RUSTICO TONNO, POMODORINO E MOZZARELLA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STRACCETTI DI POLLO IN SALSA TONNATA Vedi meno",
           "prezzo": "",
           "descrizione": ""
         }
