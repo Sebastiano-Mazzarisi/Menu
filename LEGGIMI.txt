@@ -220,6 +220,11 @@ chiusura/ferie" e due date (es. "Siamo chiusi da domenica 4/10 a mercoledì
 7/10"), la foto viene pubblicata come menu del giorno per tutti i giorni
 di chiusura, con la scheda verde "Oggi" e la nota "Chiuso fino al 07/10".
 Con una sola data e la parola "fino" vale da oggi fino a quella data.
+Se l'OCR legge male le cifre, bastano i nomi dei giorni: "da domenica a
+mercoledì 7/10" -> dal 4/10 al 7/10; "da lunedì a mercoledì" -> dal lunedì
+al mercoledì più vicini. Gli errori tipici dell'OCR ("7110" invece di
+"7/10", "8/ IO" invece di "8/10") vengono corretti da soli. Prima dell'OCR
+la foto viene ingrandita (con Pillow) perché Windows legga meglio.
 Il file in ingresso si chiama AAAA-MM-GG_chiusura_fino_AAAAMMGG.jpg.
 Il testo dentro la foto è letto con l'OCR integrato in Windows tramite
 ocr.ps1 (nessuna installazione; serve la lingua italiana in Windows). Le

@@ -11,7 +11,7 @@ import sys
 import unicodedata
 import urllib.request
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -382,13 +382,50 @@ def dates_in_text(text: str) -> list[date]:
     return [day for _, day in sorted(found)]
 
 
+WEEKDAYS = {"lun": 0, "mar": 1, "mer": 2, "gio": 3, "ven": 4, "sab": 5, "dom": 6}
+
+
+def fix_ocr_dates(text: str) -> str:
+    """Corregge gli errori tipici dell'OCR sulle date: "8/ IO" -> "8/10", "7110" -> "7/10"."""
+    fixed = re.sub(r"(?<=[/.\-])\s*[IlO|]{1}[O0]\b|(?<=[/.\-])\s*[1Il|][O0o]\b", "10", text)
+    fixed = re.sub(r"\b[IlO|][O0]\b", "10", fixed)          # "IO" isolato dopo una barra spezzata
+    fixed = re.sub(r"(\d{1,2})\s*/\s*(\d{1,2})", r"\1/\2", fixed)  # "8/ 10" -> "8/10"
+    # "7110" = "7/10" (la barra letta come 1): giorno 1-31, mese 1-12
+    fixed = re.sub(r"\b([1-9]|[12]\d|3[01])[1Il|](1[0-2]|0?[1-9])\b", r"\1/\2", fixed)
+    return fixed
+
+
 def closure_period(text: str) -> tuple[date, date] | None:
     """Riconosce un avviso di chiusura ("Siamo chiusi da domenica 4/10 a mercoledì 7/10").
 
-    Restituisce (primo giorno, ultimo giorno di chiusura) oppure None.
-    Con una sola data e la parola "fino" vale da oggi fino a quella data."""
+    Restituisce (primo giorno, ultimo giorno di chiusura) oppure None. Regole, in ordine:
+    1. "da <giorno> [data] a <giorno> [data]": usa le date se lette, altrimenti i nomi dei
+       giorni (es. "da domenica a mercoledì 7/10" -> domenica 4/10 - mercoledì 7/10);
+    2. due date qualsiasi nel testo;
+    3. una sola data con "fino" -> da oggi fino a quella data.
+    Il testo letto dall'OCR viene prima corretto (vedi fix_ocr_dates)."""
     if not re.search(r"\bchius[oiae]\b|\bchiusura\b|\bferie\b", text or "", re.IGNORECASE):
         return None
+    text = fix_ocr_dates(text)
+    lowered = text.lower()
+    day_word = r"(lun|mar|mer|gio|ven|sab|dom)[a-zàèéìòù]*"
+    date_part = r"\s*(\d{1,2}/\d{1,2}|\d{1,2}\s+[a-z]+)?"
+    match = re.search(rf"\bdal?\s+{day_word}{date_part}\s+(?:a|al|fino\s+a[l]?)\s+{day_word}{date_part}", lowered)
+    if match:
+        first_name, first_text, last_name, last_text = match.groups()
+        first_dates = dates_in_text(first_text or "")
+        last_dates = dates_in_text(last_text or "")
+        today = date.today()
+        if last_dates:
+            last = last_dates[0]
+        else:  # prossimo <giorno> a partire da oggi
+            last = today + timedelta(days=(WEEKDAYS[last_name] - today.weekday()) % 7)
+        if first_dates:
+            first = first_dates[0]
+        else:  # ultimo <giorno> non successivo alla fine della chiusura
+            first = last - timedelta(days=(last.weekday() - WEEKDAYS[first_name]) % 7)
+        if first <= last:
+            return first, last
     days = dates_in_text(text)
     if len(days) >= 2:
         return min(days[0], days[1]), max(days[0], days[1])
@@ -409,13 +446,24 @@ def ocr_image(path: Path) -> str:
     if sys.platform != "win32" or not OCR_SCRIPT.exists() or not path.exists():
         return ""
     import subprocess
-    key = file_hash(path)
+    key = "v2:" + file_hash(path)  # v2: foto ingrandita prima dell'OCR
     cache = read_json(OCR_CACHE, {})
     if key in cache:
         return cache[key]
+    source = path
+    try:  # l'OCR di Windows legge meglio le scritte grandi: ingrandisco la foto (se c'è Pillow)
+        from PIL import Image
+        with Image.open(path) as picture:
+            factor = max(1, min(3, 2000 // max(picture.size)))
+            if factor > 1:
+                source = DATA / "ocr_temp.png"
+                picture.convert("RGB").resize((picture.width * factor, picture.height * factor),
+                                              Image.LANCZOS).save(source)
+    except Exception:
+        source = path
     try:
         done = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(OCR_SCRIPT),
-                               str(path)], capture_output=True, timeout=90, encoding="utf-8", errors="replace",
+                               str(source)], capture_output=True, timeout=90, encoding="utf-8", errors="replace",
                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception as exc:
         print(f"  OCR non riuscito: {exc}")
