@@ -189,8 +189,12 @@ STORY_IMAGE_JS = """() => {
  });
  imgs.sort((a, b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect();
    return y.width * y.height - x.width * x.height; });
- return imgs.length ? {src: imgs[0].currentSrc || imgs[0].src, alt: imgs[0].alt || ''} : null;
+ return imgs.length ? {src: imgs[0].currentSrc || imgs[0].src, alt: imgs[0].alt || '',
+   w: imgs[0].naturalWidth, h: imgs[0].naturalHeight} : null;
 }"""
+# Facebook mostra prima un'anteprima sfocata e piccola (es. 320x240) e poi la foto vera:
+# si accetta solo una foto con il lato minore di almeno STORY_MIN_SIDE pixel
+STORY_MIN_SIDE = 400
 # "1 h", "5 min", "adesso" accanto al nome in alto nel visualizzatore = storia delle ultime ore
 STORY_RECENT_JS = """() => {
  const re = /(^|[^\\p{L}\\p{N}])(\\d{1,2}\\s*(m|min|h)|adesso|ora)(?![\\p{L}\\p{N}])/iu;
@@ -424,33 +428,55 @@ class BrowserCollector:
                 return None
             open_story = page.get_by_text(re.compile(r"^(Clicca per visualizzare la storia|Click to view story)$", re.I)).first
             pause = page.get_by_role("button", name=re.compile(r"^(Metti in pausa|Pause)$")).first
-            candidate = None
-            for _ in range(80):  # circa 20 secondi
-                try:
-                    if open_story.is_visible():
-                        open_story.click(timeout=2000)
-                    if pause.is_visible():
-                        pause.click(timeout=1000)
-                except Exception:
-                    pass
-                candidate = page.evaluate(STORY_IMAGE_JS)
-                if candidate:
-                    break
-                page.wait_for_timeout(250)
-            if not candidate:
-                raise RuntimeError("nessuna immagine nel visualizzatore della storia")
-            recent = any(page.evaluate(STORY_RECENT_JS) or page.wait_for_timeout(300) for _ in range(15))
-            if not recent:
-                print(f"  {shop['nome']} - la storia non risulta di oggi: non la uso")
-                return None
-            response = self.context.request.get(candidate["src"], timeout=30000)
-            if not response.ok or not response.body():
-                raise RuntimeError("Facebook non ha restituito l'immagine della storia")
+            bucket = re.sub(r"(facebook\.com/stories/[^/?#]+).*", r"\1", page.url)
             destination = INPUT / shop["id"] / f"{date.today().isoformat()}_storia.jpg"
-            destination.write_bytes(response.body())
-            self.last_text = ""
-            self.last_alt = candidate.get("alt", "")
-            return destination
+            # la storia può avere più parti (foto, video...): si prende la prima FOTO di oggi
+            # a piena risoluzione; video e anteprime sfocate vengono saltati
+            for part in range(int(source.get("parti_max", 8))):
+                if part:
+                    page.keyboard.press("ArrowRight")
+                    page.wait_for_timeout(1500)
+                    if not page.url.startswith(bucket):
+                        break  # finite le parti della storia di questo profilo
+                candidate = None
+                for _ in range(80):  # circa 20 secondi per far arrivare la foto vera
+                    try:
+                        if open_story.is_visible():
+                            open_story.click(timeout=2000)
+                        if pause.is_visible():
+                            pause.click(timeout=1000)
+                    except Exception:
+                        pass
+                    found = page.evaluate(STORY_IMAGE_JS)
+                    if found:
+                        candidate = found
+                        if min(found.get("w", 0), found.get("h", 0)) >= STORY_MIN_SIDE:
+                            break
+                    page.wait_for_timeout(250)
+                if not candidate or min(candidate.get("w", 0), candidate.get("h", 0)) < STORY_MIN_SIDE:
+                    print(f"  {shop['nome']} - parte {part + 1} della storia: nessuna foto nitida (video o anteprima), passo alla successiva")
+                    continue
+                recent = any(page.evaluate(STORY_RECENT_JS) or page.wait_for_timeout(300) for _ in range(15))
+                if not recent:
+                    print(f"  {shop['nome']} - parte {part + 1} della storia non risulta di oggi: non la uso")
+                    continue
+                response = self.context.request.get(candidate["src"], timeout=30000)
+                body = response.body() if response.ok else b""
+                if not image_is_sharp(body):
+                    print(f"  {shop['nome']} - parte {part + 1}: Facebook ha dato solo un'immagine piccola, passo alla successiva")
+                    continue
+                destination.write_bytes(body)
+                self.last_text = ""
+                self.last_alt = candidate.get("alt", "")
+                return destination
+            # nessuna foto buona adesso: se stamattina ne era già stata salvata una buona, resta quella
+            if destination.exists() and image_is_sharp(destination.read_bytes()):
+                print(f"  {shop['nome']} - uso la foto della storia già salvata oggi")
+                return destination
+            if destination.exists():
+                destination.unlink()  # anteprima sfocata salvata da una versione precedente
+            print(f"  {shop['nome']} - nessuna foto nitida di oggi nella storia")
+            return None
         except Exception:
             debug = ERRORS / f"{shop['id']}_{datetime.now():%Y%m%d_%H%M%S}.png"
             try:
@@ -479,6 +505,20 @@ class BrowserCollector:
                 except Exception:
                     continue
         return best
+
+
+def image_is_sharp(data: bytes) -> bool:
+    """True se i byte sono un'immagine vera con il lato minore di almeno STORY_MIN_SIDE pixel
+    (scarta le anteprime sfocate e piccole che Facebook mostra mentre carica)."""
+    if len(data) < 5000:
+        return False
+    try:
+        from io import BytesIO
+        from PIL import Image
+        with Image.open(BytesIO(data)) as picture:
+            return min(picture.size) >= STORY_MIN_SIDE
+    except Exception:
+        return False
 
 
 def download_image(url: str, destination: Path) -> Path:
@@ -901,6 +941,9 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
         return rest_day_result(shop, folder, checked)
     if online and skip_if_today is not None:
         latest = newest_image(folder)
+        if latest and latest.stem.endswith("_storia") and not image_is_sharp(latest.read_bytes()):
+            latest.unlink()  # anteprima sfocata di una storia: va ricatturata
+            latest = newest_image(folder)
         # un menu solo testo viene comunque riletto: il post può essere stato completato o corretto
         if latest and image_date(latest) == date.today() and not latest.stem.endswith("_testo"):
             return Result(latest, date.today(), skip_if_today, checked)
@@ -1025,15 +1068,20 @@ def write_manifest() -> str:
 
 def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results: list[dict[str, Any]]) -> None:
     cards = []
+    logos = make_shop_logos(shops)
     for index, (shop, result) in enumerate(zip(shops, results)):
         label, css = status_label(date.fromisoformat(result["menu_date"]) if result.get("menu_date") else None, result.get("error", ""))
         menu_day = date.fromisoformat(result["menu_date"]) if result.get("menu_date") else None
         day_text = menu_day.strftime("%d/%m/%Y") if menu_day else "nessun menu"
         note_html = f'\n  <span class="note">{html.escape(result["nota"])}</span>' if result.get("nota") else ""
+        logo = logos.get(shop["id"])
+        logo_html = f'<img class="logo" src="{html.escape(logo)}" alt="" width="64" height="64">\n  ' if logo else ""
         cards.append(f'''<button type="button" class="card {'band-ok' if css == 'fresh' else 'band-old'}" data-index="{index}">
+  {logo_html}<span class="info">
   <h2>{html.escape(shop['nome'])}</h2>
   <span class="day">Ultimo menu: <strong>{day_text}</strong></span>{note_html}
   <span class="status {css}">{label}</span>
+  </span>
   <span class="count" hidden></span>
 </button>''')
     public_shops = [{key: shop.get(key, "") for key in ("nome", "telefono", "indirizzo", "url")} for shop in shops]
@@ -1065,6 +1113,7 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
 header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:space-between;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px)}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
 main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}}
 .card{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;width:100%;background:var(--card);color:var(--ink);border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;cursor:pointer;transition:.18s transform,.18s box-shadow;font:inherit;position:relative}}
+.card{{flex-direction:row;align-items:center;gap:16px}}.info{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;flex:1}}.logo{{width:64px;height:64px;flex:none;border-radius:14px;object-fit:cover;background:#fff;box-shadow:0 2px 8px #0003}}
 .count{{position:absolute;right:14px;bottom:12px;min-width:28px;padding:2px 9px;border-radius:999px;background:#1e293b;color:#fff;font-size:14px;font-weight:800;text-align:center}}
 .infocard{{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#d1d5db;color:#172033;border:4px solid #facc15;border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;text-align:center;min-height:120px}}
 .infocard h2{{margin:0;font-size:21px}}.infocard .total{{font-size:46px;font-weight:800;line-height:1.1;color:#172033}}.infocard small{{color:#475569;font-size:14px}}.infocard{{cursor:pointer}}.infocard:hover,.infocard:focus-visible{{transform:translateY(-3px);outline:3px solid #facc15}}
@@ -1142,6 +1191,56 @@ def make_icons(force: bool = False) -> bool:
             square.resize((size, size), Image.LANCZOS).save(ICONS / name, optimize=True)
     print("Icone dell'app rigenerate da loghi/Menu.jpg")
     return True
+
+
+LOGO_SIDE = 160  # pixel della miniatura (mostrata a 64 px: nitida anche sugli schermi Retina)
+
+
+def shop_logo_source(shop: dict[str, Any]) -> Path | None:
+    """Logo del locale: il file indicato in locali.json ("logo": "fantasia.jpg", cercato nella
+    cartella loghi), altrimenti
+    loghi/<id>.jpg|.jpeg|.png|.webp. None se non c'è."""
+    if shop.get("logo"):
+        name = Path(shop["logo"])
+        for path in ((name,) if name.is_absolute() else (LOGOS / name, ROOT / name)):
+            if path.is_file():
+                return path
+    for extension in (".jpg", ".jpeg", ".png", ".webp"):
+        path = LOGOS / f"{shop['id']}{extension}"
+        if path.is_file():
+            return path
+    return None
+
+
+def make_shop_logos(shops: list[dict[str, Any]]) -> dict[str, str]:
+    """Miniature quadrate dei loghi in icone/logo-<id>.jpg (leggere: pochi KB l'una), rifatte
+    solo quando il logo cambia. Il logo intero viene centrato nel quadrato (non tagliato), con
+    il colore del bordo del logo come sfondo. Restituisce {id: "icone/logo-<id>.jpg?v=..."}."""
+    logos: dict[str, str] = {}
+    try:
+        from PIL import Image
+    except ImportError:
+        print("Loghi non aggiornati: manca Pillow (pip install pillow).")
+        Image = None
+    ICONS.mkdir(exist_ok=True)
+    for shop in shops:
+        source = shop_logo_source(shop)
+        target = ICONS / f"logo-{shop['id']}.jpg"
+        if source and Image and (not target.exists() or target.stat().st_mtime < source.stat().st_mtime):
+            try:
+                with Image.open(source) as picture:
+                    picture = picture.convert("RGBA")
+                    flat = Image.new("RGB", picture.size, "white")
+                    flat.paste(picture, mask=picture.split()[3])
+                    side = max(flat.size)
+                    square = Image.new("RGB", (side, side), flat.getpixel((0, 0)))
+                    square.paste(flat, ((side - flat.width) // 2, (side - flat.height) // 2))
+                    square.resize((LOGO_SIDE, LOGO_SIDE), Image.LANCZOS).save(target, quality=88, optimize=True)
+            except Exception as error:
+                print(f"  {shop['nome']} - logo non leggibile ({source.name}): {error}")
+        if target.exists():
+            logos[shop["id"]] = f"icone/{target.name}?v={file_hash(target)[:8]}"
+    return logos
 
 
 def publish() -> None:

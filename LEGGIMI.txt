@@ -223,7 +223,11 @@ Nomi delle cartelle
 - ingresso: immagini ricevute o acquisite, una sottocartella per locale
 - menu: copia corrente usata da Menu.html
 - archivio: copie storiche, create soltanto quando l'immagine cambia
-- loghi: loghi dei locali
+- loghi: loghi dei locali. Ogni scheda della pagina mostra a sinistra il logo
+  del locale: il file indicato in locali.json ("logo": "fantasia.jpg",
+  cercato in loghi) oppure loghi/<id>.jpg (o .png/.webp). Menu.py ne fa una
+  miniatura leggera (icone/logo-<id>.jpg, pochi KB) con il logo intero
+  centrato; per cambiarlo basta sostituire il file in loghi.
 - profilo: sessione persistente del browser (cookie Facebook/Instagram)
 - errori: schermate di diagnostica delle acquisizioni fallite
 - dati: stato dell'ultima esecuzione
@@ -268,6 +272,12 @@ Tipi di fonte
   con la finestra fuori dallo schermo ("fuori_schermo": true), così non si
   vede nulla. Se Stato.py sta usando quel profilo in quel momento, il
   controllo viene ripetuto al giro successivo.
+  Facebook mostra prima un'anteprima piccola e sfocata e poi la foto vera:
+  si accetta solo una foto con il lato minore di almeno 400 pixel. Se una
+  parte della storia è un video o resta sfocata si passa alla parte
+  successiva (al massimo 8, "parti_max" per cambiarlo). Se in quel momento
+  non c'è nessuna foto nitida, resta la foto buona già salvata oggi; una
+  foto sfocata salvata per errore viene cancellata e ricatturata.
 - cartella: usa l'immagine più recente presente in ingresso/<id>
 - immagine: scarica un indirizzo che restituisce direttamente un'immagine
 - browser: apre una pagina e cattura il contenuto visivo più grande
