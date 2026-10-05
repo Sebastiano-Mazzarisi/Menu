@@ -182,9 +182,10 @@ mostra subito gli ultimi numeri ricevuti (salvati sul dispositivo) e li
 aggiorna appena arriva la risposta di Google (di solito 2-5 secondi; sotto la
 tabella compare "Aggiornamento in corso…" e l'ora dei dati). I numeri si
 aggiornano anche ogni minuto; "oggi" riparte da 0 a mezzanotte, "mese" e
-"anno" all'inizio del mese e dell'anno. Se si cancellano o aggiungono righe
-a mano nel foglio, i conteggi vengono ricalcolati da capo al click
-successivo; per ricalcolarli subito aprire
+"anno" all'inizio del mese e dell'anno. Se il foglio viene modificato a mano
+(righe cancellate, celle corrette, foglio svuotato) i conteggi vengono
+ricalcolati da capo automaticamente alla richiesta successiva: basta
+riaprire o aggiornare la pagina. Per forzarlo comunque:
     <indirizzo /exec>?azione=ricalcola
 I click dell'amministratore non vengono registrati e quindi non contano.
 Il pulsante "Accessi" apre il foglio "Menu" posizionato sull'ultima riga:

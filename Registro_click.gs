@@ -13,8 +13,8 @@
  *
  * Per rispondere subito, i conteggi (oggi / mese / anno / tutto) sono tenuti già pronti nelle
  * "Proprietà dello script" e aggiornati a ogni click: non serve rileggere tutto il foglio.
- * Se il foglio viene modificato a mano (righe cancellate o aggiunte), il numero di righe non
- * corrisponde più e i conteggi vengono ricalcolati da capo automaticamente.
+ * Se il foglio viene modificato a mano (righe cancellate, celle corrette, foglio svuotato) i
+ * conteggi vengono ricalcolati da capo automaticamente alla richiesta successiva.
  */
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -75,10 +75,12 @@ var PERIODI = ['oggi', 'mese', 'anno', 'tutto'];
 
 /** { data, righe: { "Fantasia": {oggi, mese, anno, tutto}, ... }, totali: {oggi, mese, anno, tutto} } */
 function statistiche(daCapo) {
-  // senza aprire il foglio (più veloce): i conteggi salvati sono già aggiornati da ogni click;
-  // se il foglio è stato modificato a mano se ne accorge il click successivo (o ?azione=ricalcola)
+  // i conteggi salvati sono già aggiornati da ogni click; se il numero di righe del foglio non
+  // corrisponde (righe cancellate, foglio svuotato) o il foglio è stato modificato a mano
+  // (onEdit qui sotto cancella i conteggi salvati), vengono ricalcolati da capo
+  var foglio = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
   var c = daCapo ? null : contiSalvati();
-  if (!c) c = ricalcola(SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]);
+  if (!c || c.ultima !== foglio.getLastRow()) c = ricalcola(foglio);
   var totali = { oggi: 0, mese: 0, anno: 0, tutto: 0 };
   for (var nome in c.righe) PERIODI.forEach(function (k) { totali[k] += c.righe[nome][k]; });
   return { data: c.data, righe: c.righe, totali: totali };
@@ -136,6 +138,12 @@ function aggiungiAiConti(nome, foglio) {
   c.ultima = ultima;
   salvaConti(c);
   return c;
+}
+
+/** Ogni modifica fatta a mano nel foglio (cancellare, correggere, svuotare) azzera i conteggi
+ *  salvati: alla prossima richiesta vengono ricalcolati dal foglio. Scatta da solo, non va eseguita. */
+function onEdit(e) {
+  PropertiesService.getScriptProperties().deleteProperty('conti');
 }
 
 function salvaConti(c) {
