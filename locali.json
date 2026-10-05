@@ -81,7 +81,8 @@
     },
     {
       "id": "santoro",
-      "nome": "Santoro (Castellana)",
+      "nome": "Santoro Gastronomia",
+      "nomi_precedenti": ["Santoro (Castellana)"],
       "telefono": "080-859.83.13",
       "indirizzo": "Via Mazzini 28, 70013 Castellana Grotte (BA)",
       "url": "https://www.facebook.com/santorogastronomia",

@@ -23,13 +23,20 @@ La pagina mostra soltanto il titolo e le schede (niente sottotitolo né note).
 Fascia sul lato sinistro della scheda: verde se il menu è di oggi,
 arancione in tutti gli altri casi; le schede arancioni hanno anche lo
 sfondo grigio-azzurro, più scuro del bianco delle schede di oggi.
-Cliccando su una scheda si apre la finestra con l'immagine del menu, il
-telefono, Google Maps e la fonte.
-Google Maps cerca "nome del locale, indirizzo" (il nome senza la parte tra
-parentesi, es. "Santoro"), così trova la scheda del locale e non solo la
+Cliccando su una scheda si apre la finestra con il nome del locale, sotto
+il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
+menu, il telefono, Google Maps e la fonte.
+Google Maps cerca "nome del locale, indirizzo" (il nome senza un'eventuale
+parte tra parentesi), così trova la scheda del locale e non solo la
 via. Gli indirizzi in locali.json vanno scritti completi di CAP e provincia,
 es. "Via Noci 48-50, 70017 Putignano (BA)": senza CAP Google può confondere
 "Via Noci" con il paese di Noci. Si chiude con ✕, con ESC o cliccando fuori.
+Cambio del nome di un locale: si modifica "nome" in locali.json e si
+aggiunge il nome vecchio in "nomi_precedenti", es.
+    "nome": "Santoro Gastronomia",
+    "nomi_precedenti": ["Santoro (Castellana)"],
+così i click registrati col nome vecchio restano sommati al locale nei
+contatori e nella tabella Info.
 
 Versione per cellulare (GitHub Pages)
 -------------------------------------
