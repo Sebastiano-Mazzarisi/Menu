@@ -36,10 +36,16 @@ function doPost(e) {
 
 /**
  * GET senza parametri: "Registro click Menu attivo" (controllo che il deployment funzioni).
+ * GET ?azione=oggi: click di oggi per rosticceria e totale (contatori della pagina con ?v=57;
+ *   si azzerano da soli a mezzanotte perché contano solo le righe con la data di oggi).
  * GET ?azione=ultima: indirizzo del foglio e numero dell'ultima riga, usati dal pulsante
  * "Accessi" della finestra di controllo (Monitor.py) per aprire il foglio sull'ultimo click.
  */
 function doGet(e) {
+  if (e && e.parameter && e.parameter.azione === 'oggi') {
+    return ContentService.createTextOutput(JSON.stringify(contaOggi()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   if (e && e.parameter && e.parameter.azione === 'ultima') {
     var file = SpreadsheetApp.getActiveSpreadsheet();
     var foglio = file.getSheets()[0];
@@ -48,4 +54,26 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
   return ContentService.createTextOutput('Registro click Menu attivo');
+}
+
+/** Click di oggi (fuso Europe/Rome): { data, conti: { "Cibària": 3, ... }, totale }. */
+function contaOggi() {
+  var foglio = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var oggi = Utilities.formatDate(new Date(), 'Europe/Rome', 'yyyy-MM-dd');
+  var conti = {};
+  var totale = 0;
+  var ultima = foglio.getLastRow();
+  if (ultima > 1) {
+    var righe = foglio.getRange(2, 1, ultima - 1, 3).getValues();
+    for (var i = 0; i < righe.length; i++) {
+      var giorno = righe[i][0];
+      if (giorno instanceof Date) giorno = Utilities.formatDate(giorno, 'Europe/Rome', 'yyyy-MM-dd');
+      if (String(giorno) !== oggi) continue;
+      var nome = String(righe[i][2] || '');
+      if (!nome || nome === 'Prova di funzionamento') continue;
+      conti[nome] = (conti[nome] || 0) + 1;
+      totale++;
+    }
+  }
+  return { data: oggi, conti: conti, totale: totale };
 }
