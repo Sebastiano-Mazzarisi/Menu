@@ -164,17 +164,29 @@ Installazione, una volta sola:
     e lancia Avvia.bat. Finché il valore è vuoto non viene registrato nulla.
 Amministratore: aprendo la pagina con ?v=57
     https://sebastiano-mazzarisi.github.io/Menu/?v=57
-i click non vengono registrati e il dispositivo se lo ricorda (anche
-riaprendo poi la pagina o l'app senza ?v=57). Per tornare a registrare su
-quel dispositivo: aprire una volta la pagina con ?v=0.
+i click non vengono registrati. Vale solo finché ?v=57 è nell'indirizzo:
+aprendo la pagina o l'app senza ?v=57 i click vengono registrati sempre,
+anche sullo stesso dispositivo (non viene ricordato nulla).
+Il click viene inviato subito (anche se l'app viene chiusa un attimo dopo);
+la città viene cercata già all'apertura della pagina e, se tarda più di
+1,5 secondi, il click parte comunque senza città.
 Il pulsante "Sito" della finestra di controllo apre già la pagina con ?v=57.
-Contatori (solo se l'indirizzo contiene ?v=57; non basta il dispositivo
-ricordato come amministratore): in basso a destra di ogni scheda il numero
-di click di oggi su quella rosticceria; in fondo una scheda "Info" (sfondo
-grigio, cornice gialla) con il totale dei click di oggi. I numeri arrivano dal foglio "Menu"
-(Registro_click.gs, ?azione=oggi), si aggiornano ogni minuto e ripartono
-da 0 a mezzanotte (contano solo le righe con la data di oggi). I click
-dell'amministratore non vengono registrati e quindi non contano.
+Contatori (solo con ?v=57 nell'indirizzo): in basso a destra di ogni scheda
+il numero di click di oggi su quella rosticceria; in fondo una scheda "Info"
+(sfondo grigio, cornice gialla) con il totale dei click di oggi.
+Toccando "Info" si apre la tabella Rosticceria | Oggi | Mese | Anno | Tutto
+con la riga "Totale" in fondo (Esc o ✕ per chiudere).
+Velocità: il registro tiene i conteggi già pronti (Proprietà dello script) e
+li aggiorna a ogni click, quindi non rilegge tutto il foglio. La pagina
+mostra subito gli ultimi numeri ricevuti (salvati sul dispositivo) e li
+aggiorna appena arriva la risposta di Google (di solito 2-5 secondi; sotto la
+tabella compare "Aggiornamento in corso…" e l'ora dei dati). I numeri si
+aggiornano anche ogni minuto; "oggi" riparte da 0 a mezzanotte, "mese" e
+"anno" all'inizio del mese e dell'anno. Se si cancellano o aggiungono righe
+a mano nel foglio, i conteggi vengono ricalcolati da capo al click
+successivo; per ricalcolarli subito aprire
+    <indirizzo /exec>?azione=ricalcola
+I click dell'amministratore non vengono registrati e quindi non contano.
 Il pulsante "Accessi" apre il foglio "Menu" posizionato sull'ultima riga:
 chiede al registro (Registro_click.gs, ?azione=ultima) l'indirizzo del foglio
 e il numero dell'ultima riga. Dopo aver modificato Registro_click.gs nell'editor
