@@ -503,7 +503,7 @@ dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:1
 <header><h1>{title}</h1></header>
 <main>{''.join(cards)}</main>
 <dialog id="detail"><div class="modal-head"><h2 id="name"></h2><button id="close" aria-label="Chiudi">✕</button></div><img id="full" alt=""><div id="text"></div><p id="nomenu" hidden>Il menu di questa data non è pubblicato (vedi archivio).</p><div class="actions"><span id="meta"></span><a id="phone" hidden></a><a id="map" target="_blank" rel="noopener" hidden>Google Maps</a><a id="source" class="source" target="_blank" rel="noopener" hidden>Fonte</a></div></dialog>
-<script>const DATA={payload};const dlg=document.querySelector('#detail');function openCard(i){{const s=DATA.shops[i],r=DATA.results[i];document.querySelector('#name').textContent=s.nome;const img=document.querySelector('#full');img.src=r.image?r.image+'?v='+DATA.v:'';img.hidden=!r.image;const tx=document.querySelector('#text');tx.innerHTML='';(r.sections||[]).forEach(sec=>{{const h=document.createElement('h3');h.textContent=sec.titolo;tx.append(h);sec.piatti.forEach(p=>{{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b><small></small>';d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;d.children[2].textContent=p.descrizione;tx.append(d)}})}});document.querySelector('#nomenu').hidden=!!(r.image||(r.sections||[]).length);document.querySelector('#meta').textContent=r.menu_date?'Menu: '+r.menu_date.split('-').reverse().join('/'):'Menu non disponibile';const phone=document.querySelector('#phone');phone.hidden=!s.telefono;phone.textContent=s.telefono||'';phone.href='tel:'+(s.telefono||'').replace(/[^+\\d]/g,'');const map=document.querySelector('#map');map.hidden=!s.indirizzo;map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.indirizzo||'');const source=document.querySelector('#source');source.hidden=!s.url;source.href=s.url||'';dlg.showModal()}}document.querySelectorAll('.card').forEach((c,i)=>{{c.onclick=()=>openCard(i)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{{data}}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach((c,i)=>{{const r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}})}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})</script>
+<script>const DATA={payload};const dlg=document.querySelector('#detail');function openCard(i){{const s=DATA.shops[i],r=DATA.results[i];document.querySelector('#name').textContent=s.nome;const img=document.querySelector('#full');img.src=r.image?r.image+'?v='+DATA.v:'';img.hidden=!r.image;const tx=document.querySelector('#text');tx.innerHTML='';(r.sections||[]).forEach(sec=>{{const h=document.createElement('h3');h.textContent=sec.titolo;tx.append(h);sec.piatti.forEach(p=>{{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b><small></small>';d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;d.children[2].textContent=p.descrizione;tx.append(d)}})}});document.querySelector('#nomenu').hidden=!!(r.image||(r.sections||[]).length);document.querySelector('#meta').textContent=r.menu_date?'Menu: '+r.menu_date.split('-').reverse().join('/'):'Menu non disponibile';const phone=document.querySelector('#phone');phone.hidden=!s.telefono;phone.textContent=s.telefono||'';phone.href='tel:'+(s.telefono||'').replace(/[^+\\d]/g,'');const map=document.querySelector('#map');map.hidden=!s.indirizzo;map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\\s*\\(.*\\)/,'')+', '+(s.indirizzo||''));const source=document.querySelector('#source');source.hidden=!s.url;source.href=s.url||'';dlg.showModal()}}document.querySelectorAll('.card').forEach((c,i)=>{{c.onclick=()=>openCard(i)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{{data}}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach((c,i)=>{{const r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}})}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})</script>
 </body></html>'''
     OUTPUT.write_text(document, encoding="utf-8")
     WEB_PAGE.write_text(document, encoding="utf-8")
@@ -565,11 +565,14 @@ def publish() -> None:
         return
     if make_icons():  # il logo può essere arrivato da GitHub
         commit()
+    # quanti invii locali non sono ancora su GitHub (non dipende dalla lingua di git)
+    ahead = git("rev-list", "--count", "origin/main..HEAD").stdout.strip()
+    if ahead == "0":
+        print("Pubblicazione: nessuna modifica da inviare.")
+        return
     pushed = git("push", "-u", "origin", "main")
     if pushed.returncode != 0:
         print("Pubblicazione NON riuscita:\n" + pushed.stderr.strip())
-    elif "Everything up-to-date" in pushed.stderr:
-        print("Pubblicazione: nessuna modifica da inviare.")
     else:
         print(f"Pubblicato: {WEB_URL}")
 
@@ -669,9 +672,13 @@ def main() -> None:
     parser.add_argument("--visibile", action="store_true", help="Mostra il browser durante le acquisizioni online.")
     parser.add_argument("--pubblica", action="store_true", help="Dopo l'aggiornamento invia la pagina a GitHub Pages.")
     parser.add_argument("--login", action="store_true", help="Apre Facebook e Instagram per salvare la sessione.")
+    parser.add_argument("--prova-beep", action="store_true", help="Fa sentire i tre beep e termina.")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
+    if args.prova_beep:
+        beep_three_times()
+        return
     make_folders()
     config = read_json(CONFIG, {"impostazioni": {}, "locali": []})
     if args.automatico:
@@ -769,9 +776,15 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     old_state = read_json(STATE, {})
     prints = menu_fingerprints(results)
     names = {shop["id"]: shop["nome"] for shop in shops}
-    # novità = locale con un menu pubblicato diverso da prima (i menu che scadono a mezzanotte non contano)
-    news = [names[key] for key, value in prints.items()
-            if "firme" in old_state and old_state["firme"].get(key) != value]
+    # variazioni = menu nuovo o cambiato, oppure menu di oggi tolto dalla pagina.
+    # I menu dei giorni precedenti che scadono non contano (niente beep al primo giro del mattino).
+    news: list[str] = []
+    if "firme" in old_state:
+        old_prints = old_state["firme"]
+        old_days = {item.get("id"): item.get("menu_date") for item in old_state.get("results", [])}
+        news = [names[key] for key, value in prints.items() if old_prints.get(key) != value]
+        news += [f"{names[key]} (tolto)" for key in old_prints
+                 if key not in prints and key in names and old_days.get(key) == date.today().isoformat()]
     state = {"generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
              "results": results, "firme": prints}
     save_json(STATE, state)
@@ -781,7 +794,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     if args.pubblica:
         publish()
     if news:
-        print("Novità: " + ", ".join(news))
+        print("Novità: " + ", ".join(news))  # anche la finestra di controllo legge questa riga
         beep_three_times()
 
 

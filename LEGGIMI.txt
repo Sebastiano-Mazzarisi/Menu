@@ -23,7 +23,12 @@ La pagina mostra soltanto il titolo e le schede (niente sottotitolo né note).
 Fascia sul lato sinistro della scheda: verde se il menu è di oggi,
 arancione in tutti gli altri casi.
 Cliccando su una scheda si apre la finestra con l'immagine del menu, il
-telefono, Google Maps e la fonte. Si chiude con ✕, con ESC o cliccando fuori.
+telefono, Google Maps e la fonte.
+Google Maps cerca "nome del locale, indirizzo" (il nome senza la parte tra
+parentesi, es. "Santoro"), così trova la scheda del locale e non solo la
+via. Gli indirizzi in locali.json vanno scritti completi di CAP e provincia,
+es. "Via Noci 48-50, 70017 Putignano (BA)": senza CAP Google può confondere
+"Via Noci" con il paese di Noci. Si chiude con ✕, con ESC o cliccando fuori.
 
 Versione per cellulare (GitHub Pages)
 -------------------------------------
@@ -79,7 +84,8 @@ Aggiornamento automatico (ogni 15 minuti)
   esegue senza aprire finestre:
       pythonw Menu.py --automatico
 - Fascia oraria: in locali.json, sezione impostazioni:
-      "automatico": {"dalle": "00:00", "alle": "23:59"}   (= 24 ore su 24)
+      "automatico": {"dalle": "07:00", "alle": "15:00"}
+  (per 24 ore su 24: "dalle": "00:00", "alle": "23:59")
   Fuori fascia il programma si chiude subito senza fare nulla. Per cambiare
   orario basta modificare questi valori (non serve rilanciare Pianifica.bat).
 - In ogni giro: aggiorna i menu, ricrea la pagina e la pubblica su GitHub.
@@ -94,10 +100,13 @@ Aggiornamento automatico (ogni 15 minuti)
 - Gli orari fissi restano tali anche dopo un controllo manuale. Se un
   controllo (automatico o manuale) è in corso quando ne parte un altro, il
   secondo aspetta che il primo finisca (massimo 20 minuti) e poi parte.
-- Novità: quando un locale pubblica un menu diverso da quello già in pagina
-  (nuova data o nuova foto/testo) il PC emette tre beep bassi, uno al
-  secondo, e il registro riporta "Novità: <locali>". I menu che scadono a
-  mezzanotte non fanno suonare nulla.
+- Variazioni: ogni volta che cambia qualcosa nei menu pubblicati il PC
+  emette tre beep bassi, uno al secondo, e il registro riporta
+  "Novità: <locali>". Conta come variazione: un menu nuovo, un menu
+  cambiato (nuova data, foto o testo) oppure un menu di oggi tolto dalla
+  pagina (segnato "(tolto)"). Non suonano i menu dei giorni precedenti
+  che scadono. Per sentire i beep di prova:
+      python Menu.py --prova-beep
 - Per fermarlo: pulsante "Disabilita" nella finestra di controllo (oppure
   Rimuovi_pianificazione.bat, che elimina del tutto l'attività).
 - Avvia.bat resta per un aggiornamento manuale immediato, a qualunque ora.

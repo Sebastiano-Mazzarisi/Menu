@@ -344,9 +344,34 @@ class Monitor(tk.Tk):
                 if not ico.exists():
                     write_ico(images, ico)
                 self.iconbitmap(default=str(ico))
+                self.ico_path = ico
+                self.after(200, self.force_taskbar_icon)  # dopo che la finestra è comparsa
         except Exception as exc:
             import traceback
             log_error(f"icona non impostata: {exc!r}\n{traceback.format_exc()}")
+
+    def force_taskbar_icon(self) -> None:
+        """Imposta l'icona direttamente con le funzioni di Windows (WM_SETICON) sulla finestra
+        "contenitore" creata da tkinter: è quella che la barra delle applicazioni mostra."""
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            user32.GetParent.restype = ctypes.c_void_p
+            user32.LoadImageW.restype = ctypes.c_void_p
+            user32.LoadImageW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint,
+                                          ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+            user32.SendMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p]
+            hwnd = user32.GetParent(self.winfo_id()) or self.winfo_id()
+            image_icon, load_from_file, wm_seticon = 1, 0x10, 0x80
+            big = user32.LoadImageW(None, str(self.ico_path), image_icon, 48, 48, load_from_file)
+            small = user32.LoadImageW(None, str(self.ico_path), image_icon, 16, 16, load_from_file)
+            if not big:
+                log_error(f"LoadImageW fallita per {self.ico_path}")
+                return
+            user32.SendMessageW(hwnd, wm_seticon, 1, big)    # ICON_BIG: barra delle applicazioni
+            user32.SendMessageW(hwnd, wm_seticon, 0, small)  # ICON_SMALL: barra del titolo
+        except Exception as exc:
+            log_error(f"icona Windows non impostata: {exc!r}")
 
     def say(self, message: str) -> None:
         """Messaggio temporaneo (10 secondi) sotto l'esito dell'ultimo giro."""
@@ -396,7 +421,9 @@ if __name__ == "__main__":
         # identità propria per la barra delle applicazioni: mostra la nostra icona, non quella di Python
         try:
             import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Mazzarisi.Menu.Monitor")
-        except Exception:
-            pass
+            result = ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Mazzarisi.Menu.Monitor")
+            if result != 0:
+                log_error(f"AppUserModelID non impostato (codice {result})")
+        except Exception as exc:
+            log_error(f"AppUserModelID non impostato: {exc!r}")
     Monitor().mainloop()

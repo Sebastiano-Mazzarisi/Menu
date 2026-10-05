@@ -2,14 +2,14 @@
   "impostazioni": {
     "titolo": "Menu - {data}",
     "mostra_menu_vecchi": false,
-    "automatico": {"dalle": "00:00", "alle": "23:59"}
+    "automatico": {"dalle": "07:00", "alle": "15:00"}
   },
   "locali": [
     {
       "id": "fantasia",
       "nome": "Fantasia",
       "telefono": "080-405.41.39",
-      "indirizzo": "Via Nicola Losavio 10, Putignano",
+      "indirizzo": "Via Nicola Losavio 10, 70017 Putignano (BA)",
       "url": "https://www.facebook.com/RosticceriaFantasia",
       "logo": "fantasia.jpg",
       "fonti": [
@@ -21,7 +21,7 @@
       "id": "cibaria",
       "nome": "Cibària",
       "telefono": "080-645.07.99",
-      "indirizzo": "Via Estramurale a Levante 11, Putignano",
+      "indirizzo": "Via Estramurale a Levante 11, 70017 Putignano (BA)",
       "url": "https://www.facebook.com/cibaria.asporto",
       "logo": "cibaria.jpg",
       "fonti": [
@@ -33,7 +33,7 @@
       "id": "impastamo",
       "nome": "Impastamò",
       "telefono": "392-536.15.36",
-      "indirizzo": "Via Conversano 34, Putignano",
+      "indirizzo": "Via Conversano 34, 70017 Putignano (BA)",
       "url": "https://www.facebook.com/profile.php?id=61560452176728",
       "logo": "impastamo.jpg",
       "fonti": [
@@ -45,7 +45,7 @@
       "id": "michela",
       "nome": "Le delizie di Michela",
       "telefono": "080-521.42.33",
-      "indirizzo": "Corso Umberto I 87, Putignano",
+      "indirizzo": "Corso Umberto I 87, 70017 Putignano (BA)",
       "url": "https://www.facebook.com/profile.php?id=100045208848338",
       "logo": "michela.jpg",
       "fonti": [
@@ -57,7 +57,7 @@
       "id": "aufer",
       "nome": "Aufer Gastronomia",
       "telefono": "368-38.30.313",
-      "indirizzo": "Via Estramurale a Mezzogiorno 83, Putignano",
+      "indirizzo": "Via Estramurale a Mezzogiorno 83, 70017 Putignano (BA)",
       "url": "https://www.instagram.com/aufergastronomia/",
       "logo": "aufer.jpg",
       "fonti": [
@@ -80,7 +80,7 @@
       "id": "santoro",
       "nome": "Santoro (Castellana)",
       "telefono": "080-859.83.13",
-      "indirizzo": "Via Mazzini 28, Castellana Grotte",
+      "indirizzo": "Via Mazzini 28, 70013 Castellana Grotte (BA)",
       "url": "https://www.facebook.com/santorogastronomia",
       "logo": "santoro.jpg",
       "fonti": [
@@ -92,7 +92,7 @@
       "id": "pane-co",
       "nome": "Pane & Co",
       "telefono": "080-405.49.00",
-      "indirizzo": "Viale Federico II 49, Putignano",
+      "indirizzo": "Viale Federico II 49, 70017 Putignano (BA)",
       "url": "https://www.paneeco.it/menu",
       "logo": "pane-co.jpg",
       "fonti": [
@@ -104,7 +104,7 @@
       "id": "bollenti-piatti",
       "nome": "Bollenti piatti",
       "telefono": "334-318.58.44",
-      "indirizzo": "Via Noci 48, Putignano",
+      "indirizzo": "Via Noci 48-50, 70017 Putignano (BA)",
       "url": "https://www.facebook.com/BollentiPiatti",
       "logo": "bollenti-piatti.jpg",
       "fonti": [
