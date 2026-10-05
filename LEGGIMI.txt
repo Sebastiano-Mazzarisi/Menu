@@ -168,9 +168,10 @@ i click non vengono registrati e il dispositivo se lo ricorda (anche
 riaprendo poi la pagina o l'app senza ?v=57). Per tornare a registrare su
 quel dispositivo: aprire una volta la pagina con ?v=0.
 Il pulsante "Sito" della finestra di controllo apre già la pagina con ?v=57.
-Contatori (solo con ?v=57): in basso a destra di ogni scheda il numero di
-click di oggi su quella rosticceria; in fondo una scheda "Info" con il
-totale dei click di oggi. I numeri arrivano dal foglio "Menu"
+Contatori (solo se l'indirizzo contiene ?v=57; non basta il dispositivo
+ricordato come amministratore): in basso a destra di ogni scheda il numero
+di click di oggi su quella rosticceria; in fondo una scheda "Info" (sfondo
+grigio, cornice gialla) con il totale dei click di oggi. I numeri arrivano dal foglio "Menu"
 (Registro_click.gs, ?azione=oggi), si aggiornano ogni minuto e ripartono
 da 0 a mezzanotte (contano solo le righe con la data di oggi). I click
 dell'amministratore non vengono registrati e quindi non contano.
