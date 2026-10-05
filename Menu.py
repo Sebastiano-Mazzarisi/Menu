@@ -586,6 +586,7 @@ def check_notice(shop: dict[str, Any], browser: "BrowserCollector | None", check
         print(f"  {shop['nome']} - controllo avvisi non riuscito: {str(exc)[:120]}")
         return None
     photo_text = ocr_image(image) if image else ""
+    learn_rest_days(shop, f"{text}\n{photo_text}")
     closed = closure_today(f"{text}\n{photo_text}")
     if not closed:
         if image:
@@ -642,8 +643,62 @@ def ocr_image(path: Path) -> str:
     return text
 
 
+DAY_NAMES = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+REST_STATE = DATA / "riposi.json"
+
+
+def rest_days_in_text(text: str) -> set[int]:
+    """Giorni di riposo settimanale scritti in un post o in una foto degli orari, es.
+    "Lunedì GIORNO DI CHIUSURA", "chiuso il lunedì", "riposo settimanale: domenica".
+    Restituisce i numeri dei giorni (0 = lunedì). Un "lunedì chiuso" isolato conta solo
+    se il testo è una tabella di orari (almeno tre orari tipo 9:30 - 20:00)."""
+    lowered = (text or "").lower()
+    day = r"(lun|mar|mer|gio|ven|sab|dom)[a-zàèéìòù]*"
+    found: set[int] = set()
+    patterns = [rf"\b{day}\W+giorno di chiusura", rf"\b{day}\W+(?:riposo|chiusura) settimanale",
+                rf"(?:riposo|chiusura) settimanale\W+(?:il\s+)?{day}", rf"\bchius[oai]\s+(?:il|ogni)\s+{day}"]
+    if len(re.findall(r"\d{1,2}[:.]\d{2}\s*-\s*\d{1,2}[:.]\d{2}", lowered)) >= 3:
+        patterns.append(rf"\b{day}\W{{0,3}}chius[oaiu]")
+    for pattern in patterns:
+        for match in re.finditer(pattern, lowered):
+            found.add(WEEKDAYS[match.group(1)])
+    return found
+
+
+def learn_rest_days(shop: dict[str, Any], text: str) -> None:
+    """Ricorda (dati/riposi.json) i giorni di riposo trovati nei post del locale."""
+    days = rest_days_in_text(text)
+    if not days:
+        return
+    state = read_json(REST_STATE, {})
+    known = set(state.get(shop["id"], []))
+    if not days <= known:
+        state[shop["id"]] = sorted(known | days)
+        save_json(REST_STATE, state)
+        print(f"  {shop['nome']} - giorno di riposo settimanale: {', '.join(DAY_NAMES[d] for d in sorted(days))}")
+
+
+def rest_days(shop: dict[str, Any]) -> set[int]:
+    """Giorni di riposo: quelli scritti in locali.json ("riposo": ["lunedì"]) più quelli letti nei post."""
+    configured = {WEEKDAYS[name.strip().lower()[:3]] for name in shop.get("riposo", []) if name.strip()[:3].lower() in WEEKDAYS}
+    return configured | set(read_json(REST_STATE, {}).get(shop["id"], []))
+
+
+def rest_day_result(shop: dict[str, Any], folder: Path, checked: str) -> Result:
+    """Oggi è il giorno di riposo: la scheda mostra l'avviso al posto del menu."""
+    today = date.today()
+    path = folder / f"{today.isoformat()}_riposo.json"
+    if not path.exists():
+        text = f"Oggi, {DAY_NAMES[today.weekday()]}, {shop['nome']} è chiuso per il riposo settimanale."
+        save_json(path, {"data": today.isoformat(), "fonte": "riposo", "sezioni": [
+            {"titolo": "Giorno di riposo", "piatti": [{"nome": text, "prezzo": "", "descrizione": ""}]}]})
+    return Result(path, today, "riposo settimanale", checked)
+
+
 def closure_note(path: Path | None) -> str:
     """"Chiuso fino al 07/10" se il file è un avviso di chiusura salvato da closure_period."""
+    if path and path.stem.endswith("_riposo"):
+        return f"Chiuso il {DAY_NAMES[image_date(path).weekday()]} (riposo settimanale)"
     match = re.search(r"_chiusura_fino_(\d{4})(\d{2})(\d{2})", path.stem) if path else None
     return f"Chiuso fino al {match.group(3)}/{match.group(2)}" if match else ""
 
@@ -653,6 +708,7 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
     Il menu viene salvato come AAAA-MM-GG_testo.json e mostrato riga per riga nella scheda."""
     name = source.get("nome", "browser")
     print(f"  {shop['nome']} - testo letto (post senza foto): {' '.join(text.split())[:160]}")
+    learn_rest_days(shop, text)
     closed = closure_today(text)
     if closed:
         print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
@@ -710,6 +766,8 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
     errors: list[str] = []
     folder = INPUT / shop["id"]
     folder.mkdir(parents=True, exist_ok=True)
+    if date.today().weekday() in rest_days(shop):
+        return rest_day_result(shop, folder, checked)
     if online and skip_if_today is not None:
         latest = newest_image(folder)
         if latest and image_date(latest) == date.today():
@@ -761,6 +819,7 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                 seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
                 if seen:
                     print(f"  {shop['nome']} - testo letto: {seen[:160]}")  # utile nel registro
+                learn_rest_days(shop, f"{browser.last_text}\n{photo_text}")
                 closed = closure_period(f"{browser.last_text}\n{browser.last_alt}\n{photo_text}")
                 if closed:
                     print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")

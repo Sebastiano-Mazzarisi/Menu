@@ -408,7 +408,8 @@ class Monitor(tk.Tk):
             return
         subprocess.run(["taskkill", "/F", "/T", "/FI", f"WINDOWTITLE eq {CONSOLE_TITLE}*"],
                        capture_output=True, creationflags=NO_WINDOW)
-        subprocess.Popen(["cmd", "/k", f"title {CONSOLE_TITLE} && call \"{bat}\""], cwd=ROOT,
+        # riga di comando passata così com'è (una lista verrebbe ri-quotata e cmd non la capirebbe)
+        subprocess.Popen(f'cmd /k "title {CONSOLE_TITLE} && call Avvia.bat"', cwd=ROOT,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
 
     def open_log(self) -> None:
