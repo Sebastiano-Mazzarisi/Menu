@@ -151,9 +151,9 @@ def expand_more(page: Any, selector: str) -> None:
 
 
 def clean_post_text(text: str) -> str:
-    """Toglie un eventuale "… Altro..." rimasto in fondo al testo."""
-    return re.sub(r"\s*(…|\.\.\.)?\s*(altro|mostra altro|see more)\s*(\.\.\.|…)?\s*$", "", text or "",
-                  flags=re.IGNORECASE).strip()
+    """Toglie i comandi di Facebook rimasti in fondo al testo: "… Altro...", "Vedi meno", "See less"."""
+    return re.sub(r"\s*(…|\.\.\.)?\s*(altro|mostra altro|see more|vedi meno|mostra meno|see less)\s*(\.\.\.|…)?\s*$",
+                  "", text or "", flags=re.IGNORECASE).strip()
 
 
 def dismiss_dialogs(page: Any) -> None:
@@ -837,7 +837,7 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
     words = source.get("parole_menu", MENU_WORDS)
     if words and not any(word in text.lower() for word in words):
         raise RuntimeError("l'ultimo post (solo testo) non sembra un menu")
-    clean = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    clean = "\n".join(line.strip() for line in clean_post_text(text).splitlines() if line.strip())
     written_day = plausible_menu_date(clean)  # data o giorno scritto nel post ("MENÙ DI SABATO")
     for earlier in sorted(folder.glob("*_testo.json")):  # stesso testo già visto: resta la sua data
         if read_json(earlier, {}).get("testo") == clean:

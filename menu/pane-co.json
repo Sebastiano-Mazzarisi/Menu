@@ -21,11 +21,6 @@
           "descrizione": ""
         },
         {
-          "nome": "Bietoline al pomodoro",
-          "prezzo": "€5.00",
-          "descrizione": ""
-        },
-        {
           "nome": "Filetti di peperoni con pan grattato e capperi",
           "prezzo": "€5.00",
           "descrizione": ""
@@ -66,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Tagliatella paglia e fieno alla boscaiola",
-          "prezzo": "€7.00",
-          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
+          "nome": "Spaghetti alla carbonara",
+          "prezzo": "€6.50",
+          "descrizione": ""
         },
         {
-          "nome": "Orecchiette con ciliegino, rucola, fagiolini e cacio affumicato",
+          "nome": "Risotto con asparagi e zafferano",
+          "prezzo": "€7.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Orecchiette tricolore alla pastorella",
+          "prezzo": "€7.50",
+          "descrizione": "Con pomodoro e ricotta"
+        },
+        {
+          "nome": "Cavatellucci con gamberetti, rucola e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con funghi porcini e zafferano",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Cavatelli con pesce persico, pomodorini e carciofi",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Zuppa del casale",
+          "nome": "Zuppa di lenticchie",
           "prezzo": "€6.00",
-          "descrizione": "Con lenticchie, fagioli, farro e ceci Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -101,14 +96,9 @@
           "descrizione": ""
         },
         {
-          "nome": "Arrosto di lonza con speck",
+          "nome": "Scaloppe di pollo al limone",
           "prezzo": "€7.50",
           "descrizione": "2 pezzi"
-        },
-        {
-          "nome": "Spezzatino di capocollo alla contadina",
-          "prezzo": "€7.50",
-          "descrizione": ""
         }
       ]
     }
