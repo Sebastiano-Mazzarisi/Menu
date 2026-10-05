@@ -34,7 +34,18 @@ function doPost(e) {
   }
 }
 
-/** Aprendo l'URL nel browser si vede solo questo: serve a controllare che il deployment funzioni. */
-function doGet() {
+/**
+ * GET senza parametri: "Registro click Menu attivo" (controllo che il deployment funzioni).
+ * GET ?azione=ultima: indirizzo del foglio e numero dell'ultima riga, usati dal pulsante
+ * "Accessi" della finestra di controllo (Monitor.py) per aprire il foglio sull'ultimo click.
+ */
+function doGet(e) {
+  if (e && e.parameter && e.parameter.azione === 'ultima') {
+    var file = SpreadsheetApp.getActiveSpreadsheet();
+    var foglio = file.getSheets()[0];
+    var risposta = { url: file.getUrl(), gid: foglio.getSheetId(), riga: foglio.getLastRow() };
+    return ContentService.createTextOutput(JSON.stringify(risposta))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService.createTextOutput('Registro click Menu attivo');
 }

@@ -165,6 +165,11 @@ i click non vengono registrati e il dispositivo se lo ricorda (anche
 riaprendo poi la pagina o l'app senza ?v=57). Per tornare a registrare su
 quel dispositivo: aprire una volta la pagina con ?v=0.
 Il pulsante "Sito" della finestra di controllo apre già la pagina con ?v=57.
+Il pulsante "Accessi" apre il foglio "Menu" posizionato sull'ultima riga:
+chiede al registro (Registro_click.gs, ?azione=ultima) l'indirizzo del foglio
+e il numero dell'ultima riga. Dopo aver modificato Registro_click.gs nell'editor
+Apps Script: Esegui il deployment > Gestisci deployment > matita (Modifica) >
+Versione: "Nuova versione" > Esegui il deployment (l'indirizzo /exec resta uguale).
 
 Aggiungere una rosticceria
 --------------------------
@@ -234,6 +239,12 @@ del post o il testo letto nella foto (OCR) contiene una di queste parole:
 menu, menù, primi, secondi, contorni, del giorno, piatti, antipasti
 (si cambiano per singola fonte con "parole_menu": [...]). Così una foto
 pubblicitaria o di un piatto non diventa il menu del giorno.
+Post senza foto (menu scritto nel testo, es. Bollenti piatti): il testo
+del post viene salvato come AAAA-MM-GG_testo.json e la scheda lo mostra riga
+per riga. Lo stesso testo già visto mantiene la sua data. Il programma apre
+da solo "Altro..." per leggere il post intero e chiude la finestra dei
+cookie di Facebook (rifiutando quelli facoltativi) e l'invito ad accedere.
+Le schermate in "errori" più vecchie di 2 giorni vengono cancellate.
 Data del menu: quella scritta nel post o nella foto (es. "Lunedì 5/10"),
 se è tra 7 giorni fa e domani; altrimenti il giorno in cui la foto compare
 per la prima volta ("data": "novita").

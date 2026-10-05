@@ -47,6 +47,14 @@ def slugify(value: str) -> str:
 def make_folders() -> None:
     for folder in (INPUT, CURRENT, ARCHIVE, LOGOS, PROFILE, ERRORS, DATA):
         folder.mkdir(parents=True, exist_ok=True)
+    # le schermate di diagnostica servono solo per pochi giorni: tolgo quelle più vecchie di 2 giorni
+    limit = datetime.now().timestamp() - 2 * 86400
+    for item in ERRORS.glob("*.png"):
+        try:
+            if item.stat().st_mtime < limit:
+                item.unlink()
+        except OSError:
+            pass
 
 
 def read_json(path: Path, default: Any) -> Any:
@@ -118,6 +126,29 @@ class Result:
     error: str = ""
 
 
+def dismiss_dialogs(page: Any) -> None:
+    """Chiude le finestre che coprono la pagina: cookie di Facebook/Instagram (rifiuta quelli
+    facoltativi) e l'invito ad accedere. Senza questo i post restano nascosti dietro."""
+    for label in ("Rifiuta cookie facoltativi", "Decline optional cookies", "Rifiuta i cookie facoltativi",
+                  "Consenti solo i cookie essenziali", "Only allow essential cookies"):
+        try:
+            button = page.get_by_role("button", name=label).first
+            if button.is_visible(timeout=500):
+                button.click(timeout=2000)
+                page.wait_for_timeout(1500)
+                break
+        except Exception:
+            continue
+    for selector in ("div[role='dialog'] [aria-label='Chiudi']", "div[role='dialog'] [aria-label='Close']"):
+        try:
+            close = page.locator(selector).first
+            if close.is_visible(timeout=500):
+                close.click(timeout=2000)
+                page.wait_for_timeout(1000)
+        except Exception:
+            continue
+
+
 class BrowserCollector:
     def __init__(self, visible: bool) -> None:
         self.visible = visible
@@ -168,12 +199,13 @@ class BrowserCollector:
         page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=60000)
         input("Accedi nei due siti, poi torna qui e premi INVIO...")
 
-    def capture(self, shop: dict[str, Any], source: dict[str, Any]) -> Path:
+    def capture(self, shop: dict[str, Any], source: dict[str, Any]) -> Path | None:
         self.start(source)
         page = self.context.new_page()
         try:
             page.goto(source["url"], wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(int(source.get("attesa_secondi", 6)) * 1000)
+            dismiss_dialogs(page)
             if source.get("apri_storia"):
                 opened = False
                 if source.get("utente"):
@@ -203,7 +235,7 @@ class BrowserCollector:
                     except Exception:
                         continue
                 if not opened:
-                    raise RuntimeError("la Storia non si è aperta")
+                    raise RuntimeError("nessuna Storia pubblicata in questo momento (o non si è aperta)")
                 if source.get("richiede_recente"):
                     visible_text = page.locator("body").inner_text(timeout=5000)
                     recent = re.search(
@@ -221,14 +253,25 @@ class BrowserCollector:
                         break
                     page.mouse.wheel(0, 1200)
                     page.wait_for_timeout(1500)
-            if selector and not page.locator(selector).count():
-                raise RuntimeError(f"nessun elemento trovato con il selettore {selector}")
             self.last_text = ""
             if source.get("selettore_testo"):
+                try:  # "Altro..." / "See more": apre il testo completo del post
+                    more = page.locator(f"{source['selettore_testo']} [role='button']").filter(
+                        has_text=re.compile(r"^(Altro|Mostra altro|See more)", re.IGNORECASE)).first
+                    if more.is_visible(timeout=1000):
+                        more.click(timeout=2000)
+                        page.wait_for_timeout(800)
+                except Exception:
+                    pass
                 try:
                     self.last_text = page.locator(source["selettore_testo"]).first.inner_text(timeout=3000)
                 except Exception:
                     pass
+            if selector and not page.locator(selector).count():
+                if self.last_text.strip():
+                    self.last_alt = ""
+                    return None  # post solo testo (es. menu scritto nel post): lo gestisce acquire
+                raise RuntimeError(f"nessun elemento trovato con il selettore {selector}")
             target = page.locator(selector).first if selector else self._largest_media(page)
             if target is None:
                 raise RuntimeError("nessuna immagine grande visibile")
@@ -267,6 +310,7 @@ class BrowserCollector:
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(6000)
+            dismiss_dialogs(page)
             if "instagram.com" in url:
                 post, text_css, image_css = "main", "", "a[href*='/p/'] img"
             else:
@@ -604,6 +648,30 @@ def closure_note(path: Path | None) -> str:
     return f"Chiuso fino al {match.group(3)}/{match.group(2)}" if match else ""
 
 
+def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, text: str, checked: str) -> Result:
+    """Post senza foto: avviso di chiusura oppure menu scritto nel testo del post.
+    Il menu viene salvato come AAAA-MM-GG_testo.json e mostrato riga per riga nella scheda."""
+    name = source.get("nome", "browser")
+    print(f"  {shop['nome']} - testo letto (post senza foto): {' '.join(text.split())[:160]}")
+    closed = closure_today(text)
+    if closed:
+        print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
+        return Result(save_closure(folder, closed, None, text), date.today(), name, checked)
+    words = source.get("parole_menu", MENU_WORDS)
+    if words and not any(word in text.lower() for word in words):
+        raise RuntimeError("l'ultimo post (solo testo) non sembra un menu")
+    clean = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    for earlier in sorted(folder.glob("*_testo.json")):  # stesso testo già visto: resta la sua data
+        if read_json(earlier, {}).get("testo") == clean:
+            return Result(earlier, image_date(earlier), name, checked)
+    day = plausible_menu_date(clean) or date.today()
+    lines = [line for line in clean.splitlines() if not line.lower().startswith(("altro", "mostra"))]
+    path = folder / f"{day.isoformat()}_testo.json"
+    save_json(path, {"data": day.isoformat(), "testo": clean, "sezioni": [
+        {"titolo": "Menu del giorno", "piatti": [{"nome": line, "prezzo": "", "descrizione": ""} for line in lines]}]})
+    return Result(path, day, name, checked)
+
+
 MENU_WORDS = ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti"]
 
 
@@ -687,6 +755,8 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                 if browser is None:
                     raise RuntimeError("browser non disponibile")
                 image = browser.capture(shop, source)
+                if image is None:  # post solo testo
+                    return text_post_result(shop, source, folder, browser.last_text, checked)
                 photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
                 seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
                 if seen:

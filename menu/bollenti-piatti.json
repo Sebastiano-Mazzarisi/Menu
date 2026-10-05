@@ -1,0 +1,36 @@
+{
+  "data": "2026-10-05",
+  "testo": "MENÙ DI SABATO\nPRIMI PIATTI\n●CIME DI RAPE STUFATE CON OLIO, AGLIO E POMODORINO 6,0\n●LASAGNA AL FORNO 5,0\n●TORTIGLIONI CON PISELLI, FUNGHI MISTI CON PORCINI E SPECK 5,5… Altro...",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI SABATO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CIME DI RAPE STUFATE CON OLIO, AGLIO E POMODORINO 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TORTIGLIONI CON PISELLI, FUNGHI MISTI CON PORCINI E SPECK 5,5… Altro...",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}

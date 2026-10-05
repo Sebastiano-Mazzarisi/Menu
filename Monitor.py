@@ -233,7 +233,7 @@ class Monitor(tk.Tk):
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
         for text, action in (("Controlla ora", self.run_now), ("Registro", self.open_log), ("Sito", self.open_site),
-                             ("Pianifica", self.toggle_task)):
+                             ("Accessi", self.open_accesses), ("Pianifica", self.toggle_task)):
             button = tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
                                activebackground="#334155", activeforeground=FG, relief="flat", padx=8)
             button.pack(side="left", padx=4)
@@ -416,13 +416,41 @@ class Monitor(tk.Tk):
         self.task_state = "..."
         self.last_query = datetime.min  # rilegge subito lo stato da Windows
 
+    def open_accesses(self) -> None:
+        """Apre il foglio Google "Menu" con i click, posizionato sull'ultima riga inserita.
+        Chiede al registro (Apps Script, ?azione=ultima) indirizzo del foglio e numero dell'ultima riga."""
+        self.say("Apro il foglio degli accessi…")
+        threading.Thread(target=self._open_accesses, daemon=True).start()
+
+    def _open_accesses(self) -> None:
+        import urllib.request
+        log_url = read_json(CONFIG, {}).get("impostazioni", {}).get("registro_click_url", "")
+        saved = read_json(POSITION, {})
+        if not log_url:
+            self.say("Registro click non configurato (locali.json)")
+            return
+        try:
+            with urllib.request.urlopen(log_url + "?azione=ultima", timeout=30) as answer:
+                info = json.loads(answer.read().decode("utf-8"))
+            target = f"{info['url']}#gid={info['gid']}&range=A{max(1, int(info['riga']))}"
+            saved["foglio_accessi"] = info["url"]
+            POSITION.write_text(json.dumps(saved), encoding="utf-8")
+        except Exception:
+            if not saved.get("foglio_accessi"):
+                self.say("Foglio non raggiungibile: aggiorna Registro_click.gs (vedi LEGGIMI)")
+                return
+            target = saved["foglio_accessi"]  # ultimo indirizzo noto, senza posizionamento
+        webbrowser.open(target)
+
     def open_site(self) -> None:
         webbrowser.open(WEB_URL + "?v=57")  # amministratore: i click non vengono registrati
 
     def close(self) -> None:
         try:
             POSITION.parent.mkdir(exist_ok=True)
-            POSITION.write_text(json.dumps({"x": self.winfo_x(), "y": self.winfo_y()}), encoding="utf-8")
+            saved = read_json(POSITION, {})
+            saved.update({"x": self.winfo_x(), "y": self.winfo_y()})
+            POSITION.write_text(json.dumps(saved), encoding="utf-8")
         finally:
             self.destroy()
 
