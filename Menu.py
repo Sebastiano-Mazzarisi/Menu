@@ -604,6 +604,20 @@ def closure_note(path: Path | None) -> str:
     return f"Chiuso fino al {match.group(3)}/{match.group(2)}" if match else ""
 
 
+MENU_WORDS = ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti"]
+
+
+def plausible_menu_date(text: str) -> date | None:
+    """Data del menu scritta nel post o nella foto (es. "Menu del giorno Sabato 3/10"),
+    accettata solo se è tra 7 giorni fa e domani (evita prezzi o date lontane)."""
+    if not text:
+        return None
+    for day in dates_in_text(fix_ocr_dates(text)):
+        if -7 <= (day - date.today()).days <= 1:
+            return day
+    return None
+
+
 def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
     """Se l'immagine catturata è identica a una già presente, non è un menu nuovo:
     elimina la copia appena scaricata e mantiene la data della prima volta in cui è comparsa."""
@@ -687,7 +701,12 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                         return Result(save_closure(folder, closed, image), date.today(), source.get("nome", kind), checked)
                     return Result(save_closure(folder, closed, None, browser.last_text), date.today(),
                                   source.get("nome", kind), checked)
-                text_day = date_in_text(browser.last_text)
+                # l'ultimo post è davvero un menu? (non una pubblicità, una foto di un piatto, ecc.)
+                words = source.get("parole_menu", MENU_WORDS)
+                if words and not any(word in f"{browser.last_text} {photo_text}".lower() for word in words):
+                    image.unlink(missing_ok=True)
+                    raise RuntimeError("l'ultimo post non sembra un menu")
+                text_day = plausible_menu_date(browser.last_text) or plausible_menu_date(photo_text)
                 if text_day:
                     # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
                     dated = folder / f"{text_day.isoformat()}_online{image.suffix}"
@@ -902,6 +921,21 @@ def start_auto_log() -> None:
     print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} ===")
 
 
+def kill_previous_run() -> None:
+    """Chiude un giro precedente rimasto bloccato (con il suo browser e le sue finestre)."""
+    try:
+        pid = int(AUTO_LOCK.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return
+    if pid == os.getpid() or sys.platform != "win32":
+        return
+    import subprocess
+    subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True,
+                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    print(f"Chiuso un controllo precedente rimasto bloccato (processo {pid}).")
+    AUTO_LOCK.unlink(missing_ok=True)
+
+
 def take_lock(max_wait_minutes: int = 20) -> bool:
     """Evita due esecuzioni contemporanee (giro automatico e giro manuale).
 
@@ -909,11 +943,14 @@ def take_lock(max_wait_minutes: int = 20) -> bool:
     l'orario fisso del controllo automatico viene rispettato anche dopo un controllo
     manuale. Un blocco più vecchio di 30 minuti è considerato abbandonato."""
     import time
+    if AUTO_LOCK.exists() and time.time() - AUTO_LOCK.stat().st_mtime >= 30 * 60:
+        kill_previous_run()
     waited = False
     deadline = time.time() + max_wait_minutes * 60
     while AUTO_LOCK.exists() and time.time() - AUTO_LOCK.stat().st_mtime < 30 * 60:
         if time.time() > deadline:
-            return False
+            kill_previous_run()  # aspettato troppo: chiudo il giro bloccato e parto
+            break
         if not waited:
             print("Un altro controllo è in corso: attendo che finisca...")
             waited = True

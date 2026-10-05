@@ -14,7 +14,7 @@
       "url": "https://www.facebook.com/RosticceriaFantasia",
       "logo": "fantasia.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/RosticceriaFantasia", "attiva": false},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/RosticceriaFantasia", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },
@@ -26,7 +26,7 @@
       "url": "https://www.facebook.com/cibaria.asporto",
       "logo": "cibaria.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/cibaria.asporto", "attiva": false},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/cibaria.asporto", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },
@@ -109,7 +109,7 @@
       "url": "https://www.facebook.com/BollentiPiatti",
       "logo": "bollenti-piatti.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/BollentiPiatti", "attiva": false},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/BollentiPiatti", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     }

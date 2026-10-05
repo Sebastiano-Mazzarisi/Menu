@@ -28,6 +28,7 @@ LOG = ROOT / "dati" / "automatico.log"
 LOCK = ROOT / "dati" / "automatico.lock"
 POSITION = ROOT / "dati" / "monitor.json"
 TASK = "Menu"
+CONSOLE_TITLE = "Menu - controllo manuale"
 INTERVAL = timedelta(minutes=15)
 WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -383,10 +384,20 @@ class Monitor(tk.Tk):
 
     # --- pulsanti -------------------------------------------------------------------------------
     def run_now(self) -> None:
-        """Lancia subito un giro completo nella sua finestra (come Avvia.bat)."""
+        """Lancia subito un giro completo in una finestra (come Avvia.bat).
+
+        La finestra resta aperta per leggere l'esito; prima di aprirne una nuova viene chiusa
+        quella del controllo manuale precedente (riconosciuta dal titolo)."""
         bat = ROOT / "Avvia.bat"
-        if bat.exists() and sys.platform == "win32":
-            subprocess.Popen(["cmd", "/c", "start", "", str(bat)], cwd=ROOT, creationflags=NO_WINDOW)
+        if not bat.exists() or sys.platform != "win32":
+            return
+        if LOCK.exists():
+            self.say("Un controllo è già in corso: attendi che finisca")
+            return
+        subprocess.run(["taskkill", "/F", "/T", "/FI", f"WINDOWTITLE eq {CONSOLE_TITLE}*"],
+                       capture_output=True, creationflags=NO_WINDOW)
+        subprocess.Popen(["cmd", "/k", f"title {CONSOLE_TITLE} && call \"{bat}\""], cwd=ROOT,
+                         creationflags=subprocess.CREATE_NEW_CONSOLE)
 
     def open_log(self) -> None:
         """Apre il registro con il Blocco note (se non esiste ancora lo dice nella finestra)."""

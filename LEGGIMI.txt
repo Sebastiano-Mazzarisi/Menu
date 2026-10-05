@@ -97,6 +97,8 @@ Aggiornamento automatico (ogni 15 minuti)
   Il file nasce al primo giro: prima di allora il pulsante Registro della
   finestra di controllo avvisa che non esiste ancora.
 - Funziona solo con il PC acceso e con l'utente collegato (non in standby).
+- Se un giro resta bloccato (oltre 30 minuti, o oltre 20 di attesa) il
+  giro successivo lo chiude, con il suo browser, e parte.
 - Gli orari fissi restano tali anche dopo un controllo manuale. Se un
   controllo (automatico o manuale) è in corso quando ne parte un altro, il
   secondo aspetta che il primo finisca (massimo 20 minuti) e poi parte.
@@ -123,7 +125,10 @@ viene ricordata alla chiusura, in dati/monitor.json). Mostra:
   pallino verde "oggi", arancione con la data dell'ultimo menu, rosso
   "nessuno";
 - l'esito dell'ultimo giro (pubblicato, nessuna novità, errore).
-Pulsanti: "Controlla ora" (lancia Avvia.bat), "Registro" (apre
+Pulsanti: "Controlla ora" (lancia Avvia.bat in una finestra intitolata
+"Menu - controllo manuale", che resta aperta per leggere l'esito; prima di
+aprirne una nuova chiude la precedente; se un controllo è già in corso non
+ne avvia un altro), "Registro" (apre
 dati/automatico.log), "Sito" (apre la pagina su GitHub Pages),
 "Pianifica"/"Disabilita": se l'attività è attiva la disabilita; se manca, è
 disabilitata o ha orari non allineati ai quarti d'ora, la (ri)crea con gli
@@ -200,8 +205,16 @@ Tipi di fonte
   anche --solo-html lo ritrova. Cliccando la scheda il menu appare come
   elenco piatti/prezzi invece che come foto.
 
-Ultimo post Facebook (oggi usato per Impastamò)
------------------------------------------------
+Ultimo post Facebook (Impastamò, Santoro, Cibària, Fantasia, Bollenti piatti)
+------------------------------------------------------------------------------
+Controllo "è un menu?": la foto del primo post viene usata solo se il testo
+del post o il testo letto nella foto (OCR) contiene una di queste parole:
+menu, menù, primi, secondi, contorni, del giorno, piatti, antipasti
+(si cambiano per singola fonte con "parole_menu": [...]). Così una foto
+pubblicitaria o di un piatto non diventa il menu del giorno.
+Data del menu: quella scritta nel post o nella foto (es. "Lunedì 5/10"),
+se è tra 7 giorni fa e domani; altrimenti il giorno in cui la foto compare
+per la prima volta ("data": "novita").
 Fonte browser con queste opzioni:
 - "selettore": "[aria-posinset='1'] a[href*='/photo'] img" -> la foto del
   primo post della pagina
