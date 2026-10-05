@@ -37,7 +37,7 @@
       "url": "https://www.facebook.com/profile.php?id=61560452176728",
       "logo": "impastamo.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=61560452176728", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=61560452176728", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },

@@ -214,6 +214,14 @@ Fonte browser con queste opzioni:
   -> legge il testo del post; se contiene una data ("menù del giorno
   4 Ottobre" oppure "4/10") si usa quella, che è più affidabile di
   "novita". Oggi usato per Santoro.
+Avvisi di chiusura: se il testo del post o il testo che Facebook legge
+nella foto (testo alternativo dell'immagine) contiene "chiuso/chiusi/
+chiusura/ferie" e due date (es. "Siamo chiusi da domenica 4/10 a mercoledì
+7/10"), la foto viene pubblicata come menu del giorno per tutti i giorni
+di chiusura, con la scheda verde "Oggi" e la nota "Chiuso fino al 07/10".
+Con una sola data e la parola "fino" vale da oggi fino a quella data.
+Il file in ingresso si chiama AAAA-MM-GG_chiusura_fino_AAAAMMGG.jpg.
+Nel registro compare "testo letto: ..." con il testo trovato nel post.
 Serve la sessione Facebook salvata nella cartella profilo:
 
     python Menu.py --login

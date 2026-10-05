@@ -125,6 +125,7 @@ class BrowserCollector:
         self.context = None
         self.profile_key = ""
         self.last_text = ""
+        self.last_alt = ""
 
     def start(self, source: dict[str, Any] | None = None) -> None:
         source = source or {}
@@ -231,6 +232,12 @@ class BrowserCollector:
             target = page.locator(selector).first if selector else self._largest_media(page)
             if target is None:
                 raise RuntimeError("nessuna immagine grande visibile")
+            # Facebook scrive nel testo alternativo dell'immagine le parole che legge nella foto
+            # (es. "...il seguente testo: 'Siamo chiusi da domenica 4/10 a mercoledì 7/10'")
+            try:
+                self.last_alt = target.get_attribute("alt", timeout=2000) or ""
+            except Exception:
+                self.last_alt = ""
             destination = INPUT / shop["id"] / f"{date.today().isoformat()}_online.jpg"
             media_url = target.evaluate("element => element.currentSrc || element.src || ''")
             if media_url:
@@ -356,6 +363,46 @@ def date_in_text(text: str) -> date | None:
     return None
 
 
+def dates_in_text(text: str) -> list[date]:
+    """Tutte le date nel testo, nell'ordine: '4 ottobre', '4/10', '4.10' ..."""
+    found: list[tuple[int, date]] = []
+    lowered = (text or "").lower()
+    for match in re.finditer(r"(\d{1,2})\s+([a-zà]+)", lowered):
+        if match.group(2) in MONTHS:
+            try:
+                found.append((match.start(), menu_page_date(f"{match.group(1)} {match.group(2)}")))
+            except (RuntimeError, ValueError):
+                pass
+    for match in re.finditer(r"\b(\d{1,2})[/.-](\d{1,2})\b", lowered):
+        try:
+            month = list(MONTHS)[int(match.group(2)) - 1]
+            found.append((match.start(), menu_page_date(f"{int(match.group(1))} {month}")))
+        except (IndexError, RuntimeError, ValueError):
+            pass
+    return [day for _, day in sorted(found)]
+
+
+def closure_period(text: str) -> tuple[date, date] | None:
+    """Riconosce un avviso di chiusura ("Siamo chiusi da domenica 4/10 a mercoledì 7/10").
+
+    Restituisce (primo giorno, ultimo giorno di chiusura) oppure None.
+    Con una sola data e la parola "fino" vale da oggi fino a quella data."""
+    if not re.search(r"\bchius[oiae]\b|\bchiusura\b|\bferie\b", text or "", re.IGNORECASE):
+        return None
+    days = dates_in_text(text)
+    if len(days) >= 2:
+        return min(days[0], days[1]), max(days[0], days[1])
+    if len(days) == 1 and re.search(r"\bfino\b", text, re.IGNORECASE):
+        return min(date.today(), days[0]), days[0]
+    return None
+
+
+def closure_note(path: Path | None) -> str:
+    """"Chiuso fino al 07/10" se il file è un avviso di chiusura salvato da closure_period."""
+    match = re.search(r"_chiusura_fino_(\d{4})(\d{2})(\d{2})", path.stem) if path else None
+    return f"Chiuso fino al {match.group(3)}/{match.group(2)}" if match else ""
+
+
 def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
     """Se l'immagine catturata è identica a una già presente, non è un menu nuovo:
     elimina la copia appena scaricata e mantiene la data della prima volta in cui è comparsa."""
@@ -406,6 +453,20 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
                 if browser is None:
                     raise RuntimeError("browser non disponibile")
                 image = browser.capture(shop, source)
+                seen = " ".join(f"{browser.last_text} {browser.last_alt}".split())
+                if seen:
+                    print(f"  {shop['nome']} - testo letto: {seen[:160]}")  # utile nel registro
+                closed = closure_period(f"{browser.last_text}\n{browser.last_alt}")
+                if closed:
+                    print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
+                if closed and closed[0] <= date.today() <= closed[1]:
+                    # avviso di chiusura valido oggi: lo pubblico come "menu del giorno"
+                    image, _ = keep_first_seen(folder, image)
+                    # nel nome del file: data di oggi + ultimo giorno di chiusura (es. ..._chiusura_fino_20261007.jpg)
+                    dated = folder / f"{date.today().isoformat()}_chiusura_fino_{closed[1]:%Y%m%d}{image.suffix}"
+                    if dated != image:
+                        shutil.copy2(image, dated)
+                    return Result(dated, date.today(), source.get("nome", kind), checked)
                 text_day = date_in_text(browser.last_text)
                 if text_day:
                     # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
@@ -460,9 +521,10 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
         label, css = status_label(date.fromisoformat(result["menu_date"]) if result.get("menu_date") else None, result.get("error", ""))
         menu_day = date.fromisoformat(result["menu_date"]) if result.get("menu_date") else None
         day_text = menu_day.strftime("%d/%m/%Y") if menu_day else "nessun menu"
+        note_html = f'\n  <span class="note">{html.escape(result["nota"])}</span>' if result.get("nota") else ""
         cards.append(f'''<button type="button" class="card {'band-ok' if css == 'fresh' else 'band-old'}" data-index="{index}">
   <h2>{html.escape(shop['nome'])}</h2>
-  <span class="day">Ultimo menu: <strong>{day_text}</strong></span>
+  <span class="day">Ultimo menu: <strong>{day_text}</strong></span>{note_html}
   <span class="status {css}">{label}</span>
 </button>''')
     public_shops = [{key: shop.get(key, "") for key in ("nome", "telefono", "indirizzo", "url")} for shop in shops]
@@ -494,7 +556,7 @@ header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-t
 main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}}
 .card{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;width:100%;background:var(--card);color:var(--ink);border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;cursor:pointer;transition:.18s transform,.18s box-shadow;font:inherit}}.card:hover,.card:focus-visible{{transform:translateY(-3px);box-shadow:0 14px 32px #0008;outline:3px solid var(--accent)}}
 .band-ok{{border-left:10px solid #16a34a}}.band-old{{border-left:10px solid #f97316}}
-.card h2{{font-size:21px;margin:0}}.day{{color:var(--muted);font-size:15px}}.day strong{{color:var(--ink)}}.status{{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:750}}.fresh{{background:#dcfce7;color:#166534}}.stale{{background:#fef3c7;color:#92400e}}.missing{{background:#fee2e2;color:#991b1b}}
+.card h2{{font-size:21px;margin:0}}.day{{color:var(--muted);font-size:15px}}.day strong{{color:var(--ink)}}.note{{color:#b45309;font-size:14px;font-weight:700}}.status{{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:750}}.fresh{{background:#dcfce7;color:#166534}}.stale{{background:#fef3c7;color:#92400e}}.missing{{background:#fee2e2;color:#991b1b}}
 #text{{max-height:68vh;overflow:auto;padding:0 18px}}#text h3{{margin:18px 0 8px;color:#86efac}}.dish{{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-bottom:1px solid #1e293b}}.dish b{{white-space:nowrap}}.dish small{{grid-column:1/-1;color:#94a3b8}}.dish small:empty{{display:none}}
 #nomenu{{padding:40px 18px;text-align:center;color:#cbd5e1}}
 dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b}}dialog::backdrop{{background:#000c}}.modal-head{{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #334155}}.modal-head h2{{margin:0}}button{{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}}#close{{background:#334155;color:white;font-size:18px}}#full{{display:block;max-width:100%;max-height:68vh;margin:auto;object-fit:contain}}.actions{{padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}}.actions a{{color:white;text-decoration:none;background:#166534;padding:10px 14px;border-radius:10px;font-weight:700}}.actions .source{{background:#1d4ed8}}#meta{{color:#cbd5e1;margin-right:auto}}footer{{text-align:center;color:#94a3b8;padding:0 20px 28px;font-size:13px}}
@@ -503,7 +565,7 @@ dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:1
 <header><h1>{title}</h1></header>
 <main>{''.join(cards)}</main>
 <dialog id="detail"><div class="modal-head"><h2 id="name"></h2><button id="close" aria-label="Chiudi">✕</button></div><img id="full" alt=""><div id="text"></div><p id="nomenu" hidden>Il menu di questa data non è pubblicato (vedi archivio).</p><div class="actions"><span id="meta"></span><a id="phone" hidden></a><a id="map" target="_blank" rel="noopener" hidden>Google Maps</a><a id="source" class="source" target="_blank" rel="noopener" hidden>Fonte</a></div></dialog>
-<script>const DATA={payload};const dlg=document.querySelector('#detail');function openCard(i){{const s=DATA.shops[i],r=DATA.results[i];document.querySelector('#name').textContent=s.nome;const img=document.querySelector('#full');img.src=r.image?r.image+'?v='+DATA.v:'';img.hidden=!r.image;const tx=document.querySelector('#text');tx.innerHTML='';(r.sections||[]).forEach(sec=>{{const h=document.createElement('h3');h.textContent=sec.titolo;tx.append(h);sec.piatti.forEach(p=>{{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b><small></small>';d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;d.children[2].textContent=p.descrizione;tx.append(d)}})}});document.querySelector('#nomenu').hidden=!!(r.image||(r.sections||[]).length);document.querySelector('#meta').textContent=r.menu_date?'Menu: '+r.menu_date.split('-').reverse().join('/'):'Menu non disponibile';const phone=document.querySelector('#phone');phone.hidden=!s.telefono;phone.textContent=s.telefono||'';phone.href='tel:'+(s.telefono||'').replace(/[^+\\d]/g,'');const map=document.querySelector('#map');map.hidden=!s.indirizzo;map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\\s*\\(.*\\)/,'')+', '+(s.indirizzo||''));const source=document.querySelector('#source');source.hidden=!s.url;source.href=s.url||'';dlg.showModal()}}document.querySelectorAll('.card').forEach((c,i)=>{{c.onclick=()=>openCard(i)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{{data}}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach((c,i)=>{{const r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}})}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})</script>
+<script>const DATA={payload};const dlg=document.querySelector('#detail');function openCard(i){{const s=DATA.shops[i],r=DATA.results[i];document.querySelector('#name').textContent=s.nome;const img=document.querySelector('#full');img.src=r.image?r.image+'?v='+DATA.v:'';img.hidden=!r.image;const tx=document.querySelector('#text');tx.innerHTML='';(r.sections||[]).forEach(sec=>{{const h=document.createElement('h3');h.textContent=sec.titolo;tx.append(h);sec.piatti.forEach(p=>{{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b><small></small>';d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;d.children[2].textContent=p.descrizione;tx.append(d)}})}});document.querySelector('#nomenu').hidden=!!(r.image||(r.sections||[]).length);document.querySelector('#meta').textContent=(r.menu_date?'Menu: '+r.menu_date.split('-').reverse().join('/'):'Menu non disponibile')+(r.nota?' — '+r.nota:'');const phone=document.querySelector('#phone');phone.hidden=!s.telefono;phone.textContent=s.telefono||'';phone.href='tel:'+(s.telefono||'').replace(/[^+\\d]/g,'');const map=document.querySelector('#map');map.hidden=!s.indirizzo;map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\\s*\\(.*\\)/,'')+', '+(s.indirizzo||''));const source=document.querySelector('#source');source.hidden=!s.url;source.href=s.url||'';dlg.showModal()}}document.querySelectorAll('.card').forEach((c,i)=>{{c.onclick=()=>openCard(i)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{{data}}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach((c,i)=>{{const r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}})}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})</script>
 </body></html>'''
     OUTPUT.write_text(document, encoding="utf-8")
     WEB_PAGE.write_text(document, encoding="utf-8")
@@ -766,6 +828,8 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
                 "menu_date": result.menu_day.isoformat() if result.menu_day else "", "source": result.source,
                 "checked_at": result.checked_at, "error": result.error,
             }
+            if current and closure_note(result.image):
+                record["nota"] = closure_note(result.image)
             if current and current.suffix.lower() == TEXT_EXTENSION:
                 record["image"] = ""
                 record["sections"] = read_json(current, {}).get("sezioni", [])
