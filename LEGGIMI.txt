@@ -33,7 +33,10 @@ sfondo grigio-azzurro, più scuro del bianco delle schede di oggi.
 Cliccando su una scheda si apre la finestra con il nome del locale, sotto
 il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
 menu, il telefono, Google Maps e la fonte.
-La finestra ha una cornice doppia di 5 mm: verde (come la fascia delle
+Il nome in alto è seguito dalla data del menu (es. "Fantasia - 06/10/2026");
+in basso a sinistra resta solo l'eventuale nota (es. "Chiuso fino al 07/10").
+Le schede della pagina mostrano solo la data, senza "Ultimo menu:".
+La finestra ha una cornice singola di 5 mm: verde (come la fascia delle
 schede) se la rosticceria ha pubblicato il menu di oggi, arancione se no.
 Nella finestra si passa alla rosticceria precedente o successiva, in modo
 circolare (dopo l'ultima torna la prima), con le frecce ‹ › ai lati, con i
@@ -204,6 +207,9 @@ Il click viene inviato subito (anche se l'app viene chiusa un attimo dopo);
 la città viene cercata già all'apertura della pagina e, se tarda più di
 1,5 secondi, il click parte comunque senza città.
 Il pulsante "Sito" della finestra di controllo apre già la pagina con ?v=57.
+Aggiungendo alla Home la pagina aperta con ?v=57, l'app si apre sempre con
+?v=57 (la pagina usa manifest-admin.webmanifest, scritto da Menu.py); aperta
+senza ?v=57 crea la normale app "Menu".
 Contatori (solo con ?v=57 nell'indirizzo): in basso a destra di ogni scheda
 il numero di click di oggi su quella rosticceria; in fondo una scheda "Info"
 (sfondo grigio, cornice gialla) con il totale dei click di oggi.
