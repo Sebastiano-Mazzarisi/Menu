@@ -21,8 +21,8 @@ Il titolo della pagina è "titolo" in locali.json: {data} viene sostituito
 con la data di oggi, es. "Menu - {data}" -> "Menu - Domenica 4 ottobre".
 La pagina mostra soltanto il titolo e le schede (niente sottotitolo né note).
 Ordine delle schede (uguale nella finestra di controllo): prima le
-rosticcerie con il menu di oggi pubblicato, poi tutte le altre (menu non di
-oggi, nessun menu, avviso di chiusura o riposo settimanale); dentro ciascun
+rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o riposo
+pubblicato oggi), poi tutte le altre (menu non di oggi, nessun menu); dentro ciascun
 gruppo in ordine alfabetico (senza badare ad accenti e maiuscole). La
 pagina rifà l'ordinamento da sola quando cambia il giorno. Le frecce della
 finestra di dettaglio seguono lo stesso ordine.

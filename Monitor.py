@@ -356,10 +356,9 @@ class Monitor(tk.Tk):
         shops = config.get("locali", [])
 
         def order(shop: dict) -> tuple[bool, str]:
-            # come sul sito: prima chi ha il menu di oggi pubblicato (non avvisi di chiusura o
-            # riposo, che hanno una "nota"), poi gli altri; in ciascun gruppo in ordine alfabetico
-            result = results.get(shop.get("id"), {})
-            published = result.get("menu_date") == today and not result.get("nota")
+            # come sul sito: prima quelle "oggi" (verdi), poi le altre; in ciascun gruppo in
+            # ordine alfabetico
+            published = results.get(shop.get("id"), {}).get("menu_date") == today
             name = unicodedata.normalize("NFD", shop.get("nome", ""))
             return (not published, "".join(ch for ch in name if not unicodedata.combining(ch)).casefold())
 

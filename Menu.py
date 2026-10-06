@@ -1072,12 +1072,12 @@ def sort_key_name(name: str) -> str:
 
 
 def display_order(shops: list[dict[str, Any]], results: list[dict[str, Any]]) -> list[int]:
-    """Ordine delle schede: prima le rosticcerie con il menu di oggi pubblicato (non contano gli
-    avvisi di chiusura e il riposo settimanale, che hanno una "nota"), poi le altre; in ciascun
-    gruppo in ordine alfabetico. La pagina rifà lo stesso ordinamento quando cambia il giorno."""
+    """Ordine delle schede: prima le rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o
+    riposo pubblicato oggi), poi le altre; in ciascun gruppo in ordine alfabetico. La pagina rifà
+    lo stesso ordinamento quando cambia il giorno."""
     today = date.today().isoformat()
     def key(i: int) -> tuple[bool, str]:
-        published = results[i].get("menu_date") == today and not results[i].get("nota")
+        published = results[i].get("menu_date") == today
         return (not published, sort_key_name(shops[i].get("nome", "")))
     return sorted(range(len(shops)), key=key)
 
@@ -1172,9 +1172,9 @@ let tx=null,ty=0;dlg.addEventListener('touchstart',e=>{{if(e.touches.length!==1)
 dlg.addEventListener('touchmove',e=>{{if(e.touches.length!==1)tx=null}},{{passive:true}});
 dlg.addEventListener('touchend',e=>{{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
 if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)}});document.querySelectorAll('.card').forEach(c=>{{c.onclick=()=>openCard(+c.dataset.index)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{{data}}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach(c=>{{const i=+c.dataset.index,r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}});
-/* ordine: prima le rosticcerie con il menu di oggi pubblicato (non avvisi di chiusura o riposo),
+/* ordine: prima le rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o riposo di oggi),
    poi le altre; in ciascun gruppo in ordine alfabetico. Rifatto anche quando cambia il giorno. */
-const main=document.querySelector('main'),col=new Intl.Collator('it',{{sensitivity:'base'}}),has=i=>DATA.results[i].menu_date===iso&&!DATA.results[i].nota;
+const main=document.querySelector('main'),col=new Intl.Collator('it',{{sensitivity:'base'}}),has=i=>DATA.results[i].menu_date===iso;
 [...document.querySelectorAll('.card')].sort((a,b)=>{{const x=+a.dataset.index,y=+b.dataset.index;return (has(y)-has(x))||col.compare(DATA.shops[x].nome,DATA.shops[y].nome)}}).forEach(c=>main.insertBefore(c,main.querySelector('.infocard')))}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})
 /* Solo con ?v=57 nell'indirizzo: click di oggi in basso a destra di ogni scheda, totale nella scheda "Info";
    un tocco su "Info" apre la tabella Rosticceria / Oggi / Mese / Anno / Tutto con i totali.
