@@ -342,7 +342,8 @@ class BrowserCollector:
                 self.last_alt = target.get_attribute("alt", timeout=2000) or ""
             except Exception:
                 self.last_alt = ""
-            destination = INPUT / shop["id"] / f"{date.today().isoformat()}_online.jpg"
+            CAPTURES.mkdir(parents=True, exist_ok=True)
+            destination = CAPTURES / f"{shop['id']}.jpg"  # va in ingresso solo se è un menu
             media_url = target.evaluate("element => element.currentSrc || element.src || ''")
             if media_url:
                 response = self.context.request.get(media_url, timeout=30000)
@@ -879,7 +880,7 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
         return Result(save_closure(folder, closed, None, text), date.today(), name, checked)
     words = source.get("parole_menu", MENU_WORDS)
     if words and not any(word in text.lower() for word in words):
-        raise RuntimeError("l'ultimo post (solo testo) non sembra un menu")
+        raise NotAMenu("il post (solo testo) non sembra un menu")
     clean = "\n".join(line.strip() for line in clean_post_text(text).splitlines() if line.strip())
     written_day = plausible_menu_date(clean)  # data o giorno scritto nel post ("MENÙ DI SABATO")
     for earlier in sorted(folder.glob("*_testo.json")):  # stesso testo già visto: resta la sua data
@@ -909,11 +910,84 @@ def plausible_menu_date(text: str) -> date | None:
         if -7 <= (day - date.today()).days <= 1:
             return day
     # nessuna data ma il giorno della settimana: "MENÙ DI SABATO", "Menu del giorno lunedì"
-    match = re.search(r"\bmen[uù]\b[^\n]{0,25}?\b(lun|mar|mer|gio|ven|sab|dom)[a-zàèéìòù]*", text.lower())
+    # nomi interi ("giorno" non deve valere come "giovedì")
+    match = re.search(r"\bmen[uù]\b[^\n]{0,25}?\b(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)\b",
+                      text.lower())
     if match:
         today = date.today()
-        return today - timedelta(days=(today.weekday() - WEEKDAYS[match.group(1)]) % 7)
+        name = match.group(1)[:3]
+        return today - timedelta(days=(today.weekday() - WEEKDAYS[name]) % 7)
     return None
+
+
+class NotAMenu(RuntimeError):
+    """Il post letto non è un menu (pubblicità, foto di un piatto, auguri...)."""
+
+
+CAPTURES = DATA / "catture"  # foto appena scaricate, prima di sapere se sono un menu
+
+
+def place_capture(folder: Path, image: Path) -> Path:
+    """Sposta una foto da dati/catture in ingresso/<id> come AAAA-MM-GG_online.jpg (menu di oggi)."""
+    if image.parent == folder:
+        return image
+    final = folder / f"{date.today().isoformat()}_online{image.suffix}"
+    image.replace(final)
+    return final
+
+
+def post_variants(source: dict[str, Any]) -> list[dict[str, Any]]:
+    """La fonte per il 1°, 2°, 3°... post della pagina ("post_da_controllare", 3 se non indicato):
+    nei selettori [aria-posinset='1'] diventa '2', '3'..."""
+    count = int(source.get("post_da_controllare", 3))
+    if "posinset='1'" not in source.get("selettore", ""):
+        return [source]
+    return [{**source, **{key: source[key].replace("posinset='1'", f"posinset='{number}'")
+                          for key in ("selettore", "selettore_testo") if source.get(key)}}
+            for number in range(1, count + 1)]
+
+
+def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, browser: "BrowserCollector",
+                   checked: str) -> Result:
+    """Un post Facebook/Instagram (fonte "browser"): menu, avviso o NotAMenu se non è un menu.
+    La foto viene scaricata in dati/catture e spostata in ingresso solo se viene usata, così
+    un post che non è un menu non cancella mai il menu già salvato oggi."""
+    if browser is None:
+        raise RuntimeError("browser non disponibile")
+    image = browser.capture(shop, source)
+    if image is None:  # post solo testo
+        return text_post_result(shop, source, folder, browser.last_text, checked)
+    photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
+    seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
+    if seen:
+        print(f"  {shop['nome']} - testo letto: {seen[:160]}")  # utile nel registro
+    learn_rest_days(shop, f"{browser.last_text}\n{photo_text}")
+    closed = closure_period(f"{browser.last_text}\n{browser.last_alt}\n{photo_text}")
+    if closed:
+        print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
+    if closed and closed[0] <= date.today() <= closed[1]:
+        # avviso di chiusura valido oggi: lo pubblico come "menu del giorno"
+        image, _ = keep_first_seen(folder, image)
+        if image.suffix.lower() in IMAGE_EXTENSIONS and closure_today(photo_text):
+            return Result(save_closure(folder, closed, image), date.today(), source.get("nome", "browser"), checked)
+        return Result(save_closure(folder, closed, None, browser.last_text), date.today(),
+                      source.get("nome", "browser"), checked)
+    # l'ultimo post è davvero un menu? (non una pubblicità, una foto di un piatto, ecc.)
+    words = source.get("parole_menu", MENU_WORDS)
+    if words and not any(word in f"{browser.last_text} {photo_text}".lower() for word in words):
+        image.unlink(missing_ok=True)
+        raise NotAMenu("il post non sembra un menu")
+    text_day = plausible_menu_date(browser.last_text) or plausible_menu_date(photo_text)
+    if text_day:
+        # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
+        dated = folder / f"{text_day.isoformat()}_online{image.suffix}"
+        if dated != image:
+            image.replace(dated)
+        return Result(dated, text_day, source.get("nome", "browser"), checked)
+    if source.get("data") == "novita":
+        image, new_day = keep_first_seen(folder, image)
+        return Result(place_capture(folder, image), new_day, source.get("nome", "browser"), checked)
+    return Result(place_capture(folder, image), date.today(), source.get("nome", "browser"), checked)
 
 
 def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
@@ -998,39 +1072,15 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
             elif kind == "browser":
                 if browser is None:
                     raise RuntimeError("browser non disponibile")
-                image = browser.capture(shop, source)
-                if image is None:  # post solo testo
-                    return text_post_result(shop, source, folder, browser.last_text, checked)
-                photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
-                seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
-                if seen:
-                    print(f"  {shop['nome']} - testo letto: {seen[:160]}")  # utile nel registro
-                learn_rest_days(shop, f"{browser.last_text}\n{photo_text}")
-                closed = closure_period(f"{browser.last_text}\n{browser.last_alt}\n{photo_text}")
-                if closed:
-                    print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
-                if closed and closed[0] <= date.today() <= closed[1]:
-                    # avviso di chiusura valido oggi: lo pubblico come "menu del giorno"
-                    image, _ = keep_first_seen(folder, image)
-                    if image.suffix.lower() in IMAGE_EXTENSIONS and closure_today(photo_text):
-                        return Result(save_closure(folder, closed, image), date.today(), source.get("nome", kind), checked)
-                    return Result(save_closure(folder, closed, None, browser.last_text), date.today(),
-                                  source.get("nome", kind), checked)
-                # l'ultimo post è davvero un menu? (non una pubblicità, una foto di un piatto, ecc.)
-                words = source.get("parole_menu", MENU_WORDS)
-                if words and not any(word in f"{browser.last_text} {photo_text}".lower() for word in words):
-                    image.unlink(missing_ok=True)
-                    raise RuntimeError("l'ultimo post non sembra un menu")
-                text_day = plausible_menu_date(browser.last_text) or plausible_menu_date(photo_text)
-                if text_day:
-                    # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
-                    dated = folder / f"{text_day.isoformat()}_online{image.suffix}"
-                    if dated != image:
-                        image.replace(dated)
-                    return Result(dated, text_day, source.get("nome", kind), checked)
-                if source.get("data") == "novita":
-                    image, new_day = keep_first_seen(folder, image)
-                    return Result(image, new_day, source.get("nome", kind), checked)
+                # se il primo post non è un menu (pubblicità, foto, post in evidenza...) guarda i successivi
+                tries = post_variants(source)
+                for number, variant in enumerate(tries, 1):
+                    try:
+                        return browser_result(shop, variant, folder, browser, checked)
+                    except NotAMenu:
+                        if number == len(tries):
+                            raise
+                        print(f"  {shop['nome']} - post {number} non è un menu: guardo il successivo")
             else:
                 raise RuntimeError(f"tipo fonte sconosciuto: {kind}")
             return Result(image, date.today(), source.get("nome", kind), checked)
@@ -1449,6 +1499,9 @@ def main() -> None:
     parser.add_argument("--salta-aggiornati", action="store_true",
                         help="Non ricontrolla online le rosticcerie che hanno già il menu di oggi "
                              "(pulsante \"Controlla\" della finestra di controllo; il giro ogni 15 minuti fa lo stesso).")
+    parser.add_argument("--solo", metavar="ID",
+                        help="Ricontrolla a fondo una sola rosticceria (id di locali.json); le altre restano "
+                             "come all'ultimo giro (clic su una rosticceria nella finestra di controllo).")
     parser.add_argument("--login", action="store_true", help="Apre Facebook e Instagram per salvare la sessione.")
     parser.add_argument("--prova-beep", action="store_true", help="Fa sentire i tre beep e termina.")
     parser.add_argument("--ocr", metavar="IMMAGINE", help="Mostra il testo letto in una foto e l'eventuale chiusura.")
@@ -1485,7 +1538,8 @@ def main() -> None:
     if args.login or args.aggiungi:
         run(args, config)
         return
-    start_manual_log("controllo" if args.salta_aggiornati else "ricontrollo")
+    only = next((shop.get("nome", args.solo) for shop in config.get("locali", []) if shop.get("id") == args.solo), args.solo)
+    start_manual_log(f"ricontrollo di {only}" if args.solo else "controllo" if args.salta_aggiornati else "ricontrollo")
     if not take_lock():
         print("Un altro controllo è bloccato da oltre 20 minuti: riprova più tardi.")
         return
@@ -1541,8 +1595,11 @@ def start_manual_log(kind: str = "ricontrollo") -> None:
     sys.stdout = Tee(ResultsOnly(sys.__stdout__) if sys.__stdout__ else None, stream)
     sys.stderr = Tee(sys.__stderr__, stream)  # gli errori si vedono sempre per intero
     print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} === (manuale, {kind})")
-    print("CONTROLLO: ricontrolla solo le rosticcerie non ancora aggiornate oggi" if kind == "controllo"
-          else "RICONTROLLO: ricontrolla tutte le rosticcerie, anche quelle già aggiornate")
+    if kind.startswith("ricontrollo di "):
+        print(f"RICONTROLLO di {kind[15:]}: solo questa rosticceria, le altre restano come all'ultimo giro")
+    else:
+        print("CONTROLLO: ricontrolla solo le rosticcerie non ancora aggiornate oggi" if kind == "controllo"
+              else "RICONTROLLO: ricontrolla tutte le rosticcerie, anche quelle già aggiornate")
 
 
 def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
@@ -1568,8 +1625,12 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     previous_days = {item.get("id"): item.get("menu_date", "") for item in read_json(STATE, {}).get("results", [])}
     shops = sorted(shops, key=lambda item: (previous_days.get(item["id"]) != date.today().isoformat(),
                                             sort_key_name(item.get("nome", ""))))
+    previous_records = {item.get("id"): item for item in read_json(STATE, {}).get("results", [])}
     try:
         for shop in shops:
+            if args.solo and shop["id"] != args.solo and shop["id"] in previous_records:
+                results.append(previous_records[shop["id"]])  # --solo: le altre restano come all'ultimo giro
+                continue
             previous = previous_sources.get(shop["id"]) or "già acquisito oggi"
             result = acquire(shop, browser, online=not args.solo_html,
                              skip_if_today=previous if args.automatico or args.salta_aggiornati else None)

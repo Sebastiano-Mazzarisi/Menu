@@ -372,12 +372,16 @@ class Monitor(tk.Tk):
                 mark, colour, info = "●", ORANGE, "/".join(reversed(day.split("-")[1:]))
             else:
                 mark, colour, info = "●", RED, "nessuno"
-            row = tk.Frame(self.rows, bg=BG)
+            row = tk.Frame(self.rows, bg=BG, cursor="hand2")
             row.pack(fill="x")
             tk.Label(row, text=mark, fg=colour, bg=BG, font=("Segoe UI", 11)).pack(side="left")
             tk.Label(row, text=shop.get("nome", "?"), fg=FG, bg=BG, font=("Segoe UI", 10), width=20,
                      anchor="w").pack(side="left")
             tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10)).pack(side="left")
+            # clic su una rosticceria: ricontrollo approfondito solo di quella, le altre restano invariate
+            for widget in (row, *row.winfo_children()):
+                widget.configure(cursor="hand2")
+                widget.bind("<Button-1>", lambda _event, shop_id=shop.get("id", ""): self.run_now("--solo", shop_id))
         self.summary.config(text=f"Aggiornate oggi: {updated} su {len(shops)}")
         self.set_icon(updated, len(shops))
 
@@ -476,7 +480,10 @@ class Monitor(tk.Tk):
         # riga di comando passata così com'è (una lista verrebbe ri-quotata e cmd non la capirebbe)
         subprocess.Popen(f'cmd /k "title {CONSOLE_TITLE} && {command}"', cwd=ROOT,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
-        self.say("Controllo avviato" + (" (solo le rosticcerie non aggiornate)" if options else " (tutte)"))
+        if "--solo" in options:
+            self.say("Ricontrollo avviato (una sola rosticceria)")
+        else:
+            self.say("Controllo avviato" + (" (solo le rosticcerie non aggiornate)" if options else " (tutte)"))
 
     def open_log(self) -> None:
         """Apre il registro con il Blocco note (se non esiste ancora lo dice nella finestra)."""
