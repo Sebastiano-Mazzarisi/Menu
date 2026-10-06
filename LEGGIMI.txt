@@ -33,7 +33,7 @@ sfondo grigio-azzurro, più scuro del bianco delle schede di oggi.
 Cliccando su una scheda si apre la finestra con il nome del locale, sotto
 il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
 menu, il telefono, Google Maps e la fonte.
-Il nome in alto è seguito dalla data del menu (es. "Fantasia - 06/10/2026");
+Il nome in alto è seguito da giorno e mese del menu (es. "Fantasia - 06/10");
 in basso a sinistra resta solo l'eventuale nota (es. "Chiuso fino al 07/10").
 Le schede della pagina mostrano solo la data, senza "Ultimo menu:".
 La finestra ha una cornice singola di 5 mm: verde (come la fascia delle
@@ -207,9 +207,13 @@ Il click viene inviato subito (anche se l'app viene chiusa un attimo dopo);
 la città viene cercata già all'apertura della pagina e, se tarda più di
 1,5 secondi, il click parte comunque senza città.
 Il pulsante "Sito" della finestra di controllo apre già la pagina con ?v=57.
-Aggiungendo alla Home la pagina aperta con ?v=57, l'app si apre sempre con
-?v=57 (la pagina usa manifest-admin.webmanifest, scritto da Menu.py); aperta
-senza ?v=57 crea la normale app "Menu".
+La pagina aperta con ?v=57 passa da sola a admin.html (stessa pagina, in
+modalità amministratore): l'indirizzo admin.html resta anche nell'app
+aggiunta alla Home (iPhone a volte perde la parte "?v=57"), che quindi si
+apre sempre come amministratore (manifest-admin.webmanifest). Menu.py scrive
+index.html, Menu.html e admin.html. Senza ?v=57 si crea la normale app
+"Menu". Le frecce ‹ › stanno sopra la cornice della scheda anche su iPhone
+(la scheda scorre al suo interno, le frecce no).
 Contatori (solo con ?v=57 nell'indirizzo): in basso a destra di ogni scheda
 il numero di click di oggi su quella rosticceria; in fondo una scheda "Info"
 (sfondo grigio, cornice gialla) con il totale dei click di oggi.

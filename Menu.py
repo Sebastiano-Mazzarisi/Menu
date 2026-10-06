@@ -28,6 +28,9 @@ DATA = ROOT / "dati"
 STATE = DATA / "stato.json"
 OUTPUT = ROOT / "Menu.html"
 WEB_PAGE = ROOT / "index.html"  # pagina pubblicata su GitHub Pages (cellulare)
+# stessa pagina per l'amministratore: aperta con ?v=57 la pagina passa qui, così "+Home" salva
+# un indirizzo che contiene già l'amministratore (iPhone a volte perde la parte "?v=57")
+ADMIN_PAGE = ROOT / "admin.html"
 WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
 ICONS = ROOT / "icone"
 APP_LOGO = LOGOS / "Menu.jpg"
@@ -1064,7 +1067,7 @@ def write_manifest() -> str:
     }
     (ROOT / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     # versione amministratore: aggiunta alla Home da una pagina aperta con ?v=57, l'app si apre con ?v=57
-    admin = {**manifest, "start_url": "./?v=57", "id": "./?v=57"}
+    admin = {**manifest, "start_url": "./admin.html", "id": "./admin.html"}
     (ROOT / "manifest-admin.webmanifest").write_text(json.dumps(admin, ensure_ascii=False, indent=2), encoding="utf-8")
     return iv
 
@@ -1126,8 +1129,11 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
 <meta property="og:title" content="Menu"><meta property="og:description" content="Menu del giorno delle rosticcerie">
 <meta property="og:type" content="website"><meta property="og:url" content="{WEB_URL}">
 <meta property="og:image" content="{WEB_URL}icone/icona-512.png?v={iv}"><meta property="og:image:width" content="512"><meta property="og:image:height" content="512">
-<script>/* con ?v=57 il manifest "amministratore": "+Home" crea l'app che si apre già con ?v=57 */
-document.write('<link rel="manifest" href="'+(new URLSearchParams(location.search).get('v')==='57'?'manifest-admin':'manifest')+'.webmanifest?v={iv}">')</script><link rel="icon" type="image/png" href="icone/favicon.png?v={iv}">
+<script>/* ?v=57 = amministratore: si passa a admin.html (stessa pagina), il cui indirizzo resta anche
+   nell'app aggiunta alla Home; lì il manifest "amministratore" fa riaprire l'app sempre su admin.html */
+(function(){{const adm=location.pathname.endsWith('/admin.html');
+if(!adm&&new URLSearchParams(location.search).get('v')==='57'){{location.replace('admin.html');return}}
+document.write('<link rel="manifest" href="'+(adm?'manifest-admin':'manifest')+'.webmanifest?v={iv}">')}})()</script><link rel="icon" type="image/png" href="icone/favicon.png?v={iv}">
 <link rel="apple-touch-icon" sizes="180x180" href="icone/icona-180.png?v={iv}"><meta name="apple-mobile-web-app-title" content="Menu">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1142,22 +1148,25 @@ main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-temp
 .infocard{{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#d1d5db;color:#172033;border:4px solid #facc15;border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;text-align:center;min-height:120px}}
 .infocard h2{{margin:0;font-size:21px}}.infocard .total{{font-size:46px;font-weight:800;line-height:1.1;color:#172033}}.infocard small{{color:#475569;font-size:14px}}.infocard{{cursor:pointer}}.infocard:hover,.infocard:focus-visible{{transform:translateY(-3px);outline:3px solid #facc15}}
 #stats{{width:min(620px,96vw)}}#stats .x{{background:#334155;color:white;font-size:18px}}.statwrap{{padding:10px 14px 16px;overflow:auto}}#stats table{{width:100%;border-collapse:collapse;font-size:16px}}#stats th,#stats td{{padding:8px 10px;border-bottom:1px solid #1e293b;text-align:right}}#stats th:first-child,#stats td:first-child{{text-align:left}}#stats th{{color:#facc15;font-size:14px}}#stats tfoot td{{font-weight:800;border-top:2px solid #facc15;border-bottom:0}}.statnote{{margin:10px 0 0;color:#94a3b8;font-size:13px}}.card:hover,.card:focus-visible{{transform:translateY(-3px);box-shadow:0 14px 32px #0008;outline:3px solid var(--accent)}}
-.band-ok{{border-left:10px solid #16a34a}}#detail{{box-sizing:border-box}}#detail.ok{{border:5mm solid #16a34a}}#detail.old{{border:5mm solid #f97316}}.band-old{{border-left:10px solid #f97316;background:#dfe4ec}}
+.band-ok{{border-left:10px solid #16a34a}}#detail{{width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0;inset:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:hidden}}
+#detail[open]{{display:flex;align-items:center;justify-content:center}}
+#detail .sheet{{box-sizing:border-box;width:min(920px,96vw);max-height:94vh;max-height:94dvh;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b;border:5mm solid #f97316}}
+#detail.ok .sheet{{border-color:#16a34a}}#detail.old .sheet{{border-color:#f97316}}.band-old{{border-left:10px solid #f97316;background:#dfe4ec}}
 .card h2{{font-size:21px;margin:0}}.day{{color:var(--muted);font-size:15px}}.day strong{{color:var(--ink)}}.note{{color:#b45309;font-size:14px;font-weight:700}}.status{{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:750}}.fresh{{background:#dcfce7;color:#166534}}.stale{{background:#fef3c7;color:#92400e}}.missing{{background:#fee2e2;color:#991b1b}}
 #text{{max-height:68vh;overflow:auto;padding:0 18px}}#text h3{{margin:18px 0 8px;color:#86efac}}.dish{{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-bottom:1px solid #1e293b}}.dish b{{white-space:nowrap}}.dish small{{grid-column:1/-1;color:#94a3b8}}.dish small:empty{{display:none}}
 #nomenu{{padding:40px 18px;text-align:center;color:#cbd5e1}}
-dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b}}dialog::backdrop{{background:#000c}}.modal-head{{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #334155}}.nav{{position:fixed;top:50%;transform:translateY(-50%);z-index:5;width:52px;height:52px;padding:0;border-radius:50%;background:#334155e6;color:#fff;font-size:34px;line-height:48px;box-shadow:0 6px 18px #0008}}.nav:hover,.nav:focus-visible{{background:#475569}}#prev{{left:max(6px,calc(50vw - min(460px,48vw) - 66px))}}#next{{right:max(6px,calc(50vw - min(460px,48vw) - 66px))}}
+dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b}}dialog::backdrop{{background:#000c}}.modal-head{{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #334155}}.nav{{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:52px;height:52px;padding:0;border-radius:50%;background:#334155e6;color:#fff;font-size:34px;line-height:48px;box-shadow:0 6px 18px #0008}}.nav:hover,.nav:focus-visible{{background:#475569}}#prev{{left:max(6px,calc(50vw - min(460px,48vw) - 66px))}}#next{{right:max(6px,calc(50vw - min(460px,48vw) - 66px))}}
 .modal-head h2{{margin:0}}#addr{{margin:4px 0 0;font-size:15px;font-weight:400;color:#cbd5e1}}button{{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}}#close{{background:#334155;color:white;font-size:18px}}#full{{display:block;max-width:100%;max-height:68vh;margin:auto;object-fit:contain}}#full[hidden]{{display:none}}.actions{{padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}}.actions a{{color:white;text-decoration:none;background:#166534;padding:10px 14px;border-radius:10px;font-weight:700}}.actions .source{{background:#1d4ed8}}#meta{{color:#cbd5e1;margin-right:auto}}footer{{text-align:center;color:#94a3b8;padding:0 20px 28px;font-size:13px}}
 @media(max-width:600px){{header{{align-items:start;flex-direction:column}}main{{grid-template-columns:1fr;padding-inline:12px}}}}
 </style></head><body>
 <header><h1>{title}</h1></header>
 <main>{''.join(cards)}</main>
-<dialog id="detail"><div class="modal-head"><div><h2 id="name"></h2><p id="addr" hidden></p></div><button id="close" aria-label="Chiudi">✕</button></div><button class="nav" id="prev" aria-label="Rosticceria precedente">‹</button><button class="nav" id="next" aria-label="Rosticceria successiva">›</button><img id="full" alt=""><div id="text"></div><p id="nomenu" hidden>Il menu di questa data non è pubblicato (vedi archivio).</p><div class="actions"><span id="meta"></span><a id="phone" hidden></a><a id="map" target="_blank" rel="noopener" hidden>Google Maps</a><a id="source" class="source" target="_blank" rel="noopener" hidden>Fonte</a></div></dialog>
+<dialog id="detail"><div class="sheet"><div class="modal-head"><div><h2 id="name"></h2><p id="addr" hidden></p></div><button id="close" aria-label="Chiudi">✕</button></div><img id="full" alt=""><div id="text"></div><p id="nomenu" hidden>Il menu di questa data non è pubblicato (vedi archivio).</p><div class="actions"><span id="meta"></span><a id="phone" hidden></a><a id="map" target="_blank" rel="noopener" hidden>Google Maps</a><a id="source" class="source" target="_blank" rel="noopener" hidden>Fonte</a></div></div><button class="nav" id="prev" aria-label="Rosticceria precedente">‹</button><button class="nav" id="next" aria-label="Rosticceria successiva">›</button></dialog>
 <script>const DATA={payload};
 /* Registro dei click sul foglio Google "Menu" (Apps Script in Registro_click.gs).
    ?v=57 nell'indirizzo = amministratore: quei click non vengono registrati. Senza ?v=57 si registra
    sempre, anche sullo stesso dispositivo (non viene ricordato nulla). */
-const Q=new URLSearchParams(location.search);const ADMIN=Q.get('v')==='57';
+const Q=new URLSearchParams(location.search);const ADMIN=Q.get('v')==='57'||location.pathname.endsWith('/admin.html');
 try{{localStorage.removeItem('menuAdmin')}}catch(e){{}}
 function deviceLabel(){{const u=navigator.userAgent||'';let o='Altro',b='Altro';
 if(/iPad/.test(u))o='iPad';else if(/iPhone/.test(u))o='iPhone';else if(/Android/.test(u))o='Android';else if(/Macintosh/.test(u))o='Mac';else if(/Windows/.test(u))o='Windows';else if(/Linux/.test(u))o='Linux';
@@ -1167,7 +1176,7 @@ if(!ADMIN&&DATA.log)approxPlace();
 function sendLog(body){{try{{if(navigator.sendBeacon&&navigator.sendBeacon(DATA.log,new Blob([body],{{type:'text/plain'}})))return}}catch(e){{}}try{{fetch(DATA.log,{{method:'POST',mode:'no-cors',keepalive:true,body}})}}catch(e){{}}}}
 function logClick(name){{if(ADMIN||!DATA.log)return;Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({{rosticceria:name,dispositivo:deviceLabel(),posizione:p||''}})))}}const dlg=document.querySelector('#detail');let cur=0;function openCard(i,dir){{cur=i;const s=DATA.shops[i],r=DATA.results[i];
 /* cornice doppia della scheda: verde se il menu di oggi è pubblicato, arancione se no (stessi colori delle schede) */
-const n0=new Date(),iso0=n0.getFullYear()+'-'+String(n0.getMonth()+1).padStart(2,'0')+'-'+String(n0.getDate()).padStart(2,'0');dlg.classList.toggle('ok',r.menu_date===iso0);dlg.classList.toggle('old',r.menu_date!==iso0);logClick(s.nome);document.querySelector('#name').textContent=s.nome+(r.menu_date?' - '+r.menu_date.split('-').reverse().join('/'):'');const ad=document.querySelector('#addr');ad.textContent=s.indirizzo||'';ad.hidden=!s.indirizzo;const img=document.querySelector('#full');img.src=r.image?r.image+'?v='+DATA.v:'';img.hidden=!r.image;const tx=document.querySelector('#text');tx.innerHTML='';(r.sections||[]).forEach(sec=>{{const h=document.createElement('h3');h.textContent=sec.titolo;tx.append(h);sec.piatti.forEach(p=>{{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b><small></small>';d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;d.children[2].textContent=p.descrizione;tx.append(d)}})}});document.querySelector('#nomenu').hidden=!!(r.image||(r.sections||[]).length);document.querySelector('#meta').textContent=r.nota||(r.menu_date?'':'Menu non disponibile');const phone=document.querySelector('#phone');phone.hidden=!s.telefono;phone.textContent=s.telefono||'';phone.href='tel:'+(s.telefono||'').replace(/[^+\\d]/g,'');const map=document.querySelector('#map');map.hidden=!s.indirizzo;map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\\s*\\(.*\\)/,'')+', '+(s.indirizzo||''));const source=document.querySelector('#source');source.hidden=!s.url;source.href=s.url||'';if(!dlg.open)dlg.showModal();dlg.scrollTop=0;
+const n0=new Date(),iso0=n0.getFullYear()+'-'+String(n0.getMonth()+1).padStart(2,'0')+'-'+String(n0.getDate()).padStart(2,'0');dlg.classList.toggle('ok',r.menu_date===iso0);dlg.classList.toggle('old',r.menu_date!==iso0);logClick(s.nome);document.querySelector('#name').textContent=s.nome+(r.menu_date?' - '+r.menu_date.slice(8,10)+'/'+r.menu_date.slice(5,7):'');const ad=document.querySelector('#addr');ad.textContent=s.indirizzo||'';ad.hidden=!s.indirizzo;const img=document.querySelector('#full');img.src=r.image?r.image+'?v='+DATA.v:'';img.hidden=!r.image;const tx=document.querySelector('#text');tx.innerHTML='';(r.sections||[]).forEach(sec=>{{const h=document.createElement('h3');h.textContent=sec.titolo;tx.append(h);sec.piatti.forEach(p=>{{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b><small></small>';d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;d.children[2].textContent=p.descrizione;tx.append(d)}})}});document.querySelector('#nomenu').hidden=!!(r.image||(r.sections||[]).length);document.querySelector('#meta').textContent=r.nota||(r.menu_date?'':'Menu non disponibile');const phone=document.querySelector('#phone');phone.hidden=!s.telefono;phone.textContent=s.telefono||'';phone.href='tel:'+(s.telefono||'').replace(/[^+\\d]/g,'');const map=document.querySelector('#map');map.hidden=!s.indirizzo;map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\\s*\\(.*\\)/,'')+', '+(s.indirizzo||''));const source=document.querySelector('#source');source.hidden=!s.url;source.href=s.url||'';if(!dlg.open)dlg.showModal();dlg.querySelector('.sheet').scrollTop=0;
 if(dir)['#full','#text','#nomenu','.modal-head'].forEach(q=>{{const e=document.querySelector(q);if(e&&e.animate)e.animate([{{opacity:.3,transform:'translateX('+(dir*40)+'px)'}},{{opacity:1,transform:'none'}}],{{duration:200,easing:'ease-out'}})}})}}
 /* scheda precedente / successiva in modo circolare: frecce ai lati, tasti ← → e, sul telefono,
    scorrimento del dito a destra o a sinistra */
@@ -1204,6 +1213,7 @@ render();loadStats();setInterval(loadStats,60000);document.addEventListener('vis
 </body></html>'''
     OUTPUT.write_text(document, encoding="utf-8")
     WEB_PAGE.write_text(document, encoding="utf-8")
+    ADMIN_PAGE.write_text(document, encoding="utf-8")
 
 
 
