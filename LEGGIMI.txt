@@ -34,7 +34,8 @@ Cliccando su una scheda si apre la finestra con il nome del locale, sotto
 il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
 menu, il telefono, Google Maps e la fonte.
 Il nome in alto è seguito da giorno e mese del menu (es. "Fantasia - 06/10");
-in basso a sinistra resta solo l'eventuale nota (es. "Chiuso fino al 07/10").
+in basso, centrati, i pulsanti telefono, Google Maps e Fonte; sopra di loro
+l'eventuale nota (es. "Chiuso fino al 07/10").
 Le schede della pagina mostrano solo la data, senza "Ultimo menu:".
 La finestra ha una cornice singola di 5 mm: verde (come la fascia delle
 schede) se la rosticceria ha pubblicato il menu di oggi, arancione se no.
