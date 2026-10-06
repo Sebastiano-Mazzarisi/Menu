@@ -1188,7 +1188,7 @@ const P=['oggi','mese','anno','tutto'],today=()=>new Date().toLocaleDateString('
 function rowOf(d,n){{const ns=[n].concat((DATA.shops.find(s=>s.nome===n)||{{}}).nomi_precedenti||[]);const z={{}};P.forEach(k=>z[k]=0);ns.forEach(x=>{{const r=(d.righe||{{}})[x]||{{}};P.forEach(k=>z[k]+=r[k]||0)}});if(d.data!==today()){{z.oggi=0}}return z}}
 function cell(t,v){{const c=document.createElement(t);c.textContent=v;return c}}
 function render(){{if(!ST)return;document.querySelectorAll('.card').forEach(card=>{{const b=card.querySelector('.count');b.textContent=rowOf(ST,DATA.shops[+card.dataset.index].nome).oggi;b.hidden=false}});
-const names=DATA.shops.map(s=>s.nome),old=DATA.shops.flatMap(s=>s.nomi_precedenti||[]);Object.keys(ST.righe||{{}}).forEach(n=>{{if(!names.includes(n)&&!old.includes(n))names.push(n)}});const tot={{oggi:0,mese:0,anno:0,tutto:0}};
+const names=DATA.shops.map(s=>s.nome).sort(new Intl.Collator('it',{{sensitivity:'base'}}).compare),old=DATA.shops.flatMap(s=>s.nomi_precedenti||[]);Object.keys(ST.righe||{{}}).forEach(n=>{{if(!names.includes(n)&&!old.includes(n))names.push(n)}});const tot={{oggi:0,mese:0,anno:0,tutto:0}};
 const tb=sd.querySelector('tbody');tb.innerHTML='';names.forEach(n=>{{const z=rowOf(ST,n);const tr=document.createElement('tr');tr.append(cell('td',n));P.forEach(k=>{{tot[k]+=z[k];tr.append(cell('td',z[k]))}});tb.append(tr)}});
 const tf=sd.querySelector('tfoot');tf.innerHTML='';const tr=document.createElement('tr');tr.append(cell('td','Totale'));P.forEach(k=>tr.append(cell('td',tot[k])));tf.append(tr);
 info.querySelector('.total').textContent=tot.oggi;sd.querySelector('.statnote').textContent=(loading?'Aggiornamento in corso… ':'')+(ST.ora?'Dati delle '+ST.ora:'')}}
@@ -1519,6 +1519,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     NOTICE_MINUTES = int(settings.get("avvisi_ogni_minuti", NOTICE_MINUTES))
     results: list[dict[str, Any]] = []
     previous_sources = {item.get("id"): item.get("source", "") for item in read_json(STATE, {}).get("results", [])}
+    shops = sorted(shops, key=lambda item: sort_key_name(item.get("nome", "")))  # controllo in ordine alfabetico
     try:
         for shop in shops:
             previous = previous_sources.get(shop["id"]) or "già acquisito oggi"
