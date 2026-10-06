@@ -937,9 +937,9 @@ def place_capture(folder: Path, image: Path) -> Path:
 
 
 def post_variants(source: dict[str, Any]) -> list[dict[str, Any]]:
-    """La fonte per il 1°, 2°, 3°... post della pagina ("post_da_controllare", 3 se non indicato):
+    """La fonte per il 1°, 2°, 3°... post della pagina ("post_da_controllare", 5 se non indicato):
     nei selettori [aria-posinset='1'] diventa '2', '3'..."""
-    count = int(source.get("post_da_controllare", 3))
+    count = int(source.get("post_da_controllare", 5))
     if "posinset='1'" not in source.get("selettore", ""):
         return [source]
     return [{**source, **{key: source[key].replace("posinset='1'", f"posinset='{number}'")

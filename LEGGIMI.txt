@@ -310,8 +310,8 @@ in Menu.html. Restano disponibili nell'archivio e lo stato mostra la loro data.
 Tipi di fonte
 -------------
 - browser (post Facebook): se il primo post non è un menu (pubblicità,
-  auguri, post in evidenza) guarda il 2° e il 3° ("post_da_controllare" per
-  cambiarlo). La foto viene scaricata prima in dati/catture e passa in
+  auguri, post in evidenza) guarda i successivi fino al 5° ("post_da_controllare"
+  per cambiarlo). La foto viene scaricata prima in dati/catture e passa in
   ingresso solo se è davvero un menu: un post che non è un menu non può
   più cancellare il menu già trovato oggi. "Menù del giorno" senza data
   vale come menu di oggi (prima "giorno" veniva scambiato per "giovedì").
