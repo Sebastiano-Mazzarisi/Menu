@@ -1442,6 +1442,43 @@ def kill_previous_run() -> None:
     AUTO_LOCK.unlink(missing_ok=True)
 
 
+def lock_owner_alive(lock: Path) -> bool:
+    """True se il programma che ha creato il file di blocco (numero di processo scritto dentro)
+    è ancora in esecuzione. Se la finestra del controllo è stata chiusa a metà, il blocco resta
+    sul disco ma il processo non c'è più: quel blocco va ignorato e cancellato."""
+    try:
+        pid = int(lock.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return False
+    if sys.platform != "win32":
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+    import ctypes
+    kernel = ctypes.windll.kernel32
+    kernel.OpenProcess.restype = ctypes.c_void_p
+    kernel.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    kernel.QueryFullProcessImageNameW.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_wchar_p,
+                                                  ctypes.POINTER(ctypes.c_ulong)]
+    kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+    handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return kernel.GetLastError() == 5  # accesso negato: il processo esiste
+    try:
+        code = ctypes.c_ulong()
+        if not kernel.GetExitCodeProcess(handle, ctypes.byref(code)) or code.value != 259:  # 259 = ancora attivo
+            return False
+        name = ctypes.create_unicode_buffer(1024)
+        size = ctypes.c_ulong(1024)
+        if kernel.QueryFullProcessImageNameW(handle, 0, name, ctypes.byref(size)):
+            return "python" in name.value.lower()  # numero riusato da un altro programma: non conta
+        return True
+    finally:
+        kernel.CloseHandle(handle)
+
+
 def take_lock(max_wait_minutes: int = 20) -> bool:
     """Evita due esecuzioni contemporanee (giro automatico e giro manuale).
 
@@ -1449,11 +1486,13 @@ def take_lock(max_wait_minutes: int = 20) -> bool:
     l'orario fisso del controllo automatico viene rispettato anche dopo un controllo
     manuale. Un blocco più vecchio di 30 minuti è considerato abbandonato."""
     import time
+    if AUTO_LOCK.exists() and not lock_owner_alive(AUTO_LOCK):
+        AUTO_LOCK.unlink(missing_ok=True)  # giro precedente interrotto (finestra chiusa): blocco abbandonato
     if AUTO_LOCK.exists() and time.time() - AUTO_LOCK.stat().st_mtime >= 30 * 60:
         kill_previous_run()
     waited = False
     deadline = time.time() + max_wait_minutes * 60
-    while AUTO_LOCK.exists() and time.time() - AUTO_LOCK.stat().st_mtime < 30 * 60:
+    while AUTO_LOCK.exists() and lock_owner_alive(AUTO_LOCK) and time.time() - AUTO_LOCK.stat().st_mtime < 30 * 60:
         if time.time() > deadline:
             kill_previous_run()  # aspettato troppo: chiudo il giro bloccato e parto
             break
@@ -1490,6 +1529,30 @@ def beep_three_times() -> None:
             time.sleep(0.6)       # 0,4 + 0,6 = un beep ogni secondo
 
 
+PHONE_CONFIG = DATA / "notifica.json"  # {"bark": "https://api.day.app/CHIAVE"} - resta solo sul PC
+
+
+def notify_phone(message: str) -> None:
+    """Notifica sul cellulare con l'app Bark (iPhone): titolo "Menu", il testo delle novità e il
+    suono "trebeep" (tre beep: basso, alto, basso; il file trebeep.caf va caricato
+    una volta nell'app). Toccando la notifica si apre il sito. L'indirizzo con la chiave personale
+    sta in dati/notifica.json, che non viene pubblicato su GitHub. Senza quel file non fa nulla."""
+    base = str(read_json(PHONE_CONFIG, {}).get("bark", "")).strip().rstrip("/")
+    if not base:
+        return
+    if not base.startswith("http"):
+        base = f"https://api.day.app/{base}"  # basta anche la sola chiave
+    payload = {"title": "Menu", "body": message, "sound": "trebeep", "group": "Menu", "url": WEB_URL}
+    try:
+        request = urllib.request.Request(base, data=json.dumps(payload).encode("utf-8"), method="POST",
+                                         headers={"Content-Type": "application/json; charset=utf-8"})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            response.read()
+        print("  notifica inviata al cellulare")
+    except Exception as exc:  # una notifica non riuscita non deve fermare il programma
+        print(f"  notifica al cellulare non riuscita: {exc}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Raccoglie e pubblica menu da fonti configurabili.")
     parser.add_argument("--aggiungi", action="store_true", help="Aggiunge una rosticceria con procedura guidata.")
@@ -1504,12 +1567,19 @@ def main() -> None:
                              "come all'ultimo giro (clic su una rosticceria nella finestra di controllo).")
     parser.add_argument("--login", action="store_true", help="Apre Facebook e Instagram per salvare la sessione.")
     parser.add_argument("--prova-beep", action="store_true", help="Fa sentire i tre beep e termina.")
+    parser.add_argument("--prova-notifica", action="store_true",
+                        help="Manda una notifica di prova al cellulare (app Bark, tre beep) e termina.")
     parser.add_argument("--ocr", metavar="IMMAGINE", help="Mostra il testo letto in una foto e l'eventuale chiusura.")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
     if args.prova_beep:
         beep_three_times()
+        return
+    if args.prova_notifica:
+        if not read_json(PHONE_CONFIG, {}).get("bark"):
+            print(f"Manca {PHONE_CONFIG}: vedi LEGGIMI.txt > Notifica sul cellulare.")
+        notify_phone("Prova: le notifiche del Menu funzionano")
         return
     if args.ocr:
         text = ocr_image(Path(args.ocr))
@@ -1676,6 +1746,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     if news:
         print("Novità: " + ", ".join(news))  # anche la finestra di controllo legge questa riga
         beep_three_times()
+        notify_phone("Novità: " + ", ".join(news))
 
 
 if __name__ == "__main__":

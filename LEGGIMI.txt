@@ -169,6 +169,11 @@ giro.
 Le rosticcerie vengono controllate nello stesso ordine della finestra di
 controllo: prima quelle già aggiornate oggi, poi le altre, in ciascun
 gruppo in ordine alfabetico.
+"Controllo in corso…" compare solo se il programma del controllo sta davvero
+girando: se la finestra DOS viene chiusa a metà controllo resta il file
+dati/automatico.lock, ma la finestra di controllo si accorge che il programma
+non c'è più, cancella il file e torna al conto alla rovescia (lo stesso fa
+Menu.py al giro successivo).
 "Registro" (apre
 dati/automatico.log), "Sito" (apre la pagina su GitHub Pages),
 "Pianifica"/"Disabilita": se l'attività è attiva la disabilita; se manca, è
@@ -240,6 +245,27 @@ chiede al registro (Registro_click.gs, ?azione=ultima) l'indirizzo del foglio
 e il numero dell'ultima riga. Dopo aver modificato Registro_click.gs nell'editor
 Apps Script: Esegui il deployment > Gestisci deployment > matita (Modifica) >
 Versione: "Nuova versione" > Esegui il deployment (l'indirizzo /exec resta uguale).
+
+Notifica sul cellulare (iPhone, app Bark)
+-----------------------------------------
+Quando un giro trova almeno una variazione (la stessa che fa suonare i tre
+beep sul PC), Menu.py manda anche una notifica all'iPhone: titolo "Menu",
+testo "Novità: <rosticcerie>", suono di tre beep (basso, alto, basso). Toccando la notifica si apre il sito.
+Usa l'app gratuita Bark (App Store, "Bark - Custom Notifications"), che a
+differenza di ntfy permette un suono personalizzato.
+Preparazione, una volta sola:
+ 1. Installa Bark sull'iPhone, aprila e consenti le notifiche. In alto
+    compare un indirizzo tipo https://api.day.app/AbCdEf123.../
+ 2. Quell'indirizzo va in dati/notifica.json:
+        {"bark": "https://api.day.app/AbCdEf123..."}
+    (dati/ non viene pubblicato su GitHub: la chiave resta privata).
+ 3. Suono: in Bark > Suoni > carica suono > Sfoglia > Dropbox > Prog > Menu >
+    trebeep.caf.
+ Con Bark aperta in primo piano la notifica arriva senza suono.
+Prova: python Menu.py --prova-notifica
+Senza dati/notifica.json non viene mandato nulla (il resto funziona uguale).
+Il file trebeep.caf (in questa cartella) è il suono: tre note di 0,35 s
+(523 Hz, 1047 Hz, 523 Hz) con pause di 0,15 s.
 
 Giorno di riposo settimanale
 ----------------------------

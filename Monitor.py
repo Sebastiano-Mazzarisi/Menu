@@ -99,6 +99,57 @@ def next_effective(next_run: datetime, settings: dict) -> datetime:
     return next_run
 
 
+def lock_owner_alive(lock: Path) -> bool:
+    """True se il programma che ha creato il file di blocco (numero di processo scritto dentro)
+    è ancora in esecuzione. Se la finestra del controllo è stata chiusa a metà, il blocco resta
+    sul disco ma il processo non c'è più: quel blocco va ignorato e cancellato."""
+    try:
+        pid = int(lock.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return False
+    if sys.platform != "win32":
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+    import ctypes
+    kernel = ctypes.windll.kernel32
+    kernel.OpenProcess.restype = ctypes.c_void_p
+    kernel.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    kernel.QueryFullProcessImageNameW.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_wchar_p,
+                                                  ctypes.POINTER(ctypes.c_ulong)]
+    kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+    handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return kernel.GetLastError() == 5  # accesso negato: il processo esiste
+    try:
+        code = ctypes.c_ulong()
+        if not kernel.GetExitCodeProcess(handle, ctypes.byref(code)) or code.value != 259:  # 259 = ancora attivo
+            return False
+        name = ctypes.create_unicode_buffer(1024)
+        size = ctypes.c_ulong(1024)
+        if kernel.QueryFullProcessImageNameW(handle, 0, name, ctypes.byref(size)):
+            return "python" in name.value.lower()  # numero riusato da un altro programma: non conta
+        return True
+    finally:
+        kernel.CloseHandle(handle)
+
+
+def check_running() -> bool:
+    """Un controllo è davvero in corso? Il file di blocco da solo non basta: se il controllo è
+    stato interrotto (finestra chiusa a metà) il file resta. In quel caso lo cancello."""
+    if not LOCK.exists():
+        return False
+    if lock_owner_alive(LOCK):
+        return True
+    try:
+        LOCK.unlink()
+    except OSError:
+        pass
+    return False
+
+
 def last_outcome() -> tuple[str, str]:
     """Ora ed esito dell'ultimo giro, letti dal registro dati/automatico.log."""
     try:
@@ -125,7 +176,7 @@ def last_outcome() -> tuple[str, str]:
             return when, "nessuna novità"
         if "ancora in corso" in line or "bloccat" in line:
             return when, "saltato (giro precedente in corso)"
-    return when, "in corso…" if LOCK.exists() else "completato"
+    return when, "in corso…" if check_running() else "completato"
 
 
 DIGITS = {  # cifre 5x7 disegnate a mano: niente librerie esterne
@@ -316,7 +367,7 @@ class Monitor(tk.Tk):
         active = self.is_active()
         self.toggle_button.config(text="Disabilita" if active else "Pianifica")
 
-        if LOCK.exists():
+        if check_running():
             self.countdown.config(text="Controllo in corso…", fg=BLUE)
             self.subtitle.config(text="sto leggendo Facebook, Instagram e i siti")
         elif self.next_run is None:
@@ -468,7 +519,7 @@ class Monitor(tk.Tk):
         quella del controllo manuale precedente (riconosciuta dal titolo)."""
         if sys.platform != "win32":
             return
-        if LOCK.exists():
+        if check_running():
             self.say("Un controllo è già in corso: attendi che finisca")
             return
         subprocess.run(["taskkill", "/F", "/T", "/FI", f"WINDOWTITLE eq {CONSOLE_TITLE}*"],
