@@ -1430,6 +1430,9 @@ def main() -> None:
     parser.add_argument("--solo-html", action="store_true", help="Non prova fonti online; usa i file disponibili.")
     parser.add_argument("--visibile", action="store_true", help="Mostra il browser durante le acquisizioni online.")
     parser.add_argument("--pubblica", action="store_true", help="Dopo l'aggiornamento invia la pagina a GitHub Pages.")
+    parser.add_argument("--salta-aggiornati", action="store_true",
+                        help="Non ricontrolla online le rosticcerie che hanno già il menu di oggi "
+                             "(pulsante \"Controlla\" della finestra di controllo; il giro ogni 15 minuti fa lo stesso).")
     parser.add_argument("--login", action="store_true", help="Apre Facebook e Instagram per salvare la sessione.")
     parser.add_argument("--prova-beep", action="store_true", help="Fa sentire i tre beep e termina.")
     parser.add_argument("--ocr", metavar="IMMAGINE", help="Mostra il testo letto in una foto e l'eventuale chiusura.")
@@ -1476,6 +1479,29 @@ def main() -> None:
         AUTO_LOCK.unlink(missing_ok=True)
 
 
+class ResultsOnly:
+    """Per la finestra DOS: lascia passare solo le righe dei risultati (es. "Fantasia: 2026-10-05
+    (cartella)") e l'esito della pubblicazione. I dettagli (righe rientrate: testo letto, avvisi...)
+    e "Creato: ..." finiscono solo nel registro dati/automatico.log."""
+
+    def __init__(self, stream: Any) -> None:
+        self.stream, self.pending = stream, ""
+
+    def write(self, text: str) -> int:
+        self.pending += text
+        while "\n" in self.pending:
+            line, self.pending = self.pending.split("\n", 1)
+            if line.strip() and not line[:1].isspace() and not line.startswith("Creato:"):
+                self.stream.write(line + "\n")
+        return len(text)
+
+    def flush(self) -> None:
+        if self.pending and not self.pending[:1].isspace():  # es. domanda di input() senza a capo
+            self.stream.write(self.pending)
+            self.pending = ""
+        self.stream.flush()
+
+
 class Tee:
     """Scrive contemporaneamente a video e nel registro."""
 
@@ -1496,8 +1522,8 @@ def start_manual_log() -> None:
     """Anche i giri lanciati a mano (Avvia.bat) finiscono in dati/automatico.log."""
     DATA.mkdir(exist_ok=True)
     stream = AUTO_LOG.open("a", encoding="utf-8", buffering=1)
-    sys.stdout = Tee(sys.__stdout__, stream)
-    sys.stderr = Tee(sys.__stderr__, stream)
+    sys.stdout = Tee(ResultsOnly(sys.__stdout__) if sys.__stdout__ else None, stream)
+    sys.stderr = Tee(sys.__stderr__, stream)  # gli errori si vedono sempre per intero
     print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} === (manuale)")
 
 
@@ -1524,7 +1550,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
         for shop in shops:
             previous = previous_sources.get(shop["id"]) or "già acquisito oggi"
             result = acquire(shop, browser, online=not args.solo_html,
-                             skip_if_today=previous if args.automatico else None)
+                             skip_if_today=previous if args.automatico or args.salta_aggiornati else None)
             show_old = bool(settings.get("mostra_menu_vecchi", False))
             publishable = bool(result.image and result.menu_day and (show_old or result.menu_day == date.today()))
             current = copy_current(shop, result.image, result.menu_day) if publishable else None

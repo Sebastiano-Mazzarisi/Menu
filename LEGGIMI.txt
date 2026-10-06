@@ -146,10 +146,19 @@ viene ricordata alla chiusura, in dati/monitor.json). Mostra:
   pallino verde "oggi", arancione con la data dell'ultimo menu, rosso
   "nessuno";
 - l'esito dell'ultimo giro (pubblicato, nessuna novità, errore).
-Pulsanti: "Controlla ora" (lancia Avvia.bat in una finestra intitolata
-"Menu - controllo manuale", che resta aperta per leggere l'esito; prima di
+Pulsanti:
+"Controlla": controllo immediato come quello automatico ogni 15 minuti: le
+rosticcerie che hanno già il menu di oggi non vengono ricontrollate online
+(Menu.py --pubblica --salta-aggiornati).
+"Ricontrolla": ricontrolla online tutte le rosticcerie, anche quelle già
+aggiornate (come Avvia.bat: Menu.py --pubblica).
+Entrambi aprono una finestra DOS intitolata "Menu - controllo manuale", che
+mostra solo una riga per rosticceria (es. "Fantasia: 2026-10-05 (cartella)")
+e l'esito della pubblicazione; i dettagli (testo letto, avvisi) vanno solo
+nel registro. La finestra resta aperta per leggere l'esito; prima di
 aprirne una nuova chiude la precedente; se un controllo è già in corso non
-ne avvia un altro), "Registro" (apre
+ne avvia un altro. Le rosticcerie vengono controllate in ordine alfabetico.
+"Registro" (apre
 dati/automatico.log), "Sito" (apre la pagina su GitHub Pages),
 "Pianifica"/"Disabilita": se l'attività è attiva la disabilita; se manca, è
 disabilitata o ha orari non allineati ai quarti d'ora, la (ri)crea con gli

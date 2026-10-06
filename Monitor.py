@@ -276,10 +276,10 @@ class Monitor(tk.Tk):
 
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
-        # pulsanti su due righe (3 + 2), tutti larghi uguale: la finestra resta stretta
-        layout = (("Controlla ora", self.run_now, 0, 0), ("Registro", self.open_log, 0, 1),
-                  ("Sito", self.open_site, 0, 2), ("Accessi", self.open_accesses, 1, 0),
-                  ("Pianifica", self.toggle_task, 1, 1))
+        # pulsanti su due righe (3 + 3), tutti larghi uguale: la finestra resta stretta
+        layout = (("Controlla", self.check, 0, 0), ("Ricontrolla", self.recheck, 0, 1),
+                  ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
+                  ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2))
         for text, action, row, column in layout:
             button = tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
                                activebackground="#334155", activeforeground=FG, relief="flat", width=11)
@@ -447,22 +447,36 @@ class Monitor(tk.Tk):
         self.querying = False
 
     # --- pulsanti -------------------------------------------------------------------------------
-    def run_now(self) -> None:
-        """Lancia subito un giro completo in una finestra (come Avvia.bat).
+    def check(self) -> None:
+        """Controlla: come il giro automatico ogni 15 minuti, ma subito e a qualunque ora.
+        Le rosticcerie che hanno già il menu di oggi non vengono ricontrollate online."""
+        self.run_now("--salta-aggiornati")
+
+    def recheck(self) -> None:
+        """Ricontrolla: ricontrolla online tutte le rosticcerie, anche quelle già aggiornate
+        (es. per vedere se un menu di oggi è stato corretto)."""
+        self.run_now()
+
+    def run_now(self, *options: str) -> None:
+        """Lancia subito un giro in una finestra DOS che mostra solo una riga per rosticceria.
 
         La finestra resta aperta per leggere l'esito; prima di aprirne una nuova viene chiusa
         quella del controllo manuale precedente (riconosciuta dal titolo)."""
-        bat = ROOT / "Avvia.bat"
-        if not bat.exists() or sys.platform != "win32":
+        if sys.platform != "win32":
             return
         if LOCK.exists():
             self.say("Un controllo è già in corso: attendi che finisca")
             return
         subprocess.run(["taskkill", "/F", "/T", "/FI", f"WINDOWTITLE eq {CONSOLE_TITLE}*"],
                        capture_output=True, creationflags=NO_WINDOW)
+        python = Path(sys.executable).with_name("python.exe")  # Monitor gira con pythonw
+        exe = str(python) if python.exists() else "python"
+        exe = f'"{exe}"' if " " in exe else exe
+        command = " ".join([exe, "Menu.py", "--pubblica", *options])
         # riga di comando passata così com'è (una lista verrebbe ri-quotata e cmd non la capirebbe)
-        subprocess.Popen(f'cmd /k "title {CONSOLE_TITLE} && call Avvia.bat"', cwd=ROOT,
+        subprocess.Popen(f'cmd /k "title {CONSOLE_TITLE} && {command}"', cwd=ROOT,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
+        self.say("Controllo avviato" + (" (solo le rosticcerie non aggiornate)" if options else " (tutte)"))
 
     def open_log(self) -> None:
         """Apre il registro con il Blocco note (se non esiste ancora lo dice nella finestra)."""
