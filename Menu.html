@@ -28,15 +28,31 @@ dialog{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18
 @media(max-width:600px){header{align-items:start;flex-direction:column}main{grid-template-columns:1fr;padding-inline:12px}}
 </style></head><body>
 <header><h1>Menu - Martedì 6 ottobre</h1></header>
-<main><button type="button" class="card band-old" data-index="0">
-  <img class="logo" src="icone/logo-fantasia.jpg?v=c5378898" alt="" width="64" height="64">
+<main><button type="button" class="card band-ok" data-index="0">
+  <img class="logo" src="icone/logo-aufer.jpg?v=1fefd7c5" alt="" width="64" height="64">
   <span class="info">
-  <h2>Fantasia</h2>
+  <h2>Aufer Gastronomia</h2>
+  <span class="day">Ultimo menu: <strong>06/10/2026</strong></span>
+  <span class="status fresh">Oggi</span>
+  </span>
+  <span class="count" hidden></span>
+</button><button type="button" class="card band-ok" data-index="1">
+  <img class="logo" src="icone/logo-pane-co.jpg?v=53a52153" alt="" width="64" height="64">
+  <span class="info">
+  <h2>Pane &amp; Co</h2>
+  <span class="day">Ultimo menu: <strong>06/10/2026</strong></span>
+  <span class="status fresh">Oggi</span>
+  </span>
+  <span class="count" hidden></span>
+</button><button type="button" class="card band-old" data-index="2">
+  <img class="logo" src="icone/logo-bollenti-piatti.jpg?v=ec50490a" alt="" width="64" height="64">
+  <span class="info">
+  <h2>Bollenti piatti</h2>
   <span class="day">Ultimo menu: <strong>05/10/2026</strong></span>
   <span class="status stale">Non di oggi</span>
   </span>
   <span class="count" hidden></span>
-</button><button type="button" class="card band-old" data-index="1">
+</button><button type="button" class="card band-old" data-index="3">
   <img class="logo" src="icone/logo-cibaria.jpg?v=fe55d084" alt="" width="64" height="64">
   <span class="info">
   <h2>Cibària</h2>
@@ -44,7 +60,15 @@ dialog{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18
   <span class="status stale">Non di oggi</span>
   </span>
   <span class="count" hidden></span>
-</button><button type="button" class="card band-ok" data-index="2">
+</button><button type="button" class="card band-old" data-index="4">
+  <img class="logo" src="icone/logo-fantasia.jpg?v=c5378898" alt="" width="64" height="64">
+  <span class="info">
+  <h2>Fantasia</h2>
+  <span class="day">Ultimo menu: <strong>05/10/2026</strong></span>
+  <span class="status stale">Non di oggi</span>
+  </span>
+  <span class="count" hidden></span>
+</button><button type="button" class="card band-ok" data-index="5">
   <img class="logo" src="icone/logo-impastamo.jpg?v=c8e757fc" alt="" width="64" height="64">
   <span class="info">
   <h2>Impastamò</h2>
@@ -53,7 +77,7 @@ dialog{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18
   <span class="status fresh">Oggi</span>
   </span>
   <span class="count" hidden></span>
-</button><button type="button" class="card band-old" data-index="3">
+</button><button type="button" class="card band-old" data-index="6">
   <img class="logo" src="icone/logo-michela.jpg?v=8566554a" alt="" width="64" height="64">
   <span class="info">
   <h2>Le delizie di Michela</h2>
@@ -61,15 +85,7 @@ dialog{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18
   <span class="status stale">Non di oggi</span>
   </span>
   <span class="count" hidden></span>
-</button><button type="button" class="card band-ok" data-index="4">
-  <img class="logo" src="icone/logo-aufer.jpg?v=1fefd7c5" alt="" width="64" height="64">
-  <span class="info">
-  <h2>Aufer Gastronomia</h2>
-  <span class="day">Ultimo menu: <strong>06/10/2026</strong></span>
-  <span class="status fresh">Oggi</span>
-  </span>
-  <span class="count" hidden></span>
-</button><button type="button" class="card band-old" data-index="5">
+</button><button type="button" class="card band-old" data-index="7">
   <img class="logo" src="icone/logo-santoro.jpg?v=3a5784ca" alt="" width="64" height="64">
   <span class="info">
   <h2>Santoro Gastronomia</h2>
@@ -77,25 +93,9 @@ dialog{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18
   <span class="status stale">Non di oggi</span>
   </span>
   <span class="count" hidden></span>
-</button><button type="button" class="card band-ok" data-index="6">
-  <img class="logo" src="icone/logo-pane-co.jpg?v=53a52153" alt="" width="64" height="64">
-  <span class="info">
-  <h2>Pane &amp; Co</h2>
-  <span class="day">Ultimo menu: <strong>06/10/2026</strong></span>
-  <span class="status fresh">Oggi</span>
-  </span>
-  <span class="count" hidden></span>
-</button><button type="button" class="card band-old" data-index="7">
-  <img class="logo" src="icone/logo-bollenti-piatti.jpg?v=ec50490a" alt="" width="64" height="64">
-  <span class="info">
-  <h2>Bollenti piatti</h2>
-  <span class="day">Ultimo menu: <strong>05/10/2026</strong></span>
-  <span class="status stale">Non di oggi</span>
-  </span>
-  <span class="count" hidden></span>
 </button></main>
 <dialog id="detail"><div class="modal-head"><div><h2 id="name"></h2><p id="addr" hidden></p></div><button id="close" aria-label="Chiudi">✕</button></div><button class="nav" id="prev" aria-label="Rosticceria precedente">‹</button><button class="nav" id="next" aria-label="Rosticceria successiva">›</button><img id="full" alt=""><div id="text"></div><p id="nomenu" hidden>Il menu di questa data non è pubblicato (vedi archivio).</p><div class="actions"><span id="meta"></span><a id="phone" hidden></a><a id="map" target="_blank" rel="noopener" hidden>Google Maps</a><a id="source" class="source" target="_blank" rel="noopener" hidden>Fonte</a></div></dialog>
-<script>const DATA={"shops": [{"nome": "Fantasia", "telefono": "080-405.41.39", "indirizzo": "Via Nicola Losavio 10, 70017 Putignano (BA)", "url": "https://www.facebook.com/RosticceriaFantasia", "nomi_precedenti": []}, {"nome": "Cibària", "telefono": "080-645.07.99", "indirizzo": "Via Estramurale a Levante 11, 70017 Putignano (BA)", "url": "https://www.facebook.com/cibaria.asporto", "nomi_precedenti": []}, {"nome": "Impastamò", "telefono": "392-536.15.36", "indirizzo": "Via Conversano 34, 70017 Putignano (BA)", "url": "https://www.facebook.com/profile.php?id=61560452176728", "nomi_precedenti": []}, {"nome": "Le delizie di Michela", "telefono": "080-521.42.33", "indirizzo": "Corso Umberto I 87, 70017 Putignano (BA)", "url": "https://www.facebook.com/profile.php?id=100045208848338", "nomi_precedenti": []}, {"nome": "Aufer Gastronomia", "telefono": "368-38.30.313", "indirizzo": "Via Estramurale a Mezzogiorno 83, 70017 Putignano (BA)", "url": "https://www.instagram.com/aufergastronomia/", "nomi_precedenti": []}, {"nome": "Santoro Gastronomia", "telefono": "080-859.83.13", "indirizzo": "Via Mazzini 28, 70013 Castellana Grotte (BA)", "url": "https://www.facebook.com/santorogastronomia", "nomi_precedenti": ["Santoro (Castellana)"]}, {"nome": "Pane & Co", "telefono": "080-405.49.00", "indirizzo": "Viale Federico II 49, 70017 Putignano (BA)", "url": "https://www.paneeco.it/menu", "nomi_precedenti": []}, {"nome": "Bollenti piatti", "telefono": "334-318.58.44", "indirizzo": "Via Noci 48-50, 70017 Putignano (BA)", "url": "https://www.facebook.com/BollentiPiatti", "nomi_precedenti": []}], "results": [{"id": "fantasia", "image": "", "menu_date": "2026-10-05", "source": "cartella", "error": "browser: l'ultimo post non sembra un menu"}, {"id": "cibaria", "image": "", "menu_date": "2026-10-05", "source": "cartella", "error": "browser: l'ultimo post (solo testo) non sembra un menu"}, {"id": "impastamo", "image": "menu/impastamo.jpg", "menu_date": "2026-10-06", "source": "avviso", "error": "", "nota": "Chiuso fino al 07/10"}, {"id": "michela", "image": "", "menu_date": "2026-10-05", "source": "Storia Facebook", "error": ""}, {"id": "aufer", "image": "menu/aufer.jpg", "menu_date": "2026-10-06", "source": "Storia Instagram", "error": ""}, {"id": "santoro", "image": "", "menu_date": "2026-10-05", "source": "Facebook", "error": ""}, {"id": "pane-co", "image": "", "menu_date": "2026-10-06", "source": "Sito ufficiale", "error": "", "sections": [{"titolo": "Antipasti del giorno", "piatti": [{"nome": "Zucchina al forno", "prezzo": "€5.00", "descrizione": ""}, {"nome": "Fagiolini a vapore con olio e menta", "prezzo": "€6.00", "descrizione": ""}, {"nome": "Cornaletti al forno", "prezzo": "€5.00", "descrizione": ""}, {"nome": "Filetti di peperoni con pan grattato e capperi", "prezzo": "€5.00", "descrizione": ""}, {"nome": "Sfoglia di mozzarella con prosciutto cotto, insalata e philadelphia", "prezzo": "€1.70", "descrizione": "Al pezzo"}, {"nome": "Farro con caponata di verdure", "prezzo": "€5.00", "descrizione": "Melanzane, cetrioli, zucchina e peperoni"}, {"nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto", "prezzo": "€5.00", "descrizione": ""}, {"nome": "Cous cous con bresaola e verdurine", "prezzo": "€5.00", "descrizione": "Zucchine, melanzane e peperoni."}, {"nome": "Riso venere e riso basmati con zucchina, gamberetti e mais", "prezzo": "€6.00", "descrizione": ""}, {"nome": "Insalata di mare", "prezzo": "€6.00", "descrizione": "Polpo, seppie, gamberetti, polpa di granchio, sedano, olive e acetelli"}]}, {"titolo": "Primi Piatti del giorno", "piatti": [{"nome": "Spaghetti alla carbonara", "prezzo": "€6.50", "descrizione": ""}, {"nome": "Risotto con asparagi e zafferano", "prezzo": "€7.50", "descrizione": ""}, {"nome": "Orecchiette tricolore alla pastorella", "prezzo": "€7.50", "descrizione": "Con pomodoro e ricotta"}, {"nome": "Cavatellucci con gamberetti, rucola e pomodorino", "prezzo": "€8.50", "descrizione": ""}, {"nome": "Zuppa di lenticchie", "prezzo": "€6.00", "descrizione": "Con o senza pasta"}]}, {"titolo": "Secondi piatti del giorno", "piatti": [{"nome": "Filetto di platessa gratinato con zucchina", "prezzo": "€8.50", "descrizione": ""}, {"nome": "Scaloppe di pollo al limone", "prezzo": "€7.50", "descrizione": "2 pezzi"}]}]}, {"id": "bollenti-piatti", "image": "", "menu_date": "2026-10-05", "source": "Facebook", "error": ""}], "v": "cdf0964caf", "titolo": "Menu - {data}", "log": "https://script.google.com/macros/s/AKfycbx8m-b5xkenUmdR8cbIFTVbCJGMIAQOgDWjY3xTY-FFgCowQd5hdB1qeDsEANf6w7wa/exec"};
+<script>const DATA={"shops": [{"nome": "Aufer Gastronomia", "telefono": "368-38.30.313", "indirizzo": "Via Estramurale a Mezzogiorno 83, 70017 Putignano (BA)", "url": "https://www.instagram.com/aufergastronomia/", "nomi_precedenti": []}, {"nome": "Pane & Co", "telefono": "080-405.49.00", "indirizzo": "Viale Federico II 49, 70017 Putignano (BA)", "url": "https://www.paneeco.it/menu", "nomi_precedenti": []}, {"nome": "Bollenti piatti", "telefono": "334-318.58.44", "indirizzo": "Via Noci 48-50, 70017 Putignano (BA)", "url": "https://www.facebook.com/BollentiPiatti", "nomi_precedenti": []}, {"nome": "Cibària", "telefono": "080-645.07.99", "indirizzo": "Via Estramurale a Levante 11, 70017 Putignano (BA)", "url": "https://www.facebook.com/cibaria.asporto", "nomi_precedenti": []}, {"nome": "Fantasia", "telefono": "080-405.41.39", "indirizzo": "Via Nicola Losavio 10, 70017 Putignano (BA)", "url": "https://www.facebook.com/RosticceriaFantasia", "nomi_precedenti": []}, {"nome": "Impastamò", "telefono": "392-536.15.36", "indirizzo": "Via Conversano 34, 70017 Putignano (BA)", "url": "https://www.facebook.com/profile.php?id=61560452176728", "nomi_precedenti": []}, {"nome": "Le delizie di Michela", "telefono": "080-521.42.33", "indirizzo": "Corso Umberto I 87, 70017 Putignano (BA)", "url": "https://www.facebook.com/profile.php?id=100045208848338", "nomi_precedenti": []}, {"nome": "Santoro Gastronomia", "telefono": "080-859.83.13", "indirizzo": "Via Mazzini 28, 70013 Castellana Grotte (BA)", "url": "https://www.facebook.com/santorogastronomia", "nomi_precedenti": ["Santoro (Castellana)"]}], "results": [{"id": "aufer", "image": "menu/aufer.jpg", "menu_date": "2026-10-06", "source": "Storia Instagram", "error": ""}, {"id": "pane-co", "image": "", "menu_date": "2026-10-06", "source": "Sito ufficiale", "error": "", "sections": [{"titolo": "Antipasti del giorno", "piatti": [{"nome": "Zucchina al forno", "prezzo": "€5.00", "descrizione": ""}, {"nome": "Fagiolini a vapore con olio e menta", "prezzo": "€6.00", "descrizione": ""}, {"nome": "Cornaletti al forno", "prezzo": "€5.00", "descrizione": ""}, {"nome": "Filetti di peperoni con pan grattato e capperi", "prezzo": "€5.00", "descrizione": ""}, {"nome": "Sfoglia di mozzarella con prosciutto cotto, insalata e philadelphia", "prezzo": "€1.70", "descrizione": "Al pezzo"}, {"nome": "Farro con caponata di verdure", "prezzo": "€5.00", "descrizione": "Melanzane, cetrioli, zucchina e peperoni"}, {"nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto", "prezzo": "€5.00", "descrizione": ""}, {"nome": "Cous cous con bresaola e verdurine", "prezzo": "€5.00", "descrizione": "Zucchine, melanzane e peperoni."}, {"nome": "Riso venere e riso basmati con zucchina, gamberetti e mais", "prezzo": "€6.00", "descrizione": ""}, {"nome": "Insalata di mare", "prezzo": "€6.00", "descrizione": "Polpo, seppie, gamberetti, polpa di granchio, sedano, olive e acetelli"}]}, {"titolo": "Primi Piatti del giorno", "piatti": [{"nome": "Spaghetti alla carbonara", "prezzo": "€6.50", "descrizione": ""}, {"nome": "Risotto con asparagi e zafferano", "prezzo": "€7.50", "descrizione": ""}, {"nome": "Orecchiette tricolore alla pastorella", "prezzo": "€7.50", "descrizione": "Con pomodoro e ricotta"}, {"nome": "Cavatellucci con gamberetti, rucola e pomodorino", "prezzo": "€8.50", "descrizione": ""}, {"nome": "Zuppa di lenticchie", "prezzo": "€6.00", "descrizione": "Con o senza pasta"}]}, {"titolo": "Secondi piatti del giorno", "piatti": [{"nome": "Filetto di platessa gratinato con zucchina", "prezzo": "€8.50", "descrizione": ""}, {"nome": "Scaloppe di pollo al limone", "prezzo": "€7.50", "descrizione": "2 pezzi"}]}]}, {"id": "bollenti-piatti", "image": "", "menu_date": "2026-10-05", "source": "Facebook", "error": ""}, {"id": "cibaria", "image": "", "menu_date": "2026-10-05", "source": "cartella", "error": "browser: l'ultimo post (solo testo) non sembra un menu"}, {"id": "fantasia", "image": "", "menu_date": "2026-10-05", "source": "cartella", "error": "browser: l'ultimo post non sembra un menu"}, {"id": "impastamo", "image": "menu/impastamo.jpg", "menu_date": "2026-10-06", "source": "avviso", "error": "", "nota": "Chiuso fino al 07/10"}, {"id": "michela", "image": "", "menu_date": "2026-10-05", "source": "Storia Facebook", "error": ""}, {"id": "santoro", "image": "", "menu_date": "2026-10-05", "source": "Facebook", "error": ""}], "v": "e0a8e1b444", "titolo": "Menu - {data}", "log": "https://script.google.com/macros/s/AKfycbx8m-b5xkenUmdR8cbIFTVbCJGMIAQOgDWjY3xTY-FFgCowQd5hdB1qeDsEANf6w7wa/exec"};
 /* Registro dei click sul foglio Google "Menu" (Apps Script in Registro_click.gs).
    ?v=57 nell'indirizzo = amministratore: quei click non vengono registrati. Senza ?v=57 si registra
    sempre, anche sullo stesso dispositivo (non viene ricordato nulla). */
@@ -111,13 +111,17 @@ function logClick(name){if(ADMIN||!DATA.log)return;Promise.race([approxPlace(),n
 if(dir)['#full','#text','#nomenu','.modal-head'].forEach(q=>{const e=document.querySelector(q);if(e&&e.animate)e.animate([{opacity:.3,transform:'translateX('+(dir*40)+'px)'},{opacity:1,transform:'none'}],{duration:200,easing:'ease-out'})})}
 /* scheda precedente / successiva in modo circolare: frecce ai lati, tasti ← → e, sul telefono,
    scorrimento del dito a destra o a sinistra */
-function step(d){const n=DATA.shops.length;openCard((cur+d+n)%n,d)}
+function step(d){const order=[...document.querySelectorAll('.card')].map(c=>+c.dataset.index),n=order.length;openCard(order[(order.indexOf(cur)+d+n)%n],d)}
 document.querySelector('#prev').onclick=e=>{e.stopPropagation();step(-1)};document.querySelector('#next').onclick=e=>{e.stopPropagation();step(1)};
 document.addEventListener('keydown',e=>{if(!dlg.open)return;if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}else if(e.key==='ArrowRight'){e.preventDefault();step(1)}});
 let tx=null,ty=0;dlg.addEventListener('touchstart',e=>{if(e.touches.length!==1){tx=null;return}tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
 dlg.addEventListener('touchmove',e=>{if(e.touches.length!==1)tx=null},{passive:true});
 dlg.addEventListener('touchend',e=>{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
-if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)});document.querySelectorAll('.card').forEach((c,i)=>{c.onclick=()=>openCard(i)});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{if(e.target===dlg)dlg.close()};function refresh(){const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{data}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach((c,i)=>{const r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')})}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()})
+if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)});document.querySelectorAll('.card').forEach(c=>{c.onclick=()=>openCard(+c.dataset.index)});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{if(e.target===dlg)dlg.close()};function refresh(){const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{data}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach(c=>{const i=+c.dataset.index,r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')});
+/* ordine: prima le rosticcerie con il menu di oggi pubblicato (non avvisi di chiusura o riposo),
+   poi le altre; in ciascun gruppo in ordine alfabetico. Rifatto anche quando cambia il giorno. */
+const main=document.querySelector('main'),col=new Intl.Collator('it',{sensitivity:'base'}),has=i=>DATA.results[i].menu_date===iso&&!DATA.results[i].nota;
+[...document.querySelectorAll('.card')].sort((a,b)=>{const x=+a.dataset.index,y=+b.dataset.index;return (has(y)-has(x))||col.compare(DATA.shops[x].nome,DATA.shops[y].nome)}).forEach(c=>main.insertBefore(c,main.querySelector('.infocard')))}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()})
 /* Solo con ?v=57 nell'indirizzo: click di oggi in basso a destra di ogni scheda, totale nella scheda "Info";
    un tocco su "Info" apre la tabella Rosticceria / Oggi / Mese / Anno / Tutto con i totali.
    I numeri arrivano da Registro_click.gs (?azione=statistiche). Per non far aspettare, l'ultimo
@@ -129,7 +133,7 @@ let ST=null,loading=false;try{ST=JSON.parse(localStorage.getItem('menuStats')||'
 const P=['oggi','mese','anno','tutto'],today=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Rome'});
 function rowOf(d,n){const ns=[n].concat((DATA.shops.find(s=>s.nome===n)||{}).nomi_precedenti||[]);const z={};P.forEach(k=>z[k]=0);ns.forEach(x=>{const r=(d.righe||{})[x]||{};P.forEach(k=>z[k]+=r[k]||0)});if(d.data!==today()){z.oggi=0}return z}
 function cell(t,v){const c=document.createElement(t);c.textContent=v;return c}
-function render(){if(!ST)return;document.querySelectorAll('.card').forEach((card,i)=>{const b=card.querySelector('.count');b.textContent=rowOf(ST,DATA.shops[i].nome).oggi;b.hidden=false});
+function render(){if(!ST)return;document.querySelectorAll('.card').forEach(card=>{const b=card.querySelector('.count');b.textContent=rowOf(ST,DATA.shops[+card.dataset.index].nome).oggi;b.hidden=false});
 const names=DATA.shops.map(s=>s.nome),old=DATA.shops.flatMap(s=>s.nomi_precedenti||[]);Object.keys(ST.righe||{}).forEach(n=>{if(!names.includes(n)&&!old.includes(n))names.push(n)});const tot={oggi:0,mese:0,anno:0,tutto:0};
 const tb=sd.querySelector('tbody');tb.innerHTML='';names.forEach(n=>{const z=rowOf(ST,n);const tr=document.createElement('tr');tr.append(cell('td',n));P.forEach(k=>{tot[k]+=z[k];tr.append(cell('td',z[k]))});tb.append(tr)});
 const tf=sd.querySelector('tfoot');tf.innerHTML='';const tr=document.createElement('tr');tr.append(cell('td','Totale'));P.forEach(k=>tr.append(cell('td',tot[k])));tf.append(tr);

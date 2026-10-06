@@ -1066,7 +1066,25 @@ def write_manifest() -> str:
     return iv
 
 
+def sort_key_name(name: str) -> str:
+    """Chiave per l'ordine alfabetico italiano: senza accenti e senza maiuscole."""
+    return "".join(ch for ch in unicodedata.normalize("NFD", name) if not unicodedata.combining(ch)).casefold()
+
+
+def display_order(shops: list[dict[str, Any]], results: list[dict[str, Any]]) -> list[int]:
+    """Ordine delle schede: prima le rosticcerie con il menu di oggi pubblicato (non contano gli
+    avvisi di chiusura e il riposo settimanale, che hanno una "nota"), poi le altre; in ciascun
+    gruppo in ordine alfabetico. La pagina rifà lo stesso ordinamento quando cambia il giorno."""
+    today = date.today().isoformat()
+    def key(i: int) -> tuple[bool, str]:
+        published = results[i].get("menu_date") == today and not results[i].get("nota")
+        return (not published, sort_key_name(shops[i].get("nome", "")))
+    return sorted(range(len(shops)), key=key)
+
+
 def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results: list[dict[str, Any]]) -> None:
+    order = display_order(shops, results)
+    shops, results = [shops[i] for i in order], [results[i] for i in order]
     cards = []
     logos = make_shop_logos(shops)
     for index, (shop, result) in enumerate(zip(shops, results)):
@@ -1147,13 +1165,17 @@ function logClick(name){{if(ADMIN||!DATA.log)return;Promise.race([approxPlace(),
 if(dir)['#full','#text','#nomenu','.modal-head'].forEach(q=>{{const e=document.querySelector(q);if(e&&e.animate)e.animate([{{opacity:.3,transform:'translateX('+(dir*40)+'px)'}},{{opacity:1,transform:'none'}}],{{duration:200,easing:'ease-out'}})}})}}
 /* scheda precedente / successiva in modo circolare: frecce ai lati, tasti ← → e, sul telefono,
    scorrimento del dito a destra o a sinistra */
-function step(d){{const n=DATA.shops.length;openCard((cur+d+n)%n,d)}}
+function step(d){{const order=[...document.querySelectorAll('.card')].map(c=>+c.dataset.index),n=order.length;openCard(order[(order.indexOf(cur)+d+n)%n],d)}}
 document.querySelector('#prev').onclick=e=>{{e.stopPropagation();step(-1)}};document.querySelector('#next').onclick=e=>{{e.stopPropagation();step(1)}};
 document.addEventListener('keydown',e=>{{if(!dlg.open)return;if(e.key==='ArrowLeft'){{e.preventDefault();step(-1)}}else if(e.key==='ArrowRight'){{e.preventDefault();step(1)}}}});
 let tx=null,ty=0;dlg.addEventListener('touchstart',e=>{{if(e.touches.length!==1){{tx=null;return}}tx=e.touches[0].clientX;ty=e.touches[0].clientY}},{{passive:true}});
 dlg.addEventListener('touchmove',e=>{{if(e.touches.length!==1)tx=null}},{{passive:true}});
 dlg.addEventListener('touchend',e=>{{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
-if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)}});document.querySelectorAll('.card').forEach((c,i)=>{{c.onclick=()=>openCard(i)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{{data}}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach((c,i)=>{{const r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}})}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})
+if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)}});document.querySelectorAll('.card').forEach(c=>{{c.onclick=()=>openCard(+c.dataset.index)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const t=DATA.titolo.replace('{{data}}',gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()]);document.querySelector('h1').textContent=t;document.querySelectorAll('.card').forEach(c=>{{const i=+c.dataset.index,r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}});
+/* ordine: prima le rosticcerie con il menu di oggi pubblicato (non avvisi di chiusura o riposo),
+   poi le altre; in ciascun gruppo in ordine alfabetico. Rifatto anche quando cambia il giorno. */
+const main=document.querySelector('main'),col=new Intl.Collator('it',{{sensitivity:'base'}}),has=i=>DATA.results[i].menu_date===iso&&!DATA.results[i].nota;
+[...document.querySelectorAll('.card')].sort((a,b)=>{{const x=+a.dataset.index,y=+b.dataset.index;return (has(y)-has(x))||col.compare(DATA.shops[x].nome,DATA.shops[y].nome)}}).forEach(c=>main.insertBefore(c,main.querySelector('.infocard')))}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})
 /* Solo con ?v=57 nell'indirizzo: click di oggi in basso a destra di ogni scheda, totale nella scheda "Info";
    un tocco su "Info" apre la tabella Rosticceria / Oggi / Mese / Anno / Tutto con i totali.
    I numeri arrivano da Registro_click.gs (?azione=statistiche). Per non far aspettare, l'ultimo
@@ -1165,7 +1187,7 @@ let ST=null,loading=false;try{{ST=JSON.parse(localStorage.getItem('menuStats')||
 const P=['oggi','mese','anno','tutto'],today=()=>new Date().toLocaleDateString('sv-SE',{{timeZone:'Europe/Rome'}});
 function rowOf(d,n){{const ns=[n].concat((DATA.shops.find(s=>s.nome===n)||{{}}).nomi_precedenti||[]);const z={{}};P.forEach(k=>z[k]=0);ns.forEach(x=>{{const r=(d.righe||{{}})[x]||{{}};P.forEach(k=>z[k]+=r[k]||0)}});if(d.data!==today()){{z.oggi=0}}return z}}
 function cell(t,v){{const c=document.createElement(t);c.textContent=v;return c}}
-function render(){{if(!ST)return;document.querySelectorAll('.card').forEach((card,i)=>{{const b=card.querySelector('.count');b.textContent=rowOf(ST,DATA.shops[i].nome).oggi;b.hidden=false}});
+function render(){{if(!ST)return;document.querySelectorAll('.card').forEach(card=>{{const b=card.querySelector('.count');b.textContent=rowOf(ST,DATA.shops[+card.dataset.index].nome).oggi;b.hidden=false}});
 const names=DATA.shops.map(s=>s.nome),old=DATA.shops.flatMap(s=>s.nomi_precedenti||[]);Object.keys(ST.righe||{{}}).forEach(n=>{{if(!names.includes(n)&&!old.includes(n))names.push(n)}});const tot={{oggi:0,mese:0,anno:0,tutto:0}};
 const tb=sd.querySelector('tbody');tb.innerHTML='';names.forEach(n=>{{const z=rowOf(ST,n);const tr=document.createElement('tr');tr.append(cell('td',n));P.forEach(k=>{{tot[k]+=z[k];tr.append(cell('td',z[k]))}});tb.append(tr)}});
 const tf=sd.querySelector('tfoot');tf.innerHTML='';const tr=document.createElement('tr');tr.append(cell('td','Totale'));P.forEach(k=>tr.append(cell('td',tot[k])));tf.append(tr);

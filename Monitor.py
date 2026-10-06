@@ -20,6 +20,7 @@ import webbrowser
 from datetime import date, datetime, timedelta
 from pathlib import Path
 import tkinter as tk
+import unicodedata
 
 ROOT = Path(__file__).resolve().parent
 CONFIG = ROOT / "locali.json"
@@ -353,7 +354,16 @@ class Monitor(tk.Tk):
             child.destroy()
         updated = 0
         shops = config.get("locali", [])
-        for shop in shops:
+
+        def order(shop: dict) -> tuple[bool, str]:
+            # come sul sito: prima chi ha il menu di oggi pubblicato (non avvisi di chiusura o
+            # riposo, che hanno una "nota"), poi gli altri; in ciascun gruppo in ordine alfabetico
+            result = results.get(shop.get("id"), {})
+            published = result.get("menu_date") == today and not result.get("nota")
+            name = unicodedata.normalize("NFD", shop.get("nome", ""))
+            return (not published, "".join(ch for ch in name if not unicodedata.combining(ch)).casefold())
+
+        for shop in sorted(shops, key=order):
             result = results.get(shop.get("id"), {})
             day = result.get("menu_date", "")
             if day == today:
