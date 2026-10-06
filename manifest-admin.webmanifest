@@ -2,7 +2,7 @@
   "name": "Menu",
   "short_name": "Menu",
   "description": "Menu del giorno delle rosticcerie",
-  "start_url": "./?v=57",
+  "start_url": "./admin.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b1220",
@@ -26,5 +26,5 @@
       "purpose": "maskable"
     }
   ],
-  "id": "./?v=57"
+  "id": "./admin.html"
 }

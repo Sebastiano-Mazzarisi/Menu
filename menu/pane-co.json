@@ -61,27 +61,27 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla carbonara",
+          "nome": "Pasta e patate con provola alla napoletana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con asparagi e zafferano",
+          "nome": "Risotto con vellutata di zucca e speck croccante",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette tricolore alla pastorella",
-          "prezzo": "€7.50",
-          "descrizione": "Con pomodoro e ricotta"
-        },
-        {
-          "nome": "Cavatellucci con gamberetti, rucola e pomodorino",
+          "nome": "Rigatoni con cavolfiore e battuto di salsiccia",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di lenticchie",
+          "nome": "Spaghetti con tonno, capperi, olive e pomodoro",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Zuppa di ceci",
           "prezzo": "€6.00",
           "descrizione": "Con o senza pasta"
         }
@@ -91,14 +91,19 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di platessa gratinato con zucchina",
+          "nome": "Trancio di pesce spada alla pizzaiola",
           "prezzo": "€8.50",
-          "descrizione": ""
+          "descrizione": "Con pomodorini, origano e olive"
         },
         {
-          "nome": "Scaloppe di pollo al limone",
+          "nome": "Filetto di merluzzo gratinato con zucchina",
+          "prezzo": "€8.50",
+          "descrizione": "Con pomodorino"
+        },
+        {
+          "nome": "Bocconcini di capocollo al primitivo con patate",
           "prezzo": "€7.50",
-          "descrizione": "2 pezzi"
+          "descrizione": ""
         }
       ]
     }
