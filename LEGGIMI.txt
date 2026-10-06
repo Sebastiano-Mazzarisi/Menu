@@ -33,6 +33,8 @@ sfondo grigio-azzurro, più scuro del bianco delle schede di oggi.
 Cliccando su una scheda si apre la finestra con il nome del locale, sotto
 il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
 menu, il telefono, Google Maps e la fonte.
+La finestra ha una cornice doppia di 5 mm: verde (come la fascia delle
+schede) se la rosticceria ha pubblicato il menu di oggi, arancione se no.
 Nella finestra si passa alla rosticceria precedente o successiva, in modo
 circolare (dopo l'ultima torna la prima), con le frecce ‹ › ai lati, con i
 tasti ← → della tastiera o, sul telefono, facendo scorrere il dito a
