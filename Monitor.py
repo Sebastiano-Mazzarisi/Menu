@@ -109,7 +109,7 @@ def last_outcome() -> tuple[str, str]:
     if start is None:
         return "", "nessun giro registrato"
     when = lines[start].strip("= ").strip()[11:16]
-    if "(manuale)" in lines[start]:
+    if "(manuale" in lines[start]:
         when += " (manuale)"
     block = lines[start + 1:]
     for line in block:

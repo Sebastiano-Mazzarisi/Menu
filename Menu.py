@@ -1469,7 +1469,7 @@ def main() -> None:
     if args.login or args.aggiungi:
         run(args, config)
         return
-    start_manual_log()
+    start_manual_log("controllo" if args.salta_aggiornati else "ricontrollo")
     if not take_lock():
         print("Un altro controllo è bloccato da oltre 20 minuti: riprova più tardi.")
         return
@@ -1518,13 +1518,15 @@ class Tee:
             stream.flush()
 
 
-def start_manual_log() -> None:
+def start_manual_log(kind: str = "ricontrollo") -> None:
     """Anche i giri lanciati a mano (Avvia.bat) finiscono in dati/automatico.log."""
     DATA.mkdir(exist_ok=True)
     stream = AUTO_LOG.open("a", encoding="utf-8", buffering=1)
     sys.stdout = Tee(ResultsOnly(sys.__stdout__) if sys.__stdout__ else None, stream)
     sys.stderr = Tee(sys.__stderr__, stream)  # gli errori si vedono sempre per intero
-    print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} === (manuale)")
+    print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} === (manuale, {kind})")
+    print("CONTROLLO: ricontrolla solo le rosticcerie non ancora aggiornate oggi" if kind == "controllo"
+          else "RICONTROLLO: ricontrolla tutte le rosticcerie, anche quelle già aggiornate")
 
 
 def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
@@ -1545,7 +1547,11 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     NOTICE_MINUTES = int(settings.get("avvisi_ogni_minuti", NOTICE_MINUTES))
     results: list[dict[str, Any]] = []
     previous_sources = {item.get("id"): item.get("source", "") for item in read_json(STATE, {}).get("results", [])}
-    shops = sorted(shops, key=lambda item: sort_key_name(item.get("nome", "")))  # controllo in ordine alfabetico
+    # stesso ordine della finestra di controllo e del sito: prima quelle già aggiornate oggi
+    # (secondo l'ultimo giro), poi le altre; in ciascun gruppo in ordine alfabetico
+    previous_days = {item.get("id"): item.get("menu_date", "") for item in read_json(STATE, {}).get("results", [])}
+    shops = sorted(shops, key=lambda item: (previous_days.get(item["id"]) != date.today().isoformat(),
+                                            sort_key_name(item.get("nome", ""))))
     try:
         for shop in shops:
             previous = previous_sources.get(shop["id"]) or "già acquisito oggi"

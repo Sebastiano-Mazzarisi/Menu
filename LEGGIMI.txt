@@ -26,8 +26,7 @@ pubblicato oggi), poi tutte le altre (menu non di oggi, nessun menu); dentro cia
 gruppo in ordine alfabetico (senza badare ad accenti e maiuscole). La
 pagina rifà l'ordinamento da sola quando cambia il giorno. Le frecce della
 finestra di dettaglio seguono lo stesso ordine.
-Le rosticcerie vengono anche controllate in ordine alfabetico, e la tabella
-Info (?v=57) le elenca in ordine alfabetico.
+La tabella Info (?v=57) elenca le rosticcerie in ordine alfabetico.
 Fascia sul lato sinistro della scheda: verde se il menu è di oggi,
 arancione in tutti gli altri casi; le schede arancioni hanno anche lo
 sfondo grigio-azzurro, più scuro del bianco delle schede di oggi.
@@ -157,7 +156,10 @@ mostra solo una riga per rosticceria (es. "Fantasia: 2026-10-05 (cartella)")
 e l'esito della pubblicazione; i dettagli (testo letto, avvisi) vanno solo
 nel registro. La finestra resta aperta per leggere l'esito; prima di
 aprirne una nuova chiude la precedente; se un controllo è già in corso non
-ne avvia un altro. Le rosticcerie vengono controllate in ordine alfabetico.
+ne avvia un altro. La prima riga dice se è un CONTROLLO o un RICONTROLLO.
+Le rosticcerie vengono controllate nello stesso ordine della finestra di
+controllo: prima quelle già aggiornate oggi, poi le altre, in ciascun
+gruppo in ordine alfabetico.
 "Registro" (apre
 dati/automatico.log), "Sito" (apre la pagina su GitHub Pages),
 "Pianifica"/"Disabilita": se l'attività è attiva la disabilita; se manca, è
