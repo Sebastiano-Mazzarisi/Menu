@@ -389,12 +389,15 @@ Tipi di fonte
   anche --solo-html lo ritrova. Cliccando la scheda il menu appare come
   elenco piatti/prezzi invece che come foto.
 
-Ultimo post Facebook (Impastamò, Santoro, Cibària, Fantasia, Bollenti piatti)
+Ultimo post Facebook (Impastamò, Santoro, Cibària, Fantasia, Bollenti piatti,
+Forno Sant'Antonio)
 ------------------------------------------------------------------------------
 Controllo "è un menu?": la foto del primo post viene usata solo se il testo
 del post o il testo letto nella foto (OCR) contiene una di queste parole:
 menu, menù, primi, secondi, contorni, del giorno, piatti, antipasti
-(si cambiano per singola fonte con "parole_menu": [...]). Così una foto
+(si cambiano per singola fonte con "parole_menu": [...]; es. Forno
+Sant'Antonio scrive "Buongiorno oggi trovate le fave..." e ha in più
+"oggi trovate", "oggi abbiamo", "oggi vi proponiamo"). Così una foto
 pubblicitaria o di un piatto non diventa il menu del giorno.
 Testo lungo: Facebook divide i post lunghi e mostra "Altro...": il programma
 lo apre da solo (anche più volte) per leggere il menu completo.

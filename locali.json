@@ -115,6 +115,18 @@
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/BollentiPiatti", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
+    },
+    {
+      "id": "santantonio",
+      "nome": "Forno Sant'Antonio",
+      "telefono": "",
+      "indirizzo": "Via Tripoli 28, 70017 Putignano (BA)",
+      "url": "https://www.facebook.com/profile.php?id=100046588767257",
+      "logo": "santantonio.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=100046588767257", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "oggi trovate", "oggi abbiamo", "oggi vi proponiamo"], "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
     }
   ]
 }
