@@ -32,7 +32,9 @@ La tabella Info (?v=57) elenca le rosticcerie in ordine alfabetico.
 Fascia sul lato sinistro della scheda: verde se il menu è di oggi,
 arancione in tutti gli altri casi. Anche lo sfondo della scheda lo dice:
 verde chiaro = menu di oggi pubblicato, giallo chiaro = in attesa del menu
-di oggi. Le etichette "Oggi" / "Non di oggi" non vengono più mostrate.
+di oggi. Nelle schede non compaiono più né le etichette "Oggi" / "Non di
+oggi" né la data (basta quella del titolo); la data resta nella finestra di
+dettaglio, accanto al nome.
 Cliccando su una scheda si apre la finestra con il nome del locale, sotto
 il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
 menu, il telefono, Google Maps e la fonte.
