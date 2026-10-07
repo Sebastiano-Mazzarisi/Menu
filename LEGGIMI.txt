@@ -20,6 +20,8 @@ data dell'ultimo menu disponibile, più un'etichetta di stato:
 Il titolo della pagina è "titolo" in locali.json: {data} viene sostituito
 con la data di oggi, es. "Menu - {data}" -> "Menu - Domenica 4 ottobre".
 La pagina mostra soltanto il titolo e le schede (niente sottotitolo né note).
+Nel titolo "Menu" è grande e il resto (" - Mercoledì 7 ottobre") a metà
+dimensione. La scheda Info mostra solo "Info" e il numero di clic di oggi.
 Un clic sul titolo ("Menu - Mercoledì 7 ottobre") ricarica la pagina dal
 server saltando la cache, quindi mostra sempre l'ultima versione pubblicata.
 Ordine delle schede (uguale nella finestra di controllo): prima le
