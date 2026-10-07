@@ -231,6 +231,11 @@ il numero di click di oggi su quella rosticceria; in fondo una scheda "Info"
 Toccando "Info" si apre la tabella Rosticceria | Oggi | Mese | Anno | Tutto
 con la riga "Totale" in fondo (Esc o ✕ per chiudere): finestra stretta, righe
 compatte, cornice azzurra di 5 mm. Nella pagina si scrive "clic".
+All'apertura le righe sono in ordine alfabetico. Un clic su un titolo giallo
+(Rosticceria, Oggi, Mese, Anno, Tutto) ordina in modo crescente per quella
+colonna; un altro clic sullo stesso titolo inverte (decrescente). Una
+freccina ▲/▼ indica la colonna usata. Chiudendo la finestra si torna
+all'ordine alfabetico. A parità di valore resta l'ordine alfabetico.
 Velocità: il registro tiene i conteggi già pronti (Proprietà dello script) e
 li aggiorna a ogni click, quindi non rilegge tutto il foglio. La pagina
 mostra subito gli ultimi numeri ricevuti (salvati sul dispositivo) e li
