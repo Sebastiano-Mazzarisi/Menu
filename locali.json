@@ -127,6 +127,30 @@
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=100046588767257", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "oggi trovate", "oggi abbiamo", "oggi vi proponiamo"], "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
+    },
+    {
+      "id": "abraciami",
+      "nome": "A Braciami",
+      "telefono": "080-645.86.74",
+      "indirizzo": "Via Aldo Moro 46/48 - Noci",
+      "url": "https://www.facebook.com/abraciami",
+      "logo": "abraciami.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/abraciami", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "impasta-turi",
+      "nome": "Impasta",
+      "telefono": "377-371.01.07",
+      "indirizzo": "Via Domenico Elefante 13-15 - Turi",
+      "url": "https://www.facebook.com/impasta.bistrot",
+      "logo": "impasta.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/impasta.bistrot", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
     }
   ]
 }

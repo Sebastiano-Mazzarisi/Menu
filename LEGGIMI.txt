@@ -390,7 +390,7 @@ Tipi di fonte
   elenco piatti/prezzi invece che come foto.
 
 Ultimo post Facebook (Impastamò, Santoro, Cibària, Fantasia, Bollenti piatti,
-Forno Sant'Antonio)
+Forno Sant'Antonio, A Braciami, Impasta)
 ------------------------------------------------------------------------------
 Controllo "è un menu?": la foto del primo post viene usata solo se il testo
 del post o il testo letto nella foto (OCR) contiene una di queste parole:
