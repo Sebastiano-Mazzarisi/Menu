@@ -1190,7 +1190,7 @@ document.write('<link rel="manifest" href="'+(adm?'manifest-admin':'manifest')+'
 <style>
 :root{{--bg:#0b1220;--card:#fff;--ink:#172033;--muted:#64748b;--accent:#16a34a}}
 *{{box-sizing:border-box}}body{{margin:0;background:linear-gradient(150deg,#09111f,#172033);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:white;min-height:100vh}}
-header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:space-between;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px)}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
+header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:space-between;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px);cursor:pointer}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
 main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}}
 .card{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;width:100%;background:var(--card);color:var(--ink);border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;cursor:pointer;transition:.18s transform,.18s box-shadow;font:inherit;position:relative}}
 .card{{flex-direction:row;align-items:center;gap:16px}}.info{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;flex:1}}.logo{{width:64px;height:64px;flex:none;border-radius:14px;object-fit:cover;background:#fff;box-shadow:0 2px 8px #0003}}
@@ -1240,7 +1240,10 @@ if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visu
 /* ordine: prima le rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o riposo di oggi),
    poi le altre; in ciascun gruppo in ordine alfabetico. Rifatto anche quando cambia il giorno. */
 const main=document.querySelector('main'),col=new Intl.Collator('it',{{sensitivity:'base'}}),has=i=>DATA.results[i].menu_date===iso;
-[...document.querySelectorAll('.card')].sort((a,b)=>{{const x=+a.dataset.index,y=+b.dataset.index;return (has(y)-has(x))||col.compare(DATA.shops[x].nome,DATA.shops[y].nome)}}).forEach(c=>main.insertBefore(c,main.querySelector('.infocard')))}}refresh();let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})
+[...document.querySelectorAll('.card')].sort((a,b)=>{{const x=+a.dataset.index,y=+b.dataset.index;return (has(y)-has(x))||col.compare(DATA.shops[x].nome,DATA.shops[y].nome)}}).forEach(c=>main.insertBefore(c,main.querySelector('.infocard')))}}refresh();
+/* clic sul titolo: ricarica la pagina dal server, senza cache (indirizzo con un numero sempre nuovo) */
+document.querySelector('h1').addEventListener('click',()=>{{const u=new URL(location.href);u.searchParams.set('r',Date.now());location.replace(u.href)}});
+let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})
 /* Solo con ?v=57 nell'indirizzo: click di oggi in basso a destra di ogni scheda, totale nella scheda "Info";
    un tocco su "Info" apre la tabella Rosticceria / Oggi / Mese / Anno / Tutto con i totali.
    I numeri arrivano da Registro_click.gs (?azione=statistiche). Per non far aspettare, l'ultimo

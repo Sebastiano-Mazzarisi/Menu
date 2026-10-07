@@ -20,6 +20,8 @@ data dell'ultimo menu disponibile, più un'etichetta di stato:
 Il titolo della pagina è "titolo" in locali.json: {data} viene sostituito
 con la data di oggi, es. "Menu - {data}" -> "Menu - Domenica 4 ottobre".
 La pagina mostra soltanto il titolo e le schede (niente sottotitolo né note).
+Un clic sul titolo ("Menu - Mercoledì 7 ottobre") ricarica la pagina dal
+server saltando la cache, quindi mostra sempre l'ultima versione pubblicata.
 Ordine delle schede (uguale nella finestra di controllo): prima le
 rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o riposo
 pubblicato oggi), poi tutte le altre (menu non di oggi, nessun menu); dentro ciascun
