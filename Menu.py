@@ -246,7 +246,18 @@ class BrowserCollector:
             options["args"] = ["--window-position=-32000,-32000"]
         if source.get("canale"):
             options["channel"] = source["canale"]
-        self.context = self.playwright.chromium.launch_persistent_context(str(profile), **options)
+        try:
+            self.context = self.playwright.chromium.launch_persistent_context(str(profile), **options)
+        except Exception as exc:
+            if profile == PROFILE:
+                raise
+            # profilo collegato occupato (es. Stato.py lo sta usando): ripiego sul profilo normale
+            print(f"  profilo {profile.name} non disponibile ({str(exc).splitlines()[0][:80]}): uso il profilo normale")
+            options.pop("channel", None)
+            options.pop("args", None)
+            options["headless"] = not self.visible
+            profile, profile_key = PROFILE, str(PROFILE.resolve())
+            self.context = self.playwright.chromium.launch_persistent_context(str(profile), **options)
         self.profile_key = profile_key
 
     def stop(self) -> None:
@@ -367,7 +378,7 @@ class BrowserCollector:
 
     def first_post(self, shop: dict[str, Any], url: str) -> tuple[str, Path | None]:
         """Testo e foto dell'ultimo post (Facebook) o dell'ultimo post (Instagram)."""
-        self.start()
+        self.start(with_facebook_login({"url": url}))
         page = self.context.new_page()
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=60000)
@@ -990,6 +1001,32 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     return Result(place_capture(folder, image), date.today(), source.get("nome", "browser"), checked)
 
 
+FACEBOOK_LOGIN: dict[str, Any] = {}  # profilo Chrome collegato a Facebook (impostato da run)
+
+
+def with_facebook_login(source: dict[str, Any]) -> dict[str, Any]:
+    """Le pagine Facebook vanno lette con il profilo Chrome collegato a Facebook (quello delle
+    storie, es. Le delizie di Michela). Senza accesso Facebook mostra una selezione di post vecchi
+    e spesso NON il menu appena pubblicato: per questo ogni fonte facebook.com senza un suo
+    "profilo" usa quello collegato. Per tornare al profilo scollegato: "profilo": "profilo"."""
+    if FACEBOOK_LOGIN and "facebook.com" in source.get("url", "") and not source.get("profilo"):
+        return {**FACEBOOK_LOGIN, **source}
+    return source
+
+
+def find_facebook_login(shops: list[dict[str, Any]], settings: dict[str, Any]) -> dict[str, Any]:
+    """Profilo collegato a Facebook: impostazioni > "profilo_facebook" oppure quello della prima
+    fonte facebook.com che ne indica uno (oggi la storia di Le delizie di Michela)."""
+    if settings.get("profilo_facebook"):
+        return {"profilo": settings["profilo_facebook"], "canale": settings.get("canale_facebook", "chrome"),
+                "fuori_schermo": True}
+    for shop in shops:
+        for source in shop.get("fonti", []):
+            if "facebook.com" in source.get("url", "") and source.get("profilo"):
+                return {key: source[key] for key in ("profilo", "canale", "fuori_schermo") if key in source}
+    return {}
+
+
 def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
     """Se l'immagine catturata è identica a una già presente, non è un menu nuovo:
     elimina la copia appena scaricata e mantiene la data della prima volta in cui è comparsa."""
@@ -1046,6 +1083,7 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
     for source in shop.get("fonti", [{"tipo": "cartella"}]):
         if not source.get("attiva", True):
             continue
+        source = with_facebook_login(source)
         kind = source.get("tipo", "cartella")
         try:
             if kind == "cartella":
@@ -1697,6 +1735,8 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
         return
     global NOTICE_MINUTES
     NOTICE_MINUTES = int(settings.get("avvisi_ogni_minuti", NOTICE_MINUTES))
+    FACEBOOK_LOGIN.clear()
+    FACEBOOK_LOGIN.update(find_facebook_login(shops, settings))
     results: list[dict[str, Any]] = []
     previous_sources = {item.get("id"): item.get("source", "") for item in read_json(STATE, {}).get("results", [])}
     # stesso ordine della finestra di controllo e del sito: prima quelle già aggiornate oggi

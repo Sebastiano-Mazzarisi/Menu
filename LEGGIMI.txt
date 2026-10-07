@@ -344,6 +344,13 @@ in Menu.html. Restano disponibili nell'archivio e lo stato mostra la loro data.
 
 Tipi di fonte
 -------------
+- browser (post Facebook): le pagine Facebook vengono lette con il profilo
+  Chrome collegato a Facebook (lo stesso della storia di Michela, oppure
+  impostazioni > "profilo_facebook"). Senza accesso Facebook mostra una
+  selezione di post vecchi e spesso non il menu appena pubblicato (successo
+  con Fantasia il 07/10). Se quel profilo è occupato (es. da Stato.py) il
+  giro usa il profilo normale e riprova al giro successivo. Una fonte con un
+  suo "profilo" usa il proprio.
 - browser (post Facebook): se il primo post non è un menu (pubblicità,
   auguri, post in evidenza) guarda i successivi fino al 5° ("post_da_controllare"
   per cambiarlo). La foto viene scaricata prima in dati/catture e passa in
