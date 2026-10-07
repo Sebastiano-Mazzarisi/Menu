@@ -227,7 +227,8 @@ Contatori (solo con ?v=57 nell'indirizzo): in basso a destra di ogni scheda
 il numero di click di oggi su quella rosticceria; in fondo una scheda "Info"
 (sfondo grigio, cornice gialla) con il totale dei click di oggi.
 Toccando "Info" si apre la tabella Rosticceria | Oggi | Mese | Anno | Tutto
-con la riga "Totale" in fondo (Esc o ✕ per chiudere).
+con la riga "Totale" in fondo (Esc o ✕ per chiudere): finestra stretta, righe
+compatte, cornice azzurra di 5 mm. Nella pagina si scrive "clic".
 Velocità: il registro tiene i conteggi già pronti (Proprietà dello script) e
 li aggiorna a ogni click, quindi non rilegge tutto il foglio. La pagina
 mostra subito gli ultimi numeri ricevuti (salvati sul dispositivo) e li
