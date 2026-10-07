@@ -1188,13 +1188,15 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
         note_html = f'\n  <span class="note">{html.escape(result["nota"])}</span>' if result.get("nota") else ""
         logo = logos.get(shop["id"])
         logo_html = f'<img class="logo" src="{html.escape(logo)}" alt="" width="64" height="64">\n  ' if logo else ""
+        town = shop_town(shop)
+        town_html = f'\n  <span class="town">{html.escape(town)}</span>' if town else ""
         cards.append(f'''<button type="button" class="card {'band-ok' if css == 'fresh' else 'band-old'}" data-index="{index}">
   {logo_html}<span class="info">
   <h2>{html.escape(shop['nome'])}</h2>
   <span class="day"><strong>{day_text}</strong></span>{note_html}
   <span class="status {css}">{label}</span>
   </span>
-  <span class="count" hidden></span>
+  <span class="count" hidden></span>{town_html}
 </button>''')
     public_shops = [{**{key: shop.get(key, "") for key in ("nome", "telefono", "indirizzo", "url")},
                      # nomi usati prima di un cambio di nome: i loro click restano sommati al locale
@@ -1240,7 +1242,7 @@ main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-temp
 #detail[open]{{display:flex;align-items:center;justify-content:center}}
 #detail .sheet{{box-sizing:border-box;width:min(920px,96vw);max-height:94vh;max-height:94dvh;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b;border:5mm solid #f97316}}
 #detail.ok .sheet{{border-color:#16a34a}}#detail.old .sheet{{border-color:#f97316}}.band-old{{border-left:10px solid #f97316;background:#fef3c7}}
-.card h2{{font-size:21px;margin:0}}.day{{color:var(--muted);font-size:15px}}.day strong{{color:var(--ink)}}.note{{color:#b45309;font-size:14px;font-weight:700}}.card .status,.card .day{{display:none}}.status{{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:750}}.fresh{{background:#dcfce7;color:#166534}}.stale{{background:#fef3c7;color:#92400e}}.missing{{background:#fee2e2;color:#991b1b}}
+.card h2{{font-size:21px;margin:0}}.day{{color:var(--muted);font-size:15px}}.day strong{{color:var(--ink)}}.note{{color:#b45309;font-size:14px;font-weight:700}}.card .status,.card .day{{display:none}}.town{{position:absolute;top:8px;right:14px;font-size:12px;font-weight:400;color:var(--muted);line-height:1}}.status{{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:750}}.fresh{{background:#dcfce7;color:#166534}}.stale{{background:#fef3c7;color:#92400e}}.missing{{background:#fee2e2;color:#991b1b}}
 #text{{max-height:68vh;overflow:auto;padding:0 18px}}#text h3{{margin:18px 0 8px;color:#86efac}}.dish{{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-bottom:1px solid #1e293b}}.dish b{{white-space:nowrap}}.dish small{{grid-column:1/-1;color:#94a3b8}}.dish small:empty{{display:none}}
 #nomenu{{padding:40px 18px;text-align:center;color:#cbd5e1}}
 dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b}}dialog::backdrop{{background:#000c}}.modal-head{{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #334155}}.nav{{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:52px;height:52px;padding:0;border-radius:50%;background:#334155e6;color:#fff;font-size:34px;line-height:48px;box-shadow:0 6px 18px #0008}}.nav:hover,.nav:focus-visible{{background:#475569}}#prev{{left:max(6px,calc(50vw - min(460px,48vw) - 66px))}}#next{{right:max(6px,calc(50vw - min(460px,48vw) - 66px))}}
@@ -1360,6 +1362,21 @@ def shop_logo_source(shop: dict[str, Any]) -> Path | None:
     return None
 
 
+def shop_town(shop: dict) -> str:
+    """Comune mostrato in alto a destra nel riquadro: campo "comune" di locali.json;
+    se manca viene ricavato dall'indirizzo ("..., 70017 Putignano (BA)" oppure "... - Noci")."""
+    town = (shop.get("comune") or "").strip()
+    if town:
+        return town
+    address = (shop.get("indirizzo") or "").strip()
+    match = re.search(r"\b\d{5}\s+([^,(]+?)\s*(?:\(|,|$)", address)
+    if match:
+        return match.group(1).strip()
+    if " - " in address:
+        return address.rsplit(" - ", 1)[1].strip()
+    return ""
+
+
 def make_shop_logos(shops: list[dict[str, Any]]) -> dict[str, str]:
     """Miniature quadrate dei loghi in icone/logo-<id>.jpg (leggere: pochi KB l'una), rifatte
     solo quando il logo cambia. Il logo intero viene centrato nel quadrato (non tagliato), con
@@ -1442,6 +1459,7 @@ def add_shop(config: dict[str, Any]) -> None:
         "nome": name,
         "telefono": input("Telefono: ").strip(),
         "indirizzo": input("Indirizzo: ").strip(),
+        "comune": input("Comune (mostrato in alto a destra nel riquadro): ").strip(),
         "url": input("Pagina Facebook, Instagram o sito: ").strip(),
         "logo": "",
         "fonti": [{"tipo": "cartella", "attiva": True}],

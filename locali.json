@@ -12,6 +12,7 @@
       "nome": "Fantasia",
       "telefono": "080-405.41.39",
       "indirizzo": "Via Nicola Losavio 10, 70017 Putignano (BA)",
+      "comune": "Putignano",
       "url": "https://www.facebook.com/RosticceriaFantasia",
       "logo": "fantasia.jpg",
       "fonti": [
@@ -24,6 +25,7 @@
       "nome": "Cibària",
       "telefono": "080-645.07.99",
       "indirizzo": "Via Estramurale a Levante 11, 70017 Putignano (BA)",
+      "comune": "Putignano",
       "url": "https://www.facebook.com/cibaria.asporto",
       "logo": "cibaria.jpg",
       "fonti": [
@@ -36,6 +38,7 @@
       "nome": "Impastamò",
       "telefono": "392-536.15.36",
       "indirizzo": "Via Conversano 34, 70017 Putignano (BA)",
+      "comune": "Putignano",
       "url": "https://www.facebook.com/profile.php?id=61560452176728",
       "logo": "impastamo.jpg",
       "fonti": [
@@ -48,6 +51,7 @@
       "nome": "Le delizie di Michela",
       "telefono": "080-521.42.33",
       "indirizzo": "Corso Umberto I 87, 70017 Putignano (BA)",
+      "comune": "Putignano",
       "url": "https://www.facebook.com/profile.php?id=100045208848338",
       "logo": "michela.jpg",
       "fonti": [
@@ -61,6 +65,7 @@
       "nome": "Aufer Gastronomia",
       "telefono": "368-38.30.313",
       "indirizzo": "Via Estramurale a Mezzogiorno 83, 70017 Putignano (BA)",
+      "comune": "Putignano",
       "url": "https://www.instagram.com/aufergastronomia/",
       "logo": "aufer.jpg",
       "fonti": [
@@ -85,6 +90,7 @@
       "nomi_precedenti": ["Santoro (Castellana)"],
       "telefono": "080-859.83.13",
       "indirizzo": "Via Mazzini 28, 70013 Castellana Grotte (BA)",
+      "comune": "Castellana",
       "url": "https://www.facebook.com/santorogastronomia",
       "logo": "santoro.jpg",
       "fonti": [
@@ -97,6 +103,7 @@
       "nome": "Pane & Co",
       "telefono": "080-405.49.00",
       "indirizzo": "Viale Federico II 49, 70017 Putignano (BA)",
+      "comune": "Putignano",
       "url": "https://www.paneeco.it/menu",
       "logo": "pane-co.jpg",
       "fonti": [
@@ -109,6 +116,7 @@
       "nome": "Bollenti piatti",
       "telefono": "334-318.58.44",
       "indirizzo": "Via Noci 48-50, 70017 Putignano (BA)",
+      "comune": "Putignano",
       "url": "https://www.facebook.com/BollentiPiatti",
       "logo": "bollenti-piatti.jpg",
       "fonti": [
@@ -121,6 +129,7 @@
       "nome": "Forno Sant'Antonio",
       "telefono": "080-493.14.98",
       "indirizzo": "Via Tripoli 28 - Putignano",
+      "comune": "Putignano",
       "url": "https://www.facebook.com/profile.php?id=100046588767257",
       "logo": "santantonio.jpg",
       "fonti": [
@@ -133,6 +142,7 @@
       "nome": "A Braciami",
       "telefono": "080-645.86.74",
       "indirizzo": "Via Aldo Moro 46/48 - Noci",
+      "comune": "Noci",
       "url": "https://www.facebook.com/abraciami",
       "logo": "abraciami.jpg",
       "fonti": [
@@ -145,6 +155,7 @@
       "nome": "Impasta",
       "telefono": "377-371.01.07",
       "indirizzo": "Via Domenico Elefante 13-15 - Turi",
+      "comune": "Turi",
       "url": "https://www.facebook.com/impasta.bistrot",
       "logo": "impasta.jpg",
       "fonti": [

@@ -38,6 +38,12 @@ verde chiaro = menu di oggi pubblicato, giallo chiaro = in attesa del menu
 di oggi. Nelle schede non compaiono più né le etichette "Oggi" / "Non di
 oggi" né la data (basta quella del titolo); la data resta nella finestra di
 dettaglio, accanto al nome.
+In alto a destra di ogni scheda c'è il Comune della rosticceria (scritta
+piccola, non in grassetto): campo "comune" di locali.json, es.
+    "comune": "Castellana",
+Se "comune" manca viene ricavato dall'indirizzo (la parola dopo il CAP, o
+quella dopo " - ", es. "Via Tripoli 28 - Putignano"). Quando si aggiunge un
+locale con --aggiungi il programma chiede anche il Comune.
 Cliccando su una scheda si apre la finestra con il nome del locale, sotto
 il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
 menu, il telefono, Google Maps e la fonte.
