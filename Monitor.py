@@ -30,6 +30,7 @@ LOCK = ROOT / "dati" / "automatico.lock"
 POSITION = ROOT / "dati" / "monitor.json"
 TASK = "Menu"
 CONSOLE_TITLE = "Menu - controllo manuale"
+CONSOLE_SECONDS = 60  # la finestra DOS del controllo manuale si chiude da sola dopo questi secondi
 INTERVAL = timedelta(minutes=15)
 WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -515,8 +516,8 @@ class Monitor(tk.Tk):
     def run_now(self, *options: str) -> None:
         """Lancia subito un giro in una finestra DOS che mostra solo una riga per rosticceria.
 
-        La finestra resta aperta per leggere l'esito; prima di aprirne una nuova viene chiusa
-        quella del controllo manuale precedente (riconosciuta dal titolo)."""
+        La finestra resta aperta per leggere l'esito e si chiude da sola dopo 60 secondi; prima di
+        aprirne una nuova viene chiusa quella del controllo manuale precedente (riconosciuta dal titolo)."""
         if sys.platform != "win32":
             return
         if check_running():
@@ -528,8 +529,12 @@ class Monitor(tk.Tk):
         exe = str(python) if python.exists() else "python"
         exe = f'"{exe}"' if " " in exe else exe
         command = " ".join([exe, "Menu.py", "--pubblica", *options])
-        # riga di comando passata così com'è (una lista verrebbe ri-quotata e cmd non la capirebbe)
-        subprocess.Popen(f'cmd /k "title {CONSOLE_TITLE} && {command}"', cwd=ROOT,
+        # riga di comando passata così com'è (una lista verrebbe ri-quotata e cmd non la capirebbe).
+        # Finito il controllo la finestra mostra l'esito e si chiude da sola dopo CONSOLE_SECONDS
+        # secondi (un tasto qualsiasi la chiude subito): niente finestre DOS dimenticate aperte.
+        closing = (f"echo. & echo La finestra si chiude da sola tra {CONSOLE_SECONDS} secondi "
+                   f"(un tasto qualsiasi la chiude subito) & timeout /t {CONSOLE_SECONDS} >nul")
+        subprocess.Popen(f'cmd /c "title {CONSOLE_TITLE} & {command} & {closing}"', cwd=ROOT,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
         if "--solo" in options:
             self.say("Ricontrollo avviato (una sola rosticceria)")

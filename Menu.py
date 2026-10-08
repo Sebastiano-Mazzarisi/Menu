@@ -92,8 +92,12 @@ def image_date(path: Path) -> date:
     return datetime.fromtimestamp(path.stat().st_mtime).date()
 
 
+AUXILIARY_FILES = ("_avviso_controllo",)  # file di servizio: non sono mai un menu
+
+
 def newest_image(folder: Path) -> Path | None:
-    images = [item for item in folder.glob("*") if item.is_file() and item.suffix.lower() in MENU_EXTENSIONS]
+    images = [item for item in folder.glob("*") if item.is_file() and item.suffix.lower() in MENU_EXTENSIONS
+              and not any(mark in item.stem for mark in AUXILIARY_FILES)]
     return max(images, key=lambda item: (image_date(item), item.stat().st_mtime), default=None)
 
 
@@ -421,7 +425,10 @@ class BrowserCollector:
                 if media_url:
                     response = self.context.request.get(media_url, timeout=30000)
                     if response.ok:
-                        image = INPUT / shop["id"] / f"{date.today().isoformat()}_avviso_controllo.jpg"
+                        # foto usata solo per cercare un avviso di chiusura: va in dati/catture,
+                        # MAI in ingresso (se il programma si interrompe non deve sembrare un menu)
+                        CAPTURES.mkdir(parents=True, exist_ok=True)
+                        image = CAPTURES / f"{shop['id']}_avviso_controllo.jpg"
                         image.write_bytes(response.body())
             return text, image
         finally:
@@ -1172,6 +1179,11 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
     errors: list[str] = []
     folder = INPUT / shop["id"]
     folder.mkdir(parents=True, exist_ok=True)
+    for leftover in folder.glob("*_avviso_controllo.*"):
+        # foto di servizio rimasta in ingresso da un giro interrotto (versioni vecchie): via
+        DISCARDED.mkdir(parents=True, exist_ok=True)
+        leftover.replace(DISCARDED / f"{shop['id']}_{leftover.name}")
+        print(f"  {shop['nome']} - tolto {leftover.name} (foto di servizio, non è un menu)")
     if date.today().weekday() in rest_days(shop):
         return rest_day_result(shop, folder, checked)
     if online and skip_if_today is not None:
