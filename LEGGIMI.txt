@@ -17,8 +17,10 @@ Navigazione per Comune (due livelli)
 1) Pagina iniziale: titolo "Menu - Giovedì 8 ottobre" e un riquadro per ogni
    Comune che ha almeno un locale in locali.json (campo "comune"), ordinati
    per numero di locali e poi in ordine alfabetico, più "Tutti i Comuni".
-   Ogni riquadro dice quanti locali ha e quanti hanno già il menu di oggi
-   (fascia verde se almeno uno, arancione se nessuno). Nella versione
+   Ogni riquadro mostra il nome del Comune e quanti locali ha; la fascia a
+   sinistra è VERDE se tutti i locali di quel Comune hanno pubblicato il menu
+   di oggi, ARANCIONE se almeno uno non l'ha ancora pubblicato (vale anche
+   per "Tutti i Comuni"). Nella versione
    amministratore qui c'è anche la scheda Info.
 2) Toccando un Comune si vedono solo i suoi locali; il titolo diventa
    "Noci - Giovedì 8 ottobre" e a destra compare la casetta 🏠 che riporta
