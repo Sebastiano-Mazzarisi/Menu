@@ -65,8 +65,10 @@ tasti ← → della tastiera o, sul telefono, facendo scorrere il dito a
 sinistra (successiva) o a destra (precedente). Ogni rosticceria vista così
 conta come un click nel registro.
 Passando da una scheda all'altra la foto nuova viene caricata prima di
-cambiare la finestra, che ha un'altezza fissa per le foto: niente sfarfallio
-(c'è solo una breve dissolvenza, senza spostamenti).
+cambiare la finestra. La finestra ha sempre la stessa dimensione (quasi
+tutto lo schermo), qualunque sia la foto o il menu scritto; nome e indirizzo
+stanno su una riga sola (se troppo lunghi finiscono con "..."): così niente
+salti né sfarfallio, solo una breve dissolvenza.
 Google Maps cerca "nome del locale, indirizzo" (il nome senza un'eventuale
 parte tra parentesi), così trova la scheda del locale e non solo la
 via. Gli indirizzi in locali.json vanno scritti completi di CAP e provincia,
