@@ -15,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import threading
 import webbrowser
 from datetime import date, datetime, timedelta
@@ -142,7 +143,13 @@ def check_running() -> bool:
     stato interrotto (finestra chiusa a metà) il file resta. In quel caso lo cancello."""
     if not LOCK.exists():
         return False
-    if lock_owner_alive(LOCK):
+    try:
+        old = time.time() - LOCK.stat().st_mtime >= 30 * 60
+    except OSError:
+        old = False
+    # come Menu.py: un blocco di più di 30 minuti è di un controllo rimasto appeso (o di un numero
+    # di processo riusato da un altro programma). Prima il pulsante non faceva nulla per ore.
+    if lock_owner_alive(LOCK) and not old:
         return True
     try:
         LOCK.unlink()

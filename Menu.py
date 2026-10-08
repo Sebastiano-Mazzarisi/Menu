@@ -1026,7 +1026,9 @@ MENU_WORDS = ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "pi
 # "il menù è ricco e goloso, menu su Whatsapp" accompagna una foto pubblicitaria)
 MENU_PHRASES = re.compile(
     r"men[uù]\s+(?:del\s+giorno|di\s+oggi|giornaliero|d['’]asporto|di\s+(?:luned|marted|mercoled|gioved|venerd|sabato|domenica))"
-    r"|piatti\s+del\s+giorno|proposte\s+del\s+giorno|oggi\s+(?:trovate|abbiamo|vi\s+proponiamo)", re.IGNORECASE)
+    r"|piatti\s+del\s+giorno|proposte\s+del\s+giorno|oggi\s+(?:trovate|abbiamo|vi\s+proponiamo)"
+    # "Menù del / giorno GIOVEDÌ" (Impasta): l'OCR spesso perde "Menù del" scritto grande
+    r"|\bgiorno\s+(?:luned|marted|mercoled|gioved|venerd|sabato|domenica)", re.IGNORECASE)
 MENU_SECTIONS = re.compile(r"\b(?:antipasti|primi|secondi|contorni|dolci|frutta)\b", re.IGNORECASE)
 POST_MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
                "settembre", "ottobre", "novembre", "dicembre"]
@@ -1042,6 +1044,16 @@ def text_is_menu(text: str, source: dict[str, Any]) -> bool:
     if any(word in text.lower() for word in own):
         return True
     return bool(plausible_menu_date(text)) and any(word in text.lower() for word in MENU_WORDS)
+
+
+def text_lists_menu(text: str, source: dict[str, Any]) -> bool:
+    """Il testo del post contiene davvero un menu (non solo la parola o una frase di invito):
+    almeno due sezioni (primi, secondi, contorni...), una data o un giorno della settimana
+    del menu, o una frase scelta per quel locale in "parole_menu"."""
+    if len(set(m.lower() for m in MENU_SECTIONS.findall(text or ""))) >= 2 or plausible_menu_date(text or ""):
+        return True
+    own = [word for word in source.get("parole_menu", []) if word not in MENU_WORDS]
+    return any(word in (text or "").lower() for word in own)
 
 
 def photo_has_writing(photo_text: str, alt: str) -> bool:
@@ -1203,10 +1215,22 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     if words and not any(word in f"{browser.last_text} {photo_text}".lower() for word in words):
         discard_wrong_menu(shop, folder, image)
         raise NotAMenu("il post non sembra un menu")
-    if not photo_has_writing(photo_text, browser.last_alt) and not text_is_menu(browser.last_text, source):
-        # foto senza scritte (es. un piatto) e testo del post che non è un menu
+    if not photo_has_writing(photo_text, browser.last_alt) and not text_lists_menu(browser.last_text, source):
+        # foto SENZA scritte (es. una teglia di pasta): il menu allora deve essere scritto nel
+        # post, con le portate (primi, secondi...) o la data. Una frase come "il menù del giorno
+        # te lo portiamo a casa" (pubblicità "Pranzo Pass" di Impasta) non basta.
         discard_wrong_menu(shop, folder, image)
-        raise NotAMenu("foto senza scritte e testo del post che non è un menu")
+        raise NotAMenu("foto senza scritte e post senza un menu scritto")
+    readable = len(re.findall(r"[A-Za-zÀ-ÿ]{3,}", photo_text or "")) >= 6
+    if not text_is_menu(f"{browser.last_text}\n{photo_text}", source) and (
+            readable or (not photo_has_writing(photo_text, browser.last_alt)
+                         and not text_is_menu(browser.last_text, source))):
+        # né il testo del post né le scritte della foto dicono "menu del giorno", sezioni
+        # (primi, secondi...) o una data: es. la foto pubblicitaria del "Pranzo Pass" con
+        # "menù" nel testo del post. Se la foto è scritta a mano e non si legge (es. Fantasia)
+        # vale la regola di prima: foto con scritte e "menu" nel testo del post.
+        discard_wrong_menu(shop, folder, image)
+        raise NotAMenu("né il post né la foto sembrano un menu")
     text_day = plausible_menu_date(browser.last_text) or plausible_menu_date(photo_text)
     if text_day:
         # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data

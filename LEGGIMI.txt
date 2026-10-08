@@ -403,6 +403,15 @@ giorno", "MENÙ DI GIOVEDÌ", almeno due sezioni come primi/secondi, o una data)
 La sola parola "menu" non basta: "Polpette fritte... Menu su Whatsapp" non è
 un menu. Se un testo così era stato preso per errore, viene tolto (va in
 dati/scartati) al controllo successivo.
+Post con foto: viene preso come menu solo se il testo del post o le scritte
+lette nella foto dicono che è un menu ("menù del giorno", "menù di oggi",
+"giorno giovedì", almeno due sezioni come primi/secondi, o una data). Una foto
+pubblicitaria (es. "Pranzo Pass") con "menù" nel testo del post non basta più.
+Se la foto è scritta a mano e non si legge (es. Fantasia), basta che abbia
+scritte e che il post parli di menu.
+Foto senza scritte (es. una teglia di pasta): il menu deve essere scritto nel
+post, con le portate (primi, secondi...) o la data/il giorno. Una frase come
+"il menù del giorno te lo portiamo a casa" (pubblicità "Pranzo Pass") non basta.
 Foto e video: se la storia (o il post) mostra la foto con un indirizzo
 "blob:" (non scaricabile da fuori) la foto viene letta dalla pagina stessa;
 se è un video si usa la sua copertina o, in mancanza, il fotogramma del
@@ -575,3 +584,11 @@ Modalità sicura
 Per rigenerare soltanto Menu.html senza effettuare accessi online:
 
     python Menu.py --solo-html
+
+Monitor - controllo che non parte
+---------------------------------
+Se un controllo precedente è rimasto appeso, il suo file di blocco
+(dati/automatico.lock) faceva credere al Monitor che fosse ancora in corso e
+i pulsanti Controlla/Ricontrolla non facevano nulla. Ora un blocco più vecchio
+di 30 minuti viene ignorato (come già faceva Menu.py). Vale dal prossimo
+avvio del Monitor.
