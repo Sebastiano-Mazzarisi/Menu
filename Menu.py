@@ -930,8 +930,8 @@ MENU_PHRASES = re.compile(
     r"men[uù]\s+(?:del\s+giorno|di\s+oggi|giornaliero|d['’]asporto|di\s+(?:luned|marted|mercoled|gioved|venerd|sabato|domenica))"
     r"|piatti\s+del\s+giorno|proposte\s+del\s+giorno|oggi\s+(?:trovate|abbiamo|vi\s+proponiamo)", re.IGNORECASE)
 MENU_SECTIONS = re.compile(r"\b(?:antipasti|primi|secondi|contorni|dolci|frutta)\b", re.IGNORECASE)
-MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
-          "settembre", "ottobre", "novembre", "dicembre"]
+POST_MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+               "settembre", "ottobre", "novembre", "dicembre"]
 
 
 def text_is_menu(text: str, source: dict[str, Any]) -> bool:
@@ -971,11 +971,11 @@ def post_day(header: str) -> date | None:
         if match:
             number = int(match.group(1)) if match.groups() and match.group(1) else 0
             return when(number).date()
-    match = re.search(r"\b(\d{1,2})\s+(" + "|".join(MONTHS) + r")\b(?:\s+(20\d{2}))?", head)
+    match = re.search(r"\b(\d{1,2})\s+(" + "|".join(POST_MONTHS) + r")\b(?:\s+(20\d{2}))?", head)
     if match:
         year = int(match.group(3) or now.year)
         try:
-            day = date(year, MONTHS.index(match.group(2)) + 1, int(match.group(1)))
+            day = date(year, POST_MONTHS.index(match.group(2)) + 1, int(match.group(1)))
         except ValueError:
             return None
         return day if day <= now.date() else date(year - 1, day.month, day.day)
