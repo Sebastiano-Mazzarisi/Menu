@@ -48,7 +48,8 @@ Cliccando su una scheda si apre la finestra con il nome del locale, sotto
 il suo indirizzo (carattere più piccolo, non in grassetto) nella forma
 "Via e numero - Comune" (es. "Via Mazzini 28 - Castellana"), l'immagine del
 menu, il telefono, Google Maps e la fonte.
-Il nome in alto è seguito da giorno e mese del menu (es. "Fantasia - 06/10");
+Il nome in alto è seguito da giorno e mese del menu, con il mese in lettere
+e la data scritta più piccola (es. "Fantasia - 8 ottobre");
 in basso, centrati, i pulsanti telefono, Google Maps e Fonte; sopra di loro
 l'eventuale nota (es. "Chiuso fino al 07/10").
 Le schede della pagina mostrano solo la data, senza "Ultimo menu:".
