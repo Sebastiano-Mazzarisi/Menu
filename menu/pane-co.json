@@ -31,7 +31,7 @@
           "descrizione": "Al pezzo"
         },
         {
-          "nome": "Riso rosso integrale con ceci, cetrioli, zucchina e pollo al vapore",
+          "nome": "Riso rosso integrale e riso basmati con ceci, cetrioli, zucchina e pollo al vapore",
           "prezzo": "€5.00",
           "descrizione": ""
         },
@@ -66,29 +66,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pennette all'arrabbiata",
+          "nome": "Rigatoni all’amatriciana",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+          "descrizione": ""
         },
         {
-          "nome": "Risotto con radicchio e gorgonzola",
+          "nome": "Orecchiette alla pastorella",
           "prezzo": "€7.50",
-          "descrizione": ""
+          "descrizione": "Con pomodoro e ricotta"
         },
         {
-          "nome": "Spaghetti con fagiolini, pomodoro fresco e cacio",
+          "nome": "Risotto con zucca e porcini",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli con ceci, gamberetti e cozze",
+          "nome": "Cavatellucci al grano arso con cernia e zucchina",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Minestra di piselli",
+          "nome": "Minestrone di verdure",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Fagiolini, piselli, patate, carote, zucchina, cavolfiore, melanzane e cipolla. Con o senza pasta"
         }
       ]
     },
@@ -96,13 +96,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Fusi di pollo al forno con patate",
-          "prezzo": "€7.50",
-          "descrizione": "2 pezzi"
+          "nome": "Filetto di baccalà con patate",
+          "prezzo": "€8.50",
+          "descrizione": ""
         },
         {
-          "nome": "Filetto di cernia con carciofi",
-          "prezzo": "€8.50",
+          "nome": "Straccetti di vitello con funghi misti",
+          "prezzo": "€7.50",
           "descrizione": ""
         }
       ]
