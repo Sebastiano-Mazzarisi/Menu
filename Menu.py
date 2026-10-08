@@ -562,8 +562,8 @@ def save_media(context: Any, page: Any, target: Any, destination: Path) -> None:
     """Salva l'immagine (o il fotogramma del video) mostrata da target in destination.
 
     - indirizzo http(s): scarica il file originale;
-    - video (es. storia Instagram girata col telefono): usa l'immagine di copertina ("poster")
-      se c'è, altrimenti fotografa il fotogramma visibile;
+    - video (es. storia Instagram con musica): usa l'immagine di copertina ("poster") se c'è,
+      altrimenti il fotogramma corrente del video, pulito (senza i comandi sovrapposti);
     - indirizzo "blob:" o "data:" (Instagram/Facebook a volte mostrano così le foto): il file
       non si può scaricare da fuori, quindi lo legge la pagina stessa; se non riesce, fotografa
       l'elemento. Prima questo caso dava l'errore 'Protocol "blob:" not supported'."""
@@ -591,8 +591,27 @@ def save_media(context: Any, page: Any, target: Any, destination: Path) -> None:
                 return
         except Exception:
             pass
-    if info.get("tag") == "video":
-        page.wait_for_timeout(1500)  # il primo fotogramma del video può arrivare un attimo dopo
+    if info.get("tag") in ("video", "img"):
+        # fotogramma del video (o foto) "pulito", alla sua risoluzione: disegnato su una tela, quindi
+        # SENZA le scritte e i pulsanti che Instagram/Facebook sovrappongono (nome del profilo,
+        # musica, barra "Rispondi a...", adesivi). La fotografia dello schermo li includeva.
+        for _ in range(6):
+            try:
+                encoded = page.evaluate(
+                    """v => { const w = v.videoWidth || v.naturalWidth, h = v.videoHeight || v.naturalHeight;
+                         if (!w || (v.tagName === 'VIDEO' && v.readyState < 2)) return '';
+                         const c = document.createElement('canvas');
+                         c.width = w; c.height = h;
+                         c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+                         return c.toDataURL('image/jpeg', 0.92).split(',')[1] || ''; }""",
+                    target.element_handle())
+            except Exception:
+                encoded = ""
+            if encoded:
+                import base64
+                destination.write_bytes(base64.b64decode(encoded))
+                return
+            page.wait_for_timeout(500)  # il fotogramma può arrivare un attimo dopo
     target.screenshot(path=str(destination), type="jpeg", quality=92)
 
 
