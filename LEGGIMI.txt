@@ -39,13 +39,14 @@ di oggi. Nelle schede non compaiono più né le etichette "Oggi" / "Non di
 oggi" né la data (basta quella del titolo); la data resta nella finestra di
 dettaglio, accanto al nome.
 In alto a destra di ogni scheda c'è il Comune della rosticceria (scritta
-piccola, non in grassetto): campo "comune" di locali.json, es.
+piccola, nera, non in grassetto): campo "comune" di locali.json, es.
     "comune": "Castellana",
 Se "comune" manca viene ricavato dall'indirizzo (la parola dopo il CAP, o
 quella dopo " - ", es. "Via Tripoli 28 - Putignano"). Quando si aggiunge un
 locale con --aggiungi il programma chiede anche il Comune.
 Cliccando su una scheda si apre la finestra con il nome del locale, sotto
-il suo indirizzo (carattere più piccolo, non in grassetto), l'immagine del
+il suo indirizzo (carattere più piccolo, non in grassetto) nella forma
+"Via e numero - Comune" (es. "Via Mazzini 28 - Castellana"), l'immagine del
 menu, il telefono, Google Maps e la fonte.
 Il nome in alto è seguito da giorno e mese del menu (es. "Fantasia - 06/10");
 in basso, centrati, i pulsanti telefono, Google Maps e Fonte; sopra di loro
@@ -54,7 +55,8 @@ Le schede della pagina mostrano solo la data, senza "Ultimo menu:".
 La finestra ha una cornice singola di 5 mm: verde (come la fascia delle
 schede) se la rosticceria ha pubblicato il menu di oggi, arancione se no.
 Nella finestra si passa alla rosticceria precedente o successiva, in modo
-circolare (dopo l'ultima torna la prima), con le frecce ‹ › ai lati, con i
+circolare (dopo l'ultima torna la prima), con le frecce ‹ › ai lati (cerchio
+con fondo bianco trasparente al 90%), con i
 tasti ← → della tastiera o, sul telefono, facendo scorrere il dito a
 sinistra (successiva) o a destra (precedente). Ogni rosticceria vista così
 conta come un click nel registro.
@@ -62,7 +64,8 @@ Google Maps cerca "nome del locale, indirizzo" (il nome senza un'eventuale
 parte tra parentesi), così trova la scheda del locale e non solo la
 via. Gli indirizzi in locali.json vanno scritti completi di CAP e provincia,
 es. "Via Noci 48-50, 70017 Putignano (BA)": senza CAP Google può confondere
-"Via Noci" con il paese di Noci. Si chiude con ✕, con ESC o cliccando fuori.
+"Via Noci" con il paese di Noci. Nella scheda viene mostrato solo "via e numero - Comune":
+l'indirizzo completo resta in locali.json e serve solo a Google Maps. Si chiude con ✕, con ESC o cliccando fuori.
 Cambio del nome di un locale: si modifica "nome" in locali.json e si
 aggiunge il nome vecchio in "nomi_precedenti", es.
     "nome": "Santoro Gastronomia",
