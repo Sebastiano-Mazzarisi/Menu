@@ -51,7 +51,8 @@ menu, il telefono, Google Maps e la fonte.
 La testata della finestra (nome, indirizzo e ✕) è grigio scuro, come quella
 della tabella Info.
 Il nome in alto è seguito da giorno e mese del menu, con il mese in lettere
-e la data scritta più piccola (es. "Fantasia - 8 ottobre");
+e il numero del giorno grande come il nome, il mese più piccolo
+(es. "Fantasia - 8 ottobre");
 in basso, centrati, i pulsanti telefono, Google Maps e Fonte; sopra di loro
 l'eventuale nota (es. "Chiuso fino al 07/10").
 Le schede della pagina mostrano solo la data, senza "Ultimo menu:".
@@ -63,6 +64,9 @@ con fondo bianco trasparente al 90%), con i
 tasti ← → della tastiera o, sul telefono, facendo scorrere il dito a
 sinistra (successiva) o a destra (precedente). Ogni rosticceria vista così
 conta come un click nel registro.
+Passando da una scheda all'altra la foto nuova viene caricata prima di
+cambiare la finestra, che ha un'altezza fissa per le foto: niente sfarfallio
+(c'è solo una breve dissolvenza, senza spostamenti).
 Google Maps cerca "nome del locale, indirizzo" (il nome senza un'eventuale
 parte tra parentesi), così trova la scheda del locale e non solo la
 via. Gli indirizzi in locali.json vanno scritti completi di CAP e provincia,
