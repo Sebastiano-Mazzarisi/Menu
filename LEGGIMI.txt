@@ -370,6 +370,9 @@ Foto e video: se la storia (o il post) mostra la foto con un indirizzo
 se è un video si usa la sua copertina o, in mancanza, il fotogramma del
 video preso "pulito" (senza nome del profilo, musica, barra "Rispondi a..."
 e pulsanti che Instagram/Facebook mettono sopra).
+Ogni foto del menu nella pagina ha nell'indirizzo un "?v=" ricavato dal suo
+contenuto: se la foto cambia (anche con lo stesso nome di file) browser e
+telefoni scaricano subito quella nuova invece di mostrare la vecchia.
 
 Per sicurezza, i menu appartenenti a giorni precedenti non vengono mostrati
 in Menu.html. Restano disponibili nell'archivio e lo stato mostra la loro data.
