@@ -405,6 +405,18 @@ menu, menù, primi, secondi, contorni, del giorno, piatti, antipasti
 Sant'Antonio scrive "Buongiorno oggi trovate le fave..." e ha in più
 "oggi trovate", "oggi abbiamo", "oggi vi proponiamo"). Così una foto
 pubblicitaria o di un piatto non diventa il menu del giorno.
+Foto senza scritte (es. un piatto di tortellini): vale come menu solo se il
+testo del post è davvero un menu, cioè contiene una frase come "menù del
+giorno", "menù di oggi", "menù d'asporto", "menù di giovedì", almeno due
+sezioni (primi, secondi, contorni...), una data, oppure una frase scelta
+per quel locale in "parole_menu" (es. "oggi trovate"). Non basta la parola
+"menù" in frasi come "il menù è ricco e goloso, menu su Whatsapp".
+Giorno di pubblicazione: il programma legge accanto al nome del post quando
+è stato pubblicato ("20 minuti fa", "6 ore fa", "ieri alle 18:30", "2
+giorni fa", "7 ottobre"). Un post senza data scritta pubblicato ieri vale
+per ieri anche se viene letto dopo mezzanotte. In quel caso un'eventuale
+foto salvata per errore come menu di oggi viene tolta da ingresso e
+spostata in dati/scartati (non si perde).
 Testo lungo: Facebook divide i post lunghi e mostra "Altro...": il programma
 lo apre da solo (anche più volte) per leggere il menu completo.
 Giorno della settimana: se il menu dice "MENÙ DI SABATO" o "Menu del giorno

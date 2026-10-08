@@ -219,6 +219,7 @@ class BrowserCollector:
         self.profile_key = ""
         self.last_text = ""
         self.last_alt = ""
+        self.last_posted: date | None = None  # giorno di pubblicazione del post letto (se si capisce)
 
     def start(self, source: dict[str, Any] | None = None) -> None:
         source = source or {}
@@ -332,11 +333,23 @@ class BrowserCollector:
                     page.mouse.wheel(0, 1200)
                     page.wait_for_timeout(1500)
             self.last_text = ""
+            self.last_posted = None
             if source.get("selettore_testo"):
                 expand_more(page, source["selettore_testo"])
                 try:
                     self.last_text = clean_post_text(
                         page.locator(source["selettore_testo"]).first.inner_text(timeout=3000))
+                except Exception:
+                    pass
+            # giorno di pubblicazione: intestazione del post ("6 ore fa", "ieri alle 18:30"...),
+            # cioè il testo del riquadro del post PRIMA del messaggio
+            container = re.match(r"\s*(\[aria-posinset='\d+'\])", selector or "")
+            if container and page.locator(container.group(1)).count():
+                try:
+                    whole = page.locator(container.group(1)).first.inner_text(timeout=3000)
+                    first_line = next((line.strip() for line in self.last_text.splitlines() if line.strip()), "")
+                    header = whole.split(first_line[:40])[0] if first_line and first_line[:40] in whole else whole[:150]
+                    self.last_posted = post_day(header)
                 except Exception:
                     pass
             if selector and not page.locator(selector).count():
@@ -911,6 +924,63 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
 
 MENU_WORDS = ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti"]
 
+# frasi che da sole dicono "questo è il menu di un giorno" (non basta la parola "menù":
+# "il menù è ricco e goloso, menu su Whatsapp" accompagna una foto pubblicitaria)
+MENU_PHRASES = re.compile(
+    r"men[uù]\s+(?:del\s+giorno|di\s+oggi|giornaliero|d['’]asporto|di\s+(?:luned|marted|mercoled|gioved|venerd|sabato|domenica))"
+    r"|piatti\s+del\s+giorno|proposte\s+del\s+giorno|oggi\s+(?:trovate|abbiamo|vi\s+proponiamo)", re.IGNORECASE)
+MENU_SECTIONS = re.compile(r"\b(?:antipasti|primi|secondi|contorni|dolci|frutta)\b", re.IGNORECASE)
+MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+          "settembre", "ottobre", "novembre", "dicembre"]
+
+
+def text_is_menu(text: str, source: dict[str, Any]) -> bool:
+    """Il testo (del post o scritto nella foto) è un menu? Una frase tipo "menù del giorno",
+    almeno due sezioni (primi, secondi, contorni...), una data, o una frase scelta per quel
+    locale in "parole_menu" diversa dalle parole generiche (es. "oggi trovate")."""
+    if MENU_PHRASES.search(text) or len(set(m.lower() for m in MENU_SECTIONS.findall(text))) >= 2:
+        return True
+    own = [word for word in source.get("parole_menu", []) if word not in MENU_WORDS]
+    if any(word in text.lower() for word in own):
+        return True
+    return bool(plausible_menu_date(text)) and any(word in text.lower() for word in MENU_WORDS)
+
+
+def photo_has_writing(photo_text: str, alt: str) -> bool:
+    """La foto contiene scritte? (OCR con almeno 4 parole vere, o Facebook che la descrive con "testo")."""
+    words = re.findall(r"[A-Za-zÀ-ÿ]{3,}", photo_text or "")
+    return len(words) >= 4 or "testo" in (alt or "").lower()
+
+
+def post_day(header: str) -> date | None:
+    """Giorno di pubblicazione da quello che Facebook scrive accanto al nome nel post:
+    "20 minuti fa", "6 ore fa", "circa un'ora fa", "ieri alle 18:30", "un giorno fa", "2 giorni fa",
+    "7 ottobre alle ore 12:00". Si guarda solo l'inizio del post (prima del testo)."""
+    head = " ".join(header.split("\n")[:6]).lower()[:200]
+    now = datetime.now()
+    patterns = [
+        (r"\b(\d+)\s*(?:min|minuti|minuto)\b", lambda n: now - timedelta(minutes=n)),
+        (r"\b(\d+)\s*(?:h|ore|ora)\b", lambda n: now - timedelta(hours=n)),
+        (r"\b(?:un['’]ora|circa un['’]ora)\b", lambda n: now - timedelta(hours=1)),
+        (r"\bieri\b", lambda n: now - timedelta(days=1)),
+        (r"\b(\d+)\s*(?:g|giorni)\b", lambda n: now - timedelta(days=n)),
+        (r"\bun giorno fa\b", lambda n: now - timedelta(days=1)),
+    ]
+    for pattern, when in patterns:
+        match = re.search(pattern, head)
+        if match:
+            number = int(match.group(1)) if match.groups() and match.group(1) else 0
+            return when(number).date()
+    match = re.search(r"\b(\d{1,2})\s+(" + "|".join(MONTHS) + r")\b(?:\s+(20\d{2}))?", head)
+    if match:
+        year = int(match.group(3) or now.year)
+        try:
+            day = date(year, MONTHS.index(match.group(2)) + 1, int(match.group(1)))
+        except ValueError:
+            return None
+        return day if day <= now.date() else date(year - 1, day.month, day.day)
+    return None
+
 
 def plausible_menu_date(text: str) -> date | None:
     """Data del menu scritta nel post o nella foto (es. "Menu del giorno Sabato 3/10"),
@@ -935,6 +1005,7 @@ class NotAMenu(RuntimeError):
     """Il post letto non è un menu (pubblicità, foto di un piatto, auguri...)."""
 
 
+DISCARDED = DATA / "scartati"  # foto tolte da ingresso perché non erano il menu di quel giorno
 CAPTURES = DATA / "catture"  # foto appena scaricate, prima di sapere se sono un menu
 
 
@@ -988,6 +1059,10 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     if words and not any(word in f"{browser.last_text} {photo_text}".lower() for word in words):
         image.unlink(missing_ok=True)
         raise NotAMenu("il post non sembra un menu")
+    if not photo_has_writing(photo_text, browser.last_alt) and not text_is_menu(browser.last_text, source):
+        # foto senza scritte (es. un piatto) e testo del post che non è un menu
+        image.unlink(missing_ok=True)
+        raise NotAMenu("foto senza scritte e testo del post che non è un menu")
     text_day = plausible_menu_date(browser.last_text) or plausible_menu_date(photo_text)
     if text_day:
         # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
@@ -995,6 +1070,21 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         if dated != image:
             image.replace(dated)
         return Result(dated, text_day, source.get("nome", "browser"), checked)
+    posted = browser.last_posted
+    if posted and posted < date.today():
+        # post pubblicato in un giorno precedente (es. ieri sera, letto dopo mezzanotte):
+        # vale per quel giorno, non per oggi
+        print(f"  {shop['nome']} - post pubblicato il {posted:%d/%m}: non è il menu di oggi")
+        # i post sono dal più recente: se l'ultimo menu è di un giorno precedente, una foto
+        # salvata come "menu di oggi" in un giro precedente era sbagliata (es. foto pubblicitaria
+        # letta dopo mezzanotte): la tolgo da ingresso (resta in dati/scartati, non si perde)
+        for stale in folder.glob(f"{date.today().isoformat()}_online.*"):
+            DISCARDED.mkdir(parents=True, exist_ok=True)
+            stale.replace(DISCARDED / f"{shop['id']}_{stale.name}")
+            print(f"  {shop['nome']} - tolto {stale.name} (non era il menu di oggi): ora in dati/scartati")
+        dated = folder / f"{posted.isoformat()}_online{image.suffix}"
+        image.replace(dated)
+        return Result(dated, posted, source.get("nome", "browser"), checked)
     if source.get("data") == "novita":
         image, new_day = keep_first_seen(folder, image)
         return Result(place_capture(folder, image), new_day, source.get("nome", "browser"), checked)
