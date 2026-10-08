@@ -1,0 +1,111 @@
+{
+  "data": "2026-10-08",
+  "fonte": "https://www.paneeco.it/menu",
+  "sezioni": [
+    {
+      "titolo": "Antipasti del giorno",
+      "piatti": [
+        {
+          "nome": "Zucchina al forno",
+          "prezzo": "€5.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Fagiolini a vapore con olio e menta",
+          "prezzo": "€6.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cornaletti al forno",
+          "prezzo": "€5.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Filetti di peperoni con pan grattato e capperi",
+          "prezzo": "€5.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Sfoglia di mozzarella con prosciutto cotto, insalata e philadelphia",
+          "prezzo": "€1.70",
+          "descrizione": "Al pezzo"
+        },
+        {
+          "nome": "Riso rosso integrale con ceci, cetrioli, zucchina e pollo al vapore",
+          "prezzo": "€5.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Farro con caponata di verdure",
+          "prezzo": "€5.00",
+          "descrizione": "Melanzane, cetrioli, zucchina e peperoni"
+        },
+        {
+          "nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto",
+          "prezzo": "€5.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cous cous con bresaola e verdurine",
+          "prezzo": "€5.00",
+          "descrizione": "Zucchine, melanzane e peperoni."
+        },
+        {
+          "nome": "Riso venere e riso basmati con zucchina, gamberetti e mais",
+          "prezzo": "€6.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Insalata di mare",
+          "prezzo": "€6.00",
+          "descrizione": "Polpo, seppie, gamberetti, polpa di granchio, sedano, olive e acetelli"
+        }
+      ]
+    },
+    {
+      "titolo": "Primi Piatti del giorno",
+      "piatti": [
+        {
+          "nome": "Pennette all'arrabbiata",
+          "prezzo": "€6.50",
+          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+        },
+        {
+          "nome": "Risotto con radicchio e gorgonzola",
+          "prezzo": "€7.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Spaghetti con fagiolini, pomodoro fresco e cacio",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cavatelli con ceci, gamberetti e cozze",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Minestra di piselli",
+          "prezzo": "€6.00",
+          "descrizione": "Con o senza pasta"
+        }
+      ]
+    },
+    {
+      "titolo": "Secondi piatti del giorno",
+      "piatti": [
+        {
+          "nome": "Fusi di pollo al forno con patate",
+          "prezzo": "€7.50",
+          "descrizione": "2 pezzi"
+        },
+        {
+          "nome": "Filetto di cernia con carciofi",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}

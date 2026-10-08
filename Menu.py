@@ -1029,6 +1029,37 @@ def post_variants(source: dict[str, Any]) -> list[dict[str, Any]]:
             for number in range(1, count + 1)]
 
 
+def same_picture(first: Path, second: Path) -> bool:
+    """Stessa foto? Identica byte per byte, oppure uguale a occhio (Facebook può dare la stessa
+    foto ricompressa o in un'altra misura): confronto le due immagini ridotte a 16x16 in grigi."""
+    try:
+        if file_hash(first) == file_hash(second):
+            return True
+        from PIL import Image
+        def tiny(path: Path) -> list[int]:
+            with Image.open(path) as picture:
+                return list(picture.convert("L").resize((16, 16)).getdata())
+        a, b = tiny(first), tiny(second)
+        return sum(abs(x - y) for x, y in zip(a, b)) / len(a) < 6
+    except Exception:
+        return False
+
+
+def discard_wrong_menu(shop: dict[str, Any], folder: Path, image: Path) -> None:
+    """Il post appena letto NON è un menu. Se la stessa foto era stata salvata in ingresso come
+    menu (es. con un controllo meno severo, o prima di una correzione), era un errore: la sposto
+    in dati/scartati, così né la pagina né il Monitor la mostrano più come menu di quel giorno.
+    Poi elimino la foto appena scaricata."""
+    try:
+        for saved in folder.glob("*_online.*"):
+            if saved.suffix.lower() in IMAGE_EXTENSIONS and same_picture(saved, image):
+                DISCARDED.mkdir(parents=True, exist_ok=True)
+                saved.replace(DISCARDED / f"{shop['id']}_{saved.name}")
+                print(f"  {shop['nome']} - tolto {saved.name}: era questa foto, che non è un menu (ora in dati/scartati)")
+    finally:
+        image.unlink(missing_ok=True)
+
+
 def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, browser: "BrowserCollector",
                    checked: str) -> Result:
     """Un post Facebook/Instagram (fonte "browser"): menu, avviso o NotAMenu se non è un menu.
@@ -1057,11 +1088,11 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     # l'ultimo post è davvero un menu? (non una pubblicità, una foto di un piatto, ecc.)
     words = source.get("parole_menu", MENU_WORDS)
     if words and not any(word in f"{browser.last_text} {photo_text}".lower() for word in words):
-        image.unlink(missing_ok=True)
+        discard_wrong_menu(shop, folder, image)
         raise NotAMenu("il post non sembra un menu")
     if not photo_has_writing(photo_text, browser.last_alt) and not text_is_menu(browser.last_text, source):
         # foto senza scritte (es. un piatto) e testo del post che non è un menu
-        image.unlink(missing_ok=True)
+        discard_wrong_menu(shop, folder, image)
         raise NotAMenu("foto senza scritte e testo del post che non è un menu")
     text_day = plausible_menu_date(browser.last_text) or plausible_menu_date(photo_text)
     if text_day:

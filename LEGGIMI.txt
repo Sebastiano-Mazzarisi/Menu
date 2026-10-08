@@ -417,6 +417,10 @@ giorni fa", "7 ottobre"). Un post senza data scritta pubblicato ieri vale
 per ieri anche se viene letto dopo mezzanotte. In quel caso un'eventuale
 foto salvata per errore come menu di oggi viene tolta da ingresso e
 spostata in dati/scartati (non si perde).
+Anche quando un post viene giudicato "non è un menu", se la stessa foto
+(identica o uguale a occhio) era stata salvata prima in ingresso come menu,
+viene spostata in dati/scartati: così Monitor e pagina smettono subito di
+mostrarla come menu del giorno.
 Testo lungo: Facebook divide i post lunghi e mostra "Altro...": il programma
 lo apre da solo (anche più volte) per leggere il menu completo.
 Giorno della settimana: se il menu dice "MENÙ DI SABATO" o "Menu del giorno
