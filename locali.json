@@ -187,6 +187,30 @@
         },
         {"tipo": "cartella", "attiva": true}
       ]
+    },
+    {
+      "id": "sfizi",
+      "nome": "Sfizi - La cucina di casa",
+      "telefono": "320-295.21.81",
+      "indirizzo": "Via Rosselli 22, 70014 Conversano (BA)",
+      "comune": "Conversano",
+      "url": "https://www.instagram.com/sfizi22/",
+      "logo": "sfizi.jpg",
+      "fonti": [
+        {
+          "tipo": "browser",
+          "nome": "Storia Instagram",
+          "url": "https://www.instagram.com/sfizi22/",
+          "utente": "sfizi22",
+          "apri_storia": true,
+          "richiede_recente": true,
+          "profilo": "%LOCALAPPDATA%\\AuferInstagram\\chrome",
+          "canale": "chrome",
+          "attesa_secondi": 5,
+          "attiva": true
+        },
+        {"tipo": "cartella", "attiva": true}
+      ]
     }
   ]
 }
