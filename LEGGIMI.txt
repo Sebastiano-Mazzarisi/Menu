@@ -390,10 +390,19 @@ cartella locale deve restare come ultima fonte di riserva.
 
 Storie Instagram (Aufer Gastronomia, L'Eclettico Bistrot, Sfizi): la fonte apre la
 storia del profilo ("apri_storia", "utente") e la accetta solo se pubblicata
-nelle ultime 24 ore ("richiede_recente"). Usano lo stesso profilo Chrome
+pubblicata OGGI ("richiede_recente"): dall'età scritta accanto al nome
+("15 min", "7 h") si calcola l'ora di pubblicazione. Una storia di ieri
+(es. letta dopo mezzanotte, "15 h") vale per ieri, non per oggi: viene salvata
+con la data di ieri e un eventuale "menu di oggi" sbagliato va in
+dati/scartati. Lo stesso controllo vale per le storie Facebook. Usano lo stesso profilo Chrome
 collegato a Instagram (%LOCALAPPDATA%\AuferInstagram\chrome); per un nuovo
 locale con le storie basta copiare la fonte e cambiare "url" e "utente".
 L'Eclettico Bistrot è chiuso il martedì ("riposo": ["martedì"]).
+Post solo testo: viene preso come menu solo se lo è davvero (es. "menù del
+giorno", "MENÙ DI GIOVEDÌ", almeno due sezioni come primi/secondi, o una data).
+La sola parola "menu" non basta: "Polpette fritte... Menu su Whatsapp" non è
+un menu. Se un testo così era stato preso per errore, viene tolto (va in
+dati/scartati) al controllo successivo.
 Foto e video: se la storia (o il post) mostra la foto con un indirizzo
 "blob:" (non scaricabile da fuori) la foto viene letta dalla pagina stessa;
 se è un video si usa la sua copertina o, in mancanza, il fotogramma del

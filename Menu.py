@@ -205,13 +205,14 @@ STORY_MIN_SIDE = 400
 # "1 h", "5 min", "adesso" accanto al nome in alto nel visualizzatore = storia delle ultime ore
 STORY_RECENT_JS = """() => {
  const re = /(^|[^\\p{L}\\p{N}])(\\d{1,2}\\s*(m|min|h)|adesso|ora)(?![\\p{L}\\p{N}])/iu;
- return [...document.querySelectorAll('*')].some(el => {
+ const hit = [...document.querySelectorAll('*')].find(el => {
    const t = (el.innerText || el.textContent || '').trim();
    if (!t || t.length > 80 || !re.test(t)) return false;
    const r = el.getBoundingClientRect();
    return r.width > 0 && r.height > 0 && r.height < 60 && r.top >= 0 && r.top < 140
      && r.left > innerWidth * .35 && r.left < innerWidth;
  });
+ return hit ? (hit.innerText || hit.textContent || '').trim() : '';
 }"""
 
 
@@ -285,6 +286,7 @@ class BrowserCollector:
     def capture(self, shop: dict[str, Any], source: dict[str, Any]) -> Path | None:
         self.start(source)
         page = self.context.new_page()
+        story_day: date | None = None
         try:
             page.goto(source["url"], wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(int(source.get("attesa_secondi", 6)) * 1000)
@@ -321,13 +323,16 @@ class BrowserCollector:
                     raise RuntimeError("nessuna Storia pubblicata in questo momento (o non si è aperta)")
                 if source.get("richiede_recente"):
                     visible_text = page.locator("body").inner_text(timeout=5000)
-                    recent = re.search(
-                        r"\b(?:\d{1,2}\s*(?:m|min|h|ora|ore)|adesso)\b",
-                        visible_text,
-                        re.IGNORECASE,
-                    )
-                    if not recent:
+                    # età scritta accanto al nome del profilo ("7 h", "15 min"): si cerca dopo il nome
+                    user = source.get("utente", "")
+                    near = visible_text[visible_text.find(user):] if user and user in visible_text else visible_text
+                    story_day = story_age_day(near)
+                    if story_day is None:
                         raise RuntimeError("la Storia non risulta pubblicata nelle ultime 24 ore")
+                    if story_day < date.today():
+                        # pubblicata ieri (es. letta dopo mezzanotte): NON è il menu di oggi.
+                        # browser_result la salva con la sua data e toglie un eventuale "menu di oggi" sbagliato
+                        print(f"  {shop['nome']} - la storia è stata pubblicata il {story_day:%d/%m}: non è di oggi")
             selector = source.get("selettore", "")
             # riquadro del post (es. [aria-posinset='1']): si scorre finché compare IL POST, non
             # la sua foto. Un post solo testo (es. "MENÙ DI GIOVEDÌ" scritto nel post) non ha
@@ -352,7 +357,7 @@ class BrowserCollector:
                             break
                         page.wait_for_timeout(1000)
             self.last_text = ""
-            self.last_posted = None
+            self.last_posted = story_day  # giorno della storia (se è una storia), altrimenti None
             if source.get("selettore_testo"):
                 expand_more(page, source["selettore_testo"])
                 for _ in range(3):
@@ -507,8 +512,13 @@ class BrowserCollector:
                 if not candidate or min(candidate.get("w", 0), candidate.get("h", 0)) < STORY_MIN_SIDE:
                     print(f"  {shop['nome']} - parte {part + 1} della storia: nessuna foto nitida (video o anteprima), passo alla successiva")
                     continue
-                recent = any(page.evaluate(STORY_RECENT_JS) or page.wait_for_timeout(300) for _ in range(15))
-                if not recent:
+                age = ""
+                for _ in range(15):
+                    age = page.evaluate(STORY_RECENT_JS) or ""
+                    if age:
+                        break
+                    page.wait_for_timeout(300)
+                if story_age_day(age) != date.today():
                     print(f"  {shop['nome']} - parte {part + 1} della storia non risulta di oggi: non la uso")
                     continue
                 response = self.context.request.get(candidate["src"], timeout=30000)
@@ -983,10 +993,16 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
     if closed:
         print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
         return Result(save_closure(folder, closed, None, text), date.today(), name, checked)
-    words = source.get("parole_menu", MENU_WORDS)
-    if words and not any(word in text.lower() for word in words):
-        raise NotAMenu("il post (solo testo) non sembra un menu")
     clean = "\n".join(line.strip() for line in clean_post_text(text).splitlines() if line.strip())
+    if not text_is_menu(text, source):
+        # es. "Polpette fritte... Menu su Whatsapp": la parola "menu" da sola non basta.
+        # Se in un giro precedente questo stesso testo era stato preso per un menu, lo tolgo
+        for wrong in folder.glob("*_testo.json"):
+            if read_json(wrong, {}).get("testo") == clean:
+                DISCARDED.mkdir(parents=True, exist_ok=True)
+                wrong.replace(DISCARDED / f"{shop['id']}_{wrong.name}")
+                print(f"  {shop['nome']} - tolto {wrong.name} (non era un menu): ora in dati/scartati")
+        raise NotAMenu("il post (solo testo) non sembra un menu")
     written_day = plausible_menu_date(clean)  # data o giorno scritto nel post ("MENÙ DI SABATO")
     for earlier in sorted(folder.glob("*_testo.json")):  # stesso testo già visto: resta la sua data
         if read_json(earlier, {}).get("testo") == clean:
@@ -1032,6 +1048,21 @@ def photo_has_writing(photo_text: str, alt: str) -> bool:
     """La foto contiene scritte? (OCR con almeno 4 parole vere, o Facebook che la descrive con "testo")."""
     words = re.findall(r"[A-Za-zÀ-ÿ]{3,}", photo_text or "")
     return len(words) >= 4 or "testo" in (alt or "").lower()
+
+
+def story_age_day(text: str) -> date | None:
+    """Giorno di pubblicazione di una storia dalla sua età scritta accanto al nome:
+    "adesso", "15 min", "7 h", "3 ore". Prima bastava "ultime 24 ore": dopo mezzanotte la storia
+    di ieri mattina ("15 h") risultava di oggi. None se l'età non c'è (storia più vecchia o non letta)."""
+    now = datetime.now()
+    match = re.search(r"(?<![\w])(\d{1,2})\s*(min|minuti|minuto|m|h|ore|ora)(?![\w])|(?<![\w])(adesso)(?![\w])",
+                      text or "", re.IGNORECASE)
+    if not match:
+        return None
+    if match.group(3):
+        return now.date()
+    number, unit = int(match.group(1)), match.group(2).lower()
+    return (now - (timedelta(hours=number) if unit in ("h", "ore", "ora") else timedelta(minutes=number))).date()
 
 
 def post_day(header: str) -> date | None:
