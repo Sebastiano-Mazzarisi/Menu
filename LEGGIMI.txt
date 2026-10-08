@@ -429,6 +429,12 @@ menu. Se un giro si interrompe a metà non può quindi far sembrare "di oggi"
 un locale che non ha ancora pubblicato (es. Impastamò al rientro dalle
 ferie). Eventuali file "..._avviso_controllo" rimasti in ingresso da
 versioni vecchie vengono spostati in dati/scartati al giro successivo.
+Post solo testo (es. Bollenti piatti scrive "MENÙ DI GIOVEDÌ" e il menu
+nel testo del post, senza foto): il programma scorre la pagina finché
+compare il post (non la sua foto), poi legge il testo; se il post non ha una
+data scritta vale il giorno di pubblicazione. Se un post non si riesce a
+leggere (video, reel, post caricato in ritardo) si passa al successivo; nel
+registro l'errore riporta cosa c'era nel post.
 Testo lungo: Facebook divide i post lunghi e mostra "Altro...": il programma
 lo apre da solo (anche più volte) per leggere il menu completo.
 Giorno della settimana: se il menu dice "MENÙ DI SABATO" o "Menu del giorno

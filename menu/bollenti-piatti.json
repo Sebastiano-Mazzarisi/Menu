@@ -1,0 +1,91 @@
+{
+  "data": "2026-10-08",
+  "testo": "MENÙ DI GIOVEDÌ\nPRIMI PIATTI\n●TIMBALLO DI SPINACI CON PROSCIUTTO E GALBANINO 5,0\n●GNOCCHI DI PATATE ALLA SORRENTINA 5,0\n●TORTIGLIONI SALSICCIA E STRACCHINO 5,0\n●LINGUINE AGLI SCAMPI 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●FAGOTTO DI CARNE CON SALAME, CARCIOFI E FORMAGGIO CON GRATINATURA DI CACIO E PEPE\n●MINI WUDY CRUNCHY POSP AI WURSTEL CON INSALATINA\n●STINCO DI SUINO ARROSTO\n●PARMIGIANA DI ZUCCHINE\n●CUORE DI MERLUZZO CON ZUCCHINA E POMODORINO\n●INSALATA DI PATATE ALLO YOGURT E MAIONESE\n●WURSTEL GRIGLIATI E CONDITI\n●INSALATA DI FAGIOLINI",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI GIOVEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TIMBALLO DI SPINACI CON PROSCIUTTO E GALBANINO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●GNOCCHI DI PATATE ALLA SORRENTINA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TORTIGLIONI SALSICCIA E STRACCHINO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LINGUINE AGLI SCAMPI 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAGOTTO DI CARNE CON SALAME, CARCIOFI E FORMAGGIO CON GRATINATURA DI CACIO E PEPE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MINI WUDY CRUNCHY POSP AI WURSTEL CON INSALATINA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STINCO DI SUINO ARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA DI ZUCCHINE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CUORE DI MERLUZZO CON ZUCCHINA E POMODORINO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INSALATA DI PATATE ALLO YOGURT E MAIONESE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●WURSTEL GRIGLIATI E CONDITI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INSALATA DI FAGIOLINI",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}

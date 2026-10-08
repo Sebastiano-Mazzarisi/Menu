@@ -329,28 +329,46 @@ class BrowserCollector:
                     if not recent:
                         raise RuntimeError("la Storia non risulta pubblicata nelle ultime 24 ore")
             selector = source.get("selettore", "")
+            # riquadro del post (es. [aria-posinset='1']): si scorre finché compare IL POST, non
+            # la sua foto. Un post solo testo (es. "MENÙ DI GIOVEDÌ" scritto nel post) non ha
+            # foto: cercare la foto faceva scorrere la pagina fino in fondo, il post spariva
+            # dalla pagina e il menu non veniva letto.
+            box = re.match(r"\s*(\[aria-posinset='\d+'\])", selector or "")
+            container = box.group(1) if box else ""
             if selector and source.get("scorri"):
                 # Facebook carica i post solo scorrendo la pagina
                 for _ in range(int(source.get("scorri_max", 12))):
-                    if page.locator(selector).count():
+                    if page.locator(container or selector).count():
                         break
                     page.mouse.wheel(0, 1200)
                     page.wait_for_timeout(1500)
+                if container and page.locator(container).count():
+                    try:
+                        page.locator(container).first.scroll_into_view_if_needed(timeout=3000)
+                    except Exception:
+                        pass
+                    for _ in range(4):  # la foto del post può arrivare un attimo dopo il testo
+                        if page.locator(selector).count():
+                            break
+                        page.wait_for_timeout(1000)
             self.last_text = ""
             self.last_posted = None
             if source.get("selettore_testo"):
                 expand_more(page, source["selettore_testo"])
-                try:
-                    self.last_text = clean_post_text(
-                        page.locator(source["selettore_testo"]).first.inner_text(timeout=3000))
-                except Exception:
-                    pass
+                for _ in range(3):
+                    try:
+                        self.last_text = clean_post_text(
+                            page.locator(source["selettore_testo"]).first.inner_text(timeout=3000))
+                    except Exception:
+                        pass
+                    if self.last_text.strip():
+                        break
+                    page.wait_for_timeout(1000)
             # giorno di pubblicazione: intestazione del post ("6 ore fa", "ieri alle 18:30"...),
             # cioè il testo del riquadro del post PRIMA del messaggio
-            container = re.match(r"\s*(\[aria-posinset='\d+'\])", selector or "")
-            if container and page.locator(container.group(1)).count():
+            if container and page.locator(container).count():
                 try:
-                    whole = page.locator(container.group(1)).first.inner_text(timeout=3000)
+                    whole = page.locator(container).first.inner_text(timeout=3000)
                     first_line = next((line.strip() for line in self.last_text.splitlines() if line.strip()), "")
                     header = whole.split(first_line[:40])[0] if first_line and first_line[:40] in whole else whole[:150]
                     self.last_posted = post_day(header)
@@ -360,7 +378,15 @@ class BrowserCollector:
                 if self.last_text.strip():
                     self.last_alt = ""
                     return None  # post solo testo (es. menu scritto nel post): lo gestisce acquire
-                raise RuntimeError(f"nessun elemento trovato con il selettore {selector}")
+                seen_box = ""
+                if container and page.locator(container).count():
+                    try:  # cosa c'è nel post, per capire dal registro perché non si legge
+                        seen_box = " ".join(line.strip() for line in page.locator(container).first.inner_text(timeout=2000).splitlines()
+                                            if line.strip() and line.strip() != "Facebook")[:120]
+                    except Exception:
+                        pass
+                raise RuntimeError(f"nessun elemento trovato con il selettore {selector}"
+                                   + (f" (nel post: {seen_box})" if seen_box else " (post non caricato)"))
             target = page.locator(selector).first if selector else self._largest_media(page)
             if target is None:
                 raise RuntimeError("nessuna immagine grande visibile")
@@ -899,7 +925,8 @@ def closure_note(path: Path | None) -> str:
     return f"Chiuso fino al {match.group(3)}/{match.group(2)}" if match else ""
 
 
-def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, text: str, checked: str) -> Result:
+def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, text: str, checked: str,
+                     posted: date | None = None) -> Result:
     """Post senza foto: avviso di chiusura oppure menu scritto nel testo del post.
     Il menu viene salvato come AAAA-MM-GG_testo.json e mostrato riga per riga nella scheda."""
     name = source.get("nome", "browser")
@@ -921,7 +948,8 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
                 earlier.replace(corrected)
                 return Result(corrected, written_day, name, checked)
             return Result(earlier, image_date(earlier), name, checked)
-    day = written_day or date.today()
+    # senza data scritta vale il giorno di pubblicazione del post (un post di ieri non è di oggi)
+    day = written_day or (posted if posted and posted < date.today() else date.today())
     lines = [line for line in clean.splitlines() if not line.lower().startswith(("altro", "mostra"))]
     path = folder / f"{day.isoformat()}_testo.json"
     save_json(path, {"data": day.isoformat(), "testo": clean, "sezioni": [
@@ -1076,7 +1104,7 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         raise RuntimeError("browser non disponibile")
     image = browser.capture(shop, source)
     if image is None:  # post solo testo
-        return text_post_result(shop, source, folder, browser.last_text, checked)
+        return text_post_result(shop, source, folder, browser.last_text, checked, browser.last_posted)
     photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
     seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
     if seen:
@@ -1244,6 +1272,8 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                 if browser is None:
                     raise RuntimeError("browser non disponibile")
                 # se il primo post non è un menu (pubblicità, foto, post in evidenza...) guarda i successivi
+                # e anche se un post non si riesce a leggere (video, reel, post senza testo né foto,
+                # post caricato in ritardo): un post illeggibile non deve fermare la ricerca
                 tries = post_variants(source)
                 for number, variant in enumerate(tries, 1):
                     try:
@@ -1252,6 +1282,10 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                         if number == len(tries):
                             raise
                         print(f"  {shop['nome']} - post {number} non è un menu: guardo il successivo")
+                    except Exception as exc:
+                        if number == len(tries) or number >= 2 and "nessun elemento" in str(exc):
+                            raise  # finiti i post (o la pagina non ne carica altri)
+                        print(f"  {shop['nome']} - post {number} non leggibile ({str(exc)[:70]}): guardo il successivo")
             else:
                 raise RuntimeError(f"tipo fonte sconosciuto: {kind}")
             return Result(image, date.today(), source.get("nome", kind), checked)
