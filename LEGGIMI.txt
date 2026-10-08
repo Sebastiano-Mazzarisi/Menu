@@ -12,6 +12,24 @@ Menu.html. Per aprire la pagina basta fare doppio clic su Menu.html.
 
 Come si usa Menu.html
 ---------------------
+Navigazione per Comune (due livelli)
+------------------------------------
+1) Pagina iniziale: titolo "Menu - Giovedì 8 ottobre" e un riquadro per ogni
+   Comune che ha almeno un locale in locali.json (campo "comune"), ordinati
+   per numero di locali e poi in ordine alfabetico, più "Tutti i Comuni".
+   Ogni riquadro dice quanti locali ha e quanti hanno già il menu di oggi
+   (fascia verde se almeno uno, arancione se nessuno). Nella versione
+   amministratore qui c'è anche la scheda Info.
+2) Toccando un Comune si vedono solo i suoi locali; il titolo diventa
+   "Noci - Giovedì 8 ottobre" e a destra compare la casetta 🏠 che riporta
+   alla pagina iniziale. Le frecce ‹ › nella finestra di dettaglio girano
+   solo fra i locali del Comune scelto.
+Il Comune scelto resta nell'indirizzo (es. .../Menu/#Noci): il tasto
+"indietro" del telefono torna alla scelta del Comune, e ricaricando la
+pagina (o aprendo un preferito con #Noci) si resta su quel Comune.
+Un nuovo Comune compare da solo appena si aggiunge un locale con quel
+"comune" in locali.json.
+
 La pagina mostra una scheda compatta per ogni rosticceria con il nome e la
 data dell'ultimo menu disponibile, più un'etichetta di stato:
 - Oggi (verde): il menu è di oggi
