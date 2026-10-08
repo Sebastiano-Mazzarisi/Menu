@@ -398,16 +398,7 @@ class BrowserCollector:
                 self.last_alt = ""
             CAPTURES.mkdir(parents=True, exist_ok=True)
             destination = CAPTURES / f"{shop['id']}.jpg"  # va in ingresso solo se è un menu
-            media_url = target.evaluate("element => element.currentSrc || element.src || ''")
-            if media_url:
-                response = self.context.request.get(media_url, timeout=30000)
-                content_type = response.headers.get("content-type", "").split(";")[0].lower()
-                if response.ok and content_type in {"image/jpeg", "image/png", "image/webp"}:
-                    destination.write_bytes(response.body())
-                else:
-                    target.screenshot(path=str(destination), type="jpeg", quality=92)
-            else:
-                target.screenshot(path=str(destination), type="jpeg", quality=92)
+            save_media(self.context, page, target, destination)
             return destination
         except Exception:
             debug = ERRORS / f"{shop['id']}_{datetime.now():%Y%m%d_%H%M%S}.png"
@@ -447,15 +438,14 @@ class BrowserCollector:
             if page.locator(image_css).count():
                 target = page.locator(image_css).first
                 text += "\n" + (target.get_attribute("alt", timeout=2000) or "")
-                media_url = target.evaluate("element => element.currentSrc || element.src || ''")
-                if media_url:
-                    response = self.context.request.get(media_url, timeout=30000)
-                    if response.ok:
-                        # foto usata solo per cercare un avviso di chiusura: va in dati/catture,
-                        # MAI in ingresso (se il programma si interrompe non deve sembrare un menu)
-                        CAPTURES.mkdir(parents=True, exist_ok=True)
-                        image = CAPTURES / f"{shop['id']}_avviso_controllo.jpg"
-                        image.write_bytes(response.body())
+                # foto usata solo per cercare un avviso di chiusura: va in dati/catture,
+                # MAI in ingresso (se il programma si interrompe non deve sembrare un menu)
+                CAPTURES.mkdir(parents=True, exist_ok=True)
+                image = CAPTURES / f"{shop['id']}_avviso_controllo.jpg"
+                try:
+                    save_media(self.context, page, target, image)
+                except Exception:
+                    image = None
             return text, image
         finally:
             page.close()
@@ -566,6 +556,44 @@ class BrowserCollector:
                 except Exception:
                     continue
         return best
+
+
+def save_media(context: Any, page: Any, target: Any, destination: Path) -> None:
+    """Salva l'immagine (o il fotogramma del video) mostrata da target in destination.
+
+    - indirizzo http(s): scarica il file originale;
+    - video (es. storia Instagram girata col telefono): usa l'immagine di copertina ("poster")
+      se c'è, altrimenti fotografa il fotogramma visibile;
+    - indirizzo "blob:" o "data:" (Instagram/Facebook a volte mostrano così le foto): il file
+      non si può scaricare da fuori, quindi lo legge la pagina stessa; se non riesce, fotografa
+      l'elemento. Prima questo caso dava l'errore 'Protocol "blob:" not supported'."""
+    info = target.evaluate("e => ({tag: e.tagName.toLowerCase(), src: e.currentSrc || e.src || '', poster: e.poster || ''})")
+    url = info.get("poster") if info.get("tag") == "video" and info.get("poster") else info.get("src", "")
+    if url.startswith(("http://", "https://")):
+        try:
+            response = context.request.get(url, timeout=30000)
+            content_type = response.headers.get("content-type", "").split(";")[0].lower()
+            if response.ok and content_type in {"image/jpeg", "image/png", "image/webp"}:
+                destination.write_bytes(response.body())
+                return
+        except Exception:
+            pass
+    elif url.startswith(("blob:", "data:")) and info.get("tag") == "img":
+        try:
+            encoded = page.evaluate(
+                """async url => { const blob = await (await fetch(url)).blob();
+                     return await new Promise(ok => { const r = new FileReader();
+                       r.onload = () => ok(String(r.result).split(',')[1] || ''); r.readAsDataURL(blob); }); }""",
+                url)
+            if encoded:
+                import base64
+                destination.write_bytes(base64.b64decode(encoded))
+                return
+        except Exception:
+            pass
+    if info.get("tag") == "video":
+        page.wait_for_timeout(1500)  # il primo fotogramma del video può arrivare un attimo dopo
+    target.screenshot(path=str(destination), type="jpeg", quality=92)
 
 
 def image_is_sharp(data: bytes) -> bool:
