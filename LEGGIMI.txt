@@ -18,7 +18,8 @@ Navigazione per Comune (due livelli)
    Comune che ha almeno un locale in locali.json (campo "comune"), ordinati
    per numero di locali e poi in ordine alfabetico, più "Tutti i Comuni".
    Ogni riquadro, su una sola riga, mostra il nome del Comune e, a destra in
-   piccolo, quanti locali ha (es. "Conversano (1 locale)"); la fascia a
+   piccolo, quanti locali ha (es. "Conversano (1 locale)": il numero è grande
+   come il nome del Comune, parentesi e "locale/locali" piccoli); la fascia a
    sinistra è VERDE se tutti i locali di quel Comune hanno pubblicato il menu
    di oggi, ARANCIONE se almeno uno non l'ha ancora pubblicato (vale anche
    per "Tutti i Comuni"). Nella versione
