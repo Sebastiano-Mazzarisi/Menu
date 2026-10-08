@@ -162,6 +162,31 @@
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/impasta.bistrot", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
+    },
+    {
+      "id": "eclettico",
+      "riposo": ["martedì"],
+      "nome": "L'Eclettico Bistrot",
+      "telefono": "080-404.21.50",
+      "indirizzo": "Via Tommaso Fiore snc, 70015 Noci (BA)",
+      "comune": "Noci",
+      "url": "https://www.instagram.com/lecletticobistrot_noci/",
+      "logo": "eclettico.jpg",
+      "fonti": [
+        {
+          "tipo": "browser",
+          "nome": "Storia Instagram",
+          "url": "https://www.instagram.com/lecletticobistrot_noci/",
+          "utente": "lecletticobistrot_noci",
+          "apri_storia": true,
+          "richiede_recente": true,
+          "profilo": "%LOCALAPPDATA%\\AuferInstagram\\chrome",
+          "canale": "chrome",
+          "attesa_secondi": 5,
+          "attiva": true
+        },
+        {"tipo": "cartella", "attiva": true}
+      ]
     }
   ]
 }

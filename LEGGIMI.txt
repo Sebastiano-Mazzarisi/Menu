@@ -359,6 +359,13 @@ provarne una impostare "attiva": true e avviare:
 Ogni locale può avere più fonti. Vengono provate nell'ordine indicato; la
 cartella locale deve restare come ultima fonte di riserva.
 
+Storie Instagram (Aufer Gastronomia, L'Eclettico Bistrot): la fonte apre la
+storia del profilo ("apri_storia", "utente") e la accetta solo se pubblicata
+nelle ultime 24 ore ("richiede_recente"). Usano lo stesso profilo Chrome
+collegato a Instagram (%LOCALAPPDATA%\AuferInstagram\chrome); per un nuovo
+locale con le storie basta copiare la fonte e cambiare "url" e "utente".
+L'Eclettico Bistrot è chiuso il martedì ("riposo": ["martedì"]).
+
 Per sicurezza, i menu appartenenti a giorni precedenti non vengono mostrati
 in Menu.html. Restano disponibili nell'archivio e lo stato mostra la loro data.
 
