@@ -2288,7 +2288,8 @@ def main() -> None:
         run(args, config)
         return
     only = next((shop.get("nome", args.solo) for shop in config.get("locali", []) if shop.get("id") == args.solo), args.solo)
-    start_manual_log(f"ricontrollo di {only}" if args.solo else "controllo" if args.salta_aggiornati else "ricontrollo")
+    start_manual_log(f"ricontrollo di {only}" if args.solo else "pubblicazione" if args.solo_html
+                     else "controllo" if args.salta_aggiornati else "ricontrollo")
     if not take_lock():
         print("Un altro controllo è bloccato da oltre 20 minuti: riprova più tardi.")
         return

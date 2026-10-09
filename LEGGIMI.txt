@@ -640,3 +640,11 @@ può segnalare cliccando il nome del locale nel Monitor). Richiede qualche
 minuto; si tengono gli ultimi 10 PDF. Da riga di comando:
     python Menu.py --panorama
 
+Monitor - pulsante Pubblica
+---------------------------
+Rifà la pagina con i menu già scaricati sul PC (senza andare su Facebook,
+Instagram e siti, quindi in pochi secondi) e la pubblica subito su GitHub
+Pages. Utile dopo una modifica fatta a mano (es. una foto messa in ingresso o
+tolta) o per aggiornare il sito senza aspettare il giro automatico.
+Da riga di comando: python Menu.py --solo-html --pubblica
+

@@ -335,16 +335,19 @@ class Monitor(tk.Tk):
 
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
-        # pulsanti su tre righe (3 + 3 + 1), tutti larghi uguale: la finestra resta stretta
+        # pulsanti su tre righe (3 + 3 + 2), tutti larghi uguale: la finestra resta stretta
         layout = (("Controlla", self.check, 0, 0), ("Ricontrolla", self.recheck, 0, 1),
                   ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
                   ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2),
-                  ("Panorama", self.overview, 2, 0))
+                  ("Panorama", self.overview, 2, 0), ("Pubblica", self.publish, 2, 1))
         for text, action, row, column in layout:
             button = tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
                                activebackground="#334155", activeforeground=FG, relief="flat", width=11)
             button.grid(row=row, column=column, padx=3, pady=3, sticky="we")
-        self.toggle_button = button  # l'ultimo: "Pianifica" oppure "Disabilita"
+            if action == self.toggle_task:
+                # il pulsante che cambia scritta ("Pianifica" / "Disabilita"); prima era "l'ultimo
+                # pulsante creato" e con Panorama la scritta finiva sul pulsante sbagliato
+                self.toggle_button = button
         self.message, self.message_until = "", datetime.min
         self.querying = False
 
@@ -546,7 +549,9 @@ class Monitor(tk.Tk):
                    f"(un tasto qualsiasi la chiude subito) & timeout /t {CONSOLE_SECONDS} >nul")
         subprocess.Popen(f'cmd /c "title {CONSOLE_TITLE} & {command} & {closing}"', cwd=ROOT,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
-        if "--solo" in options:
+        if "--solo-html" in options:
+            self.say("Pubblicazione avviata (con i menu già scaricati)")
+        elif "--solo" in options:
             self.say("Segnalato: controllo approfondito avviato (menu di oggi scartato)")
         else:
             self.say("Controllo avviato" + (" (solo le rosticcerie non aggiornate)" if options else " (tutte)"))
@@ -610,6 +615,11 @@ class Monitor(tk.Tk):
         subprocess.Popen(f'cmd /c "title Menu - panorama & {exe} Menu.py --panorama & {closing}"', cwd=ROOT,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
         self.say("Panorama avviato: tra qualche minuto si apre il PDF")
+
+    def publish(self) -> None:
+        """Pubblica: rifà la pagina con i menu già scaricati sul PC (senza andare su Facebook,
+        Instagram e siti) e la pubblica subito su GitHub Pages."""
+        self.run_now("--solo-html")
 
     def open_site(self) -> None:
         webbrowser.open(WEB_URL + "?v=57")  # amministratore: i click non vengono registrati
