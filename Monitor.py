@@ -335,10 +335,11 @@ class Monitor(tk.Tk):
 
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
-        # pulsanti su due righe (3 + 3), tutti larghi uguale: la finestra resta stretta
+        # pulsanti su tre righe (3 + 3 + 1), tutti larghi uguale: la finestra resta stretta
         layout = (("Controlla", self.check, 0, 0), ("Ricontrolla", self.recheck, 0, 1),
                   ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
-                  ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2))
+                  ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2),
+                  ("Panoramica", self.overview, 2, 0))
         for text, action, row, column in layout:
             button = tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
                                activebackground="#334155", activeforeground=FG, relief="flat", width=11)
@@ -592,6 +593,23 @@ class Monitor(tk.Tk):
                 return
             target = saved["foglio_accessi"]  # ultimo indirizzo noto, senza posizionamento
         webbrowser.open(target)
+
+    def overview(self) -> None:
+        """Panoramica: crea e apre un PDF con, per ogni locale, la scheda del sito e la fonte
+        (post Facebook, storia Facebook/Instagram, sito) come appare adesso."""
+        if sys.platform != "win32":
+            return
+        if check_running():
+            self.say("Un controllo è in corso: attendi che finisca")
+            return
+        python = Path(sys.executable).with_name("python.exe")
+        exe = str(python) if python.exists() else "python"
+        exe = f'"{exe}"' if " " in exe else exe
+        closing = (f"echo. & echo La finestra si chiude da sola tra {CONSOLE_SECONDS} secondi "
+                   f"(un tasto qualsiasi la chiude subito) & timeout /t {CONSOLE_SECONDS} >nul")
+        subprocess.Popen(f'cmd /c "title Menu - panoramica & {exe} Menu.py --panoramica & {closing}"', cwd=ROOT,
+                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+        self.say("Panoramica avviata: tra qualche minuto si apre il PDF")
 
     def open_site(self) -> None:
         webbrowser.open(WEB_URL + "?v=57")  # amministratore: i click non vengono registrati

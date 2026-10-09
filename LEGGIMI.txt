@@ -619,3 +619,24 @@ passa da solo a quelle di altri profili (es. "Stefy Giorgio"). Ora ogni parte
 della storia viene usata solo se in alto c'è il nome del locale ("nome_profilo"
 nella fonte, se diverso dal nome in locali.json).
 
+Ora nel titolo
+--------------
+Il titolo della pagina mostra anche l'ora dell'ultimo aggiornamento
+pubblicato, grande come il mese: "Menu - Venerdì 9 ottobre - 09:43".
+L'ora cambia solo quando cambia qualcosa (un menu nuovo, uno tolto...): un
+giro senza novità non la modifica e non crea una nuova pubblicazione.
+L'ora è salvata in dati/pubblicazione.json.
+
+Monitor - pulsante Panoramica
+-----------------------------
+Crea un solo PDF (dati/panoramica/Panoramica_AAAA-MM-GG_HHMM.pdf) e lo apre:
+- prima pagina: la pagina iniziale del sito con tutti i locali;
+- poi una pagina per locale: a sinistra la scheda come appare sul sito, a
+  destra la fonte come appare adesso (post Facebook, storia Facebook o
+  Instagram aperta, sito del locale), con in alto lo stato (menu di oggi in
+  verde, menu vecchio in arancione).
+Serve per controllare a colpo d'occhio se qualche menu è sbagliato (poi si
+può segnalare cliccando il nome del locale nel Monitor). Richiede qualche
+minuto; si tengono gli ultimi 10 PDF. Da riga di comando:
+    python Menu.py --panoramica
+

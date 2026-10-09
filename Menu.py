@@ -574,6 +574,57 @@ class BrowserCollector:
         finally:
             page.close()
 
+    def snapshot_source(self, shop: dict[str, Any], source: dict[str, Any]) -> bytes | None:
+        """Fotografia (JPEG) della fonte così come appare adesso: il post Facebook, la storia
+        Facebook/Instagram aperta, il sito del locale. Serve alla Panoramica; non salva nulla."""
+        self.start(source)
+        page = self.context.new_page()
+        try:
+            page.goto(source["url"], wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(int(source.get("attesa_secondi", 6)) * 1000)
+            dismiss_dialogs(page)
+            kind = source.get("tipo", "")
+            if kind == "storia_facebook" or source.get("apri_storia"):
+                if source.get("utente"):  # Instagram: clic sulla foto del profilo
+                    link = page.locator(f'img[alt*="profilo di {source["utente"]}" i]').first.locator("..")
+                else:
+                    link = page.locator("a[href*='/stories/']:not([href*='/stories/create'])"
+                                        ":not([href*='/highlights/'])").filter(visible=True).first
+                try:
+                    link.click(timeout=8000)
+                    page.wait_for_timeout(5000)
+                    for text in ("Clicca per visualizzare la storia", "Click to view story"):
+                        button = page.get_by_text(text, exact=True).first
+                        if button.is_visible():
+                            button.click(timeout=2000)
+                            page.wait_for_timeout(2500)
+                    pause = page.get_by_role("button", name=re.compile(r"^(Metti in pausa|Pausa|Pause)$")).first
+                    if pause.is_visible():
+                        pause.click(timeout=1500)
+                except Exception:
+                    pass  # nessuna storia attiva: si fotografa il profilo
+            else:
+                box = re.match(r"\s*(\[aria-posinset='\d+'\])", source.get("selettore", "") or "")
+                if box:
+                    for _ in range(int(source.get("scorri_max", 12))):
+                        if page.locator(box.group(1)).count():
+                            break
+                        page.mouse.wheel(0, 1200)
+                        page.wait_for_timeout(1500)
+                    if page.locator(box.group(1)).count():
+                        try:
+                            page.locator(box.group(1)).first.scroll_into_view_if_needed(timeout=3000)
+                            page.wait_for_timeout(1500)
+                            return page.locator(box.group(1)).first.screenshot(type="jpeg", quality=80, timeout=10000)
+                        except Exception:
+                            pass
+            return page.screenshot(type="jpeg", quality=80)
+        except Exception as exc:
+            print(f"  {shop['nome']} - fonte non fotografata: {str(exc).splitlines()[0][:90]}")
+            return None
+        finally:
+            page.close()
+
     @staticmethod
     def _largest_media(page: Any) -> Any:
         best = None
@@ -1360,6 +1411,7 @@ def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
     return captured, date.today()
 
 
+PUBLISHED_AT = DATA / "pubblicazione.json"  # ora dell'ultimo aggiornamento mostrata nel titolo
 REPORTED = DATA / "segnalati.json"  # impronte delle foto/testi segnalati come sbagliati, per locale
 SUSPECT: set[str] = set()  # locali segnalati in questo giro (clic sul nome nel Monitor)
 
@@ -1622,8 +1674,15 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
         if picture and picture.is_file():
             item["v"] = file_hash(picture)[:10]
     version = hashlib.sha1(json.dumps(public_results, sort_keys=True).encode()).hexdigest()[:10]
+    # ora dell'ultimo aggiornamento pubblicato ("Menu - Venerdì 9 ottobre - 09:43"): cambia solo
+    # quando cambia il contenuto, così un giro senza novità non crea una nuova pubblicazione
+    stamp = read_json(PUBLISHED_AT, {})
+    if stamp.get("v") != version or stamp.get("data") != date.today().isoformat() or not stamp.get("ora"):
+        stamp = {"v": version, "data": date.today().isoformat(), "ora": datetime.now().strftime("%H:%M")}
+        save_json(PUBLISHED_AT, stamp)
     title_tpl = settings.get("titolo", "Menu - {data}")
     payload = json.dumps({"shops": public_shops, "results": public_results, "v": version, "titolo": title_tpl,
+                          "ora": stamp["ora"],
                           "log": settings.get("registro_click_url", "")}, ensure_ascii=False).replace("</", "<\\/")
     days = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
     today = date.today()
@@ -1707,7 +1766,7 @@ document.querySelectorAll('.card').forEach(c=>{{const s=DATA.shops[+c.dataset.in
 document.querySelectorAll('.towncard').forEach(e=>e.hidden=!!TOWN);const info=document.querySelector('.infocard');if(info)info.hidden=!!TOWN;document.querySelector('#home').hidden=!TOWN}}
 window.addEventListener('hashchange',()=>{{TOWN=decodeURIComponent(location.hash.slice(1));if(!TOWN&&location.href.endsWith('#'))history.replaceState(null,'',location.pathname+location.search);if(dlg.open)dlg.close();refresh();window.scrollTo(0,0);if(document.activeElement)document.activeElement.blur()}});
 document.querySelector('#home').onclick=()=>{{location.hash=''}};
-function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const dd=gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()],lab=TOWN&&TOWN!=='Tutti'?TOWN:'';const t=lab?lab+' - '+dd:DATA.titolo.replace('{{data}}',dd);const h1=document.querySelector('h1'),cut=lab?lab.length:t.startsWith('Menu')?4:0,rest=t.slice(cut),dm=rest.match(/\\d+/);h1.textContent=t.slice(0,cut);const part=(x,c)=>{{if(!x)return;const e=document.createElement('span');if(c)e.className=c;e.textContent=x;h1.append(e)}};if(dm){{part(rest.slice(0,dm.index),'sub');part(dm[0],'');part(rest.slice(dm.index+dm[0].length),'sub')}}else part(rest,'sub');document.querySelectorAll('.card').forEach(c=>{{const i=+c.dataset.index,r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}});
+function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const dd=gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()],lab=TOWN&&TOWN!=='Tutti'?TOWN:'';const t=lab?lab+' - '+dd:DATA.titolo.replace('{{data}}',dd);const h1=document.querySelector('h1'),cut=lab?lab.length:t.startsWith('Menu')?4:0,rest=t.slice(cut),dm=rest.match(/\\d+/);h1.textContent=t.slice(0,cut);const part=(x,c)=>{{if(!x)return;const e=document.createElement('span');if(c)e.className=c;e.textContent=x;h1.append(e)}};if(dm){{part(rest.slice(0,dm.index),'sub');part(dm[0],'');part(rest.slice(dm.index+dm[0].length),'sub')}}else part(rest,'sub');if(DATA.ora)part(' - '+DATA.ora,'sub');document.querySelectorAll('.card').forEach(c=>{{const i=+c.dataset.index,r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}});
 /* ordine: prima le rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o riposo di oggi),
    poi le altre; in ciascun gruppo in ordine alfabetico. Rifatto anche quando cambia il giorno. */
 const main=document.querySelector('main'),col=new Intl.Collator('it',{{sensitivity:'base'}}),has=i=>DATA.results[i].menu_date===iso;
@@ -2059,6 +2118,94 @@ def notify_phone(message: str) -> None:
         print(f"  notifica al cellulare non riuscita: {exc}")
 
 
+OVERVIEW = DATA / "panoramica"  # PDF creati dal pulsante "Panoramica" del Monitor
+
+
+def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
+    """Pulsante "Panoramica" del Monitor: un solo PDF con, per ogni locale, la scheda come appare
+    sul sito (a sinistra) e la fonte come appare adesso (a destra: post Facebook, storia
+    Facebook/Instagram o sito del locale). Prima pagina: la pagina iniziale del sito."""
+    from io import BytesIO
+    from PIL import Image, ImageDraw, ImageFont
+    shops = config.get("locali", [])
+    FACEBOOK_LOGIN.clear()
+    FACEBOOK_LOGIN.update(find_facebook_login(shops, config.get("impostazioni", {})))
+    states = {item.get("id"): item for item in read_json(STATE, {}).get("results", [])}
+    width, height, margin = 1754, 1240, 40  # A4 orizzontale a 150 dpi
+
+    def font(size: int) -> Any:
+        for name in ("segoeui.ttf", "arial.ttf", "DejaVuSans.ttf"):
+            try:
+                return ImageFont.truetype(name, size)
+            except OSError:
+                continue
+        return ImageFont.load_default()
+
+    def paste(sheet: Any, data: bytes | None, box: tuple[int, int, int, int], empty: str) -> None:
+        x0, y0, x1, y1 = box
+        draw = ImageDraw.Draw(sheet)
+        draw.rectangle(box, outline="#94a3b8", width=2)
+        if not data:
+            draw.text((x0 + 20, y0 + 20), empty, fill="#b91c1c", font=font(28))
+            return
+        picture = Image.open(BytesIO(data)).convert("RGB")
+        picture.thumbnail((x1 - x0 - 8, y1 - y0 - 8))
+        sheet.paste(picture, (x0 + (x1 - x0 - picture.width) // 2, y0 + (y1 - y0 - picture.height) // 2))
+
+    site = (ROOT / "Menu.html").as_uri()
+    pages = []
+    browser.start({})
+    page = browser.context.new_page()
+    page.set_viewport_size({"width": 1100, "height": 1300})
+    page.goto(site + "#Tutti", wait_until="load")
+    page.wait_for_timeout(1500)
+    cover = Image.new("RGB", (width, height), "white")
+    ImageDraw.Draw(cover).text((margin, margin), f"Panoramica menu - {datetime.now():%d/%m/%Y %H:%M}",
+                               fill="#0f172a", font=font(44))
+    paste(cover, page.screenshot(type="jpeg", quality=80, full_page=True),
+          (margin, 120, width - margin, height - margin), "")
+    pages.append(cover)
+    shots: dict[str, bytes | None] = {}
+    for index, shop in enumerate(shops):
+        try:
+            page.evaluate(f"openCard({index})")
+            page.wait_for_timeout(1800)
+            shots[shop["id"]] = page.locator("#detail .sheet").screenshot(type="jpeg", quality=80)
+            page.evaluate("document.querySelector('#detail').close()")
+        except Exception:
+            shots[shop["id"]] = None
+    page.close()
+    today = date.today().isoformat()
+    for index, shop in enumerate(shops, 1):
+        print(f"[{index}/{len(shops)}] {shop['nome']}")
+        source = next((with_facebook_login(item) for item in shop.get("fonti", [])
+                       if item.get("attiva", True) and item.get("tipo") not in ("cartella", "immagine")
+                       and item.get("url")), None)
+        origin = browser.snapshot_source(shop, source) if source else None
+        state = states.get(shop["id"], {})
+        day = state.get("menu_date", "")
+        sheet = Image.new("RGB", (width, height), "white")
+        draw = ImageDraw.Draw(sheet)
+        colour = "#15803d" if day == today else "#c2410c"
+        status = "menu di OGGI" if day == today else (f"ultimo menu del {day[8:10]}/{day[5:7]}" if day else "nessun menu")
+        draw.rectangle((0, 0, 14, height), fill=colour)
+        draw.text((margin, 24), f"{shop['nome']}  -  {shop.get('comune', '')}", fill="#0f172a", font=font(44))
+        draw.text((margin, 84), f"{status}   (fonte: {state.get('source', '-')})", fill=colour, font=font(30))
+        draw.text((margin, 130), "Sul sito", fill="#334155", font=font(26))
+        draw.text((width // 2 + 10, 130), f"Fonte adesso: {source.get('nome', '') if source else '-'}  "
+                  f"{(source or {}).get('url', '')[:70]}", fill="#334155", font=font(22))
+        paste(sheet, shots.get(shop["id"]), (margin, 170, width // 2 - 10, height - margin), "scheda non disponibile")
+        paste(sheet, origin, (width // 2 + 10, 170, width - margin, height - margin),
+              "fonte non disponibile" if source else "nessuna fonte online")
+        pages.append(sheet)
+    OVERVIEW.mkdir(parents=True, exist_ok=True)
+    target = OVERVIEW / f"Panoramica_{datetime.now():%Y-%m-%d_%H%M}.pdf"
+    pages[0].save(target, "PDF", resolution=150, save_all=True, append_images=pages[1:])
+    for old in sorted(OVERVIEW.glob("Panoramica_*.pdf"))[:-10]:
+        old.unlink(missing_ok=True)  # si tengono solo le ultime 10
+    return target
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Raccoglie e pubblica menu da fonti configurabili.")
     parser.add_argument("--aggiungi", action="store_true", help="Aggiunge una rosticceria con procedura guidata.")
@@ -2076,6 +2223,9 @@ def main() -> None:
     parser.add_argument("--prova-beep", action="store_true", help="Fa sentire i tre beep e termina.")
     parser.add_argument("--prova-notifica", action="store_true",
                         help="Manda una notifica di prova al cellulare (app Bark, tre beep) e termina.")
+    parser.add_argument("--panoramica", action="store_true",
+                        help="Crea un PDF con la scheda di ogni locale sul sito e la sua fonte come appare adesso "
+                             "(pulsante \"Panoramica\" del Monitor) e lo apre.")
     parser.add_argument("--ocr", metavar="IMMAGINE", help="Mostra il testo letto in una foto e l'eventuale chiusura.")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
@@ -2096,6 +2246,21 @@ def main() -> None:
         return
     make_folders()
     config = read_json(CONFIG, {"impostazioni": {}, "locali": []})
+    if args.panoramica:
+        if not take_lock():
+            print("Un controllo è in corso da oltre 20 minuti: riprova più tardi.")
+            return
+        browser = BrowserCollector(visible=False)
+        try:
+            print("Panoramica: fotografo il sito e le fonti di ogni locale (qualche minuto)...")
+            target = make_overview(config, browser)
+            print(f"Creato: {target}")
+            if sys.platform == "win32":
+                os.startfile(target)  # apre il PDF
+        finally:
+            browser.stop()
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
     if args.automatico:
         if not in_time_window(config.get("impostazioni", {})):
             return  # fuori fascia: nessun accesso, nessun log
