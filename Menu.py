@@ -212,7 +212,28 @@ STORY_RECENT_JS = """() => {
    return r.width > 0 && r.height > 0 && r.height < 60 && r.top >= 0 && r.top < 140
      && r.left > innerWidth * .35 && r.left < innerWidth;
  });
- return hit ? (hit.innerText || hit.textContent || '').trim() : '';
+ if (!hit) return '';
+ // intestazione della storia: risalgo dall'età finché compare anche il nome del profilo
+ let box = hit, head = (hit.innerText || '').trim();
+ for (let i = 0; i < 6 && box.parentElement; i++) {
+   box = box.parentElement;
+   const t = (box.innerText || '').trim();
+   if (t.length > 160) break;
+   head = t;
+ }
+ return head;
+}"""
+
+
+# nome del profilo visibile in alto nel visualizzatore della storia (seconda verifica del proprietario)
+STORY_OWNER_JS = """(name) => {
+ const norm = s => (s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();
+ const want = norm(name);
+ return [...document.querySelectorAll('a, span, strong, h2, h3')].some(el => {
+   if (norm(el.innerText) !== want) return false;
+   const r = el.getBoundingClientRect();
+   return r.width > 0 && r.height > 0 && r.top >= 0 && r.top < 160 && r.left > innerWidth * .3;
+ });
 }"""
 
 
@@ -518,6 +539,13 @@ class BrowserCollector:
                     if age:
                         break
                     page.wait_for_timeout(300)
+                owner = source.get("nome_profilo", shop["nome"])
+                if age and plain(owner) not in plain(age) and not page.evaluate(STORY_OWNER_JS, owner):
+                    # Facebook è passato da solo alla storia di un ALTRO profilo (es. "Stefy Giorgio"):
+                    # le parti della storia del locale sono finite
+                    print(f"  {shop['nome']} - parte {part + 1}: è la storia di un altro profilo "
+                          f"({' '.join(age.split())[:40]}), mi fermo")
+                    break
                 if story_age_day(age) != date.today():
                     print(f"  {shop['nome']} - parte {part + 1} della storia non risulta di oggi: non la uso")
                     continue
@@ -530,11 +558,9 @@ class BrowserCollector:
                 self.last_text = ""
                 self.last_alt = candidate.get("alt", "")
                 return destination
-            # nessuna foto buona adesso: se stamattina ne era già stata salvata una buona, resta quella
-            if destination.exists() and image_is_sharp(destination.read_bytes()):
-                print(f"  {shop['nome']} - uso la foto della storia già salvata oggi")
-                return destination
-            if destination.exists():
+            # nessuna foto buona adesso: una foto salvata stamattina viene ritrovata dalla fonte
+            # "cartella" (con i suoi controlli); qui si tolgono solo le anteprime sfocate
+            if destination.exists() and not image_is_sharp(destination.read_bytes()):
                 destination.unlink()  # anteprima sfocata salvata da una versione precedente
             print(f"  {shop['nome']} - nessuna foto nitida di oggi nella storia")
             return None
@@ -1334,6 +1360,40 @@ def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
     return captured, date.today()
 
 
+REPORTED = DATA / "segnalati.json"  # impronte delle foto/testi segnalati come sbagliati, per locale
+SUSPECT: set[str] = set()  # locali segnalati in questo giro (clic sul nome nel Monitor)
+
+
+def reported_hashes(shop: dict[str, Any]) -> set[str]:
+    return set(read_json(REPORTED, {}).get(shop["id"], []))
+
+
+def is_reported(shop: dict[str, Any], path: Path | None) -> bool:
+    """La foto (o il testo) è identica a una segnalata come sbagliata per questo locale?"""
+    return bool(path and path.is_file() and file_hash(path) in reported_hashes(shop))
+
+
+def report_wrong(shop: dict[str, Any], folder: Path) -> None:
+    """Segnalazione dal Monitor (clic sul nome del locale): il menu di oggi è probabilmente sbagliato.
+    Le foto/testi di oggi del locale vanno in dati/scartati e la loro impronta viene ricordata in
+    dati/segnalati.json: quella stessa foto non verrà più accettata per quel locale."""
+    today = date.today().isoformat()
+    marks = read_json(REPORTED, {})
+    known = set(marks.get(shop["id"], []))
+    candidates = [item for item in folder.glob(f"{today}*") if item.is_file() and not item.stem.endswith("_riposo")]
+    candidates += [item for item in CURRENT.glob(f"{shop['id']}.*") if item.is_file()]
+    for item in candidates:
+        known.add(file_hash(item))
+        if item.parent == folder:
+            DISCARDED.mkdir(parents=True, exist_ok=True)
+            item.replace(DISCARDED / f"{shop['id']}_segnalato_{item.name}")
+            print(f"  {shop['nome']} - SEGNALATO: tolto {item.name} (ora in dati/scartati), non verrà più usato")
+    marks[shop["id"]] = sorted(known)
+    save_json(REPORTED, marks)
+    if not candidates:
+        print(f"  {shop['nome']} - SEGNALATO: nessun menu di oggi da togliere, controllo approfondito")
+
+
 def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool,
             skip_if_today: str | None = None) -> Result:
     """Cerca il menu del locale provando le fonti nell'ordine.
@@ -1350,6 +1410,9 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
         DISCARDED.mkdir(parents=True, exist_ok=True)
         leftover.replace(DISCARDED / f"{shop['id']}_{leftover.name}")
         print(f"  {shop['nome']} - tolto {leftover.name} (foto di servizio, non è un menu)")
+    if shop["id"] in SUSPECT:
+        report_wrong(shop, folder)
+        skip_if_today = None  # controllo approfondito: si ricontrolla tutto online
     if date.today().weekday() in rest_days(shop):
         return rest_day_result(shop, folder, checked)
     if online and skip_if_today is not None:
@@ -1358,13 +1421,23 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
             latest.unlink()  # anteprima sfocata di una storia: va ricatturata
             latest = newest_image(folder)
         # un menu solo testo viene comunque riletto: il post può essere stato completato o corretto
-        if latest and image_date(latest) == date.today() and not latest.stem.endswith("_testo"):
+        if latest and image_date(latest) == date.today() and not latest.stem.endswith("_testo") \
+                and not is_reported(shop, latest):
             return Result(latest, date.today(), skip_if_today, checked)
     if online:
         notice = check_notice(shop, browser, checked)
         if notice:
             return notice
     result = acquire_sources(shop, browser, online, folder, checked)
+    skipped: set[str] = set()
+    while result.image and is_reported(shop, result.image) and len(skipped) < 6:
+        # è la stessa foto/testo segnalata come sbagliata: non si usa, si riprova senza quella fonte
+        print(f"  {shop['nome']} - {result.image.name} era stato segnalato come sbagliato: non lo uso")
+        if result.image.parent == folder:
+            DISCARDED.mkdir(parents=True, exist_ok=True)
+            result.image.replace(DISCARDED / f"{shop['id']}_segnalato_{result.image.name}")
+        skipped.add(result.source)
+        result = acquire_sources(shop, browser, online, folder, checked, skipped)
     # anche una foto messa a mano in ingresso o scaricata può essere un avviso di chiusura
     image = result.image
     if image and image.suffix.lower() in IMAGE_EXTENSIONS and "_chiusura_fino_" not in image.name:
@@ -1376,19 +1449,30 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
 
 
 def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, online: bool,
-                    folder: Path, checked: str) -> Result:
-    """Prova le fonti del locale nell'ordine indicato in locali.json."""
+                    folder: Path, checked: str, skipped: set[str] | None = None) -> Result:
+    """Prova le fonti del locale nell'ordine indicato in locali.json (saltando quelle in skipped,
+    che hanno appena dato una foto segnalata come sbagliata)."""
     errors: list[str] = []
     for source in shop.get("fonti", [{"tipo": "cartella"}]):
         if not source.get("attiva", True):
             continue
         source = with_facebook_login(source)
         kind = source.get("tipo", "cartella")
+        if skipped and kind != "cartella" and source.get("nome", kind) in skipped:
+            continue
+        if shop["id"] in SUSPECT and kind == "browser":
+            # controllo approfondito: si guardano più post del solito
+            source = {**source, "post_da_controllare": max(10, int(source.get("post_da_controllare", 5)))}
         try:
             if kind == "cartella":
                 image = newest_image(folder)
                 # foto di oggi salvata da una versione precedente ma che è il menu di un ALTRO
                 # locale (es. storia di Michela con il menu di Impastamò): via in dati/scartati
+                while image and is_reported(shop, image):
+                    DISCARDED.mkdir(parents=True, exist_ok=True)
+                    image.replace(DISCARDED / f"{shop['id']}_segnalato_{image.name}")
+                    print(f"  {shop['nome']} - tolto {image.name}: era stato segnalato come sbagliato")
+                    image = newest_image(folder)
                 while image and image_date(image) == date.today() and image.suffix.lower() in IMAGE_EXTENSIONS:
                     owner = other_shop_named(ocr_image(image), shop)
                     if not owner:
@@ -1985,8 +2069,9 @@ def main() -> None:
                         help="Non ricontrolla online le rosticcerie che hanno già il menu di oggi "
                              "(pulsante \"Controlla\" della finestra di controllo; il giro ogni 15 minuti fa lo stesso).")
     parser.add_argument("--solo", metavar="ID",
-                        help="Ricontrolla a fondo una sola rosticceria (id di locali.json); le altre restano "
-                             "come all'ultimo giro (clic su una rosticceria nella finestra di controllo).")
+                        help="Segnala una rosticceria (id di locali.json) come probabilmente sbagliata e la "
+                             "ricontrolla a fondo: il menu di oggi va in dati/scartati e quella foto non verrà più "
+                             "usata; le altre restano come all'ultimo giro (clic su una rosticceria nel Monitor).")
     parser.add_argument("--login", action="store_true", help="Apre Facebook e Instagram per salvare la sessione.")
     parser.add_argument("--prova-beep", action="store_true", help="Fa sentire i tre beep e termina.")
     parser.add_argument("--prova-notifica", action="store_true",
@@ -2113,6 +2198,9 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     FACEBOOK_LOGIN.clear()
     FACEBOOK_LOGIN.update(find_facebook_login(shops, settings))
     ALL_SHOPS[:] = shops
+    SUSPECT.clear()
+    if args.solo:
+        SUSPECT.add(args.solo)  # clic sul nome nel Monitor = "questo locale ha probabilmente un menu sbagliato"
     results: list[dict[str, Any]] = []
     previous_sources = {item.get("id"): item.get("source", "") for item in read_json(STATE, {}).get("results", [])}
     # stesso ordine della finestra di controllo e del sito: prima quelle già aggiornate oggi

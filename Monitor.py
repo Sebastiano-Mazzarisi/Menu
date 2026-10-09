@@ -437,7 +437,9 @@ class Monitor(tk.Tk):
             tk.Label(row, text=shop.get("nome", "?"), fg=FG, bg=BG, font=("Segoe UI", 10), width=20,
                      anchor="w").pack(side="left")
             tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10)).pack(side="left")
-            # clic su una rosticceria: ricontrollo approfondito solo di quella, le altre restano invariate
+            # clic su una rosticceria = SEGNALAZIONE "il suo menu è probabilmente sbagliato": il menu di
+            # oggi viene scartato (e non più riusato) e il locale viene ricontrollato a fondo;
+            # le altre rosticcerie restano invariate
             for widget in (row, *row.winfo_children()):
                 widget.configure(cursor="hand2")
                 widget.bind("<Button-1>", lambda _event, shop_id=shop.get("id", ""): self.run_now("--solo", shop_id))
@@ -544,7 +546,7 @@ class Monitor(tk.Tk):
         subprocess.Popen(f'cmd /c "title {CONSOLE_TITLE} & {command} & {closing}"', cwd=ROOT,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
         if "--solo" in options:
-            self.say("Ricontrollo avviato (una sola rosticceria)")
+            self.say("Segnalato: controllo approfondito avviato (menu di oggi scartato)")
         else:
             self.say("Controllo avviato" + (" (solo le rosticcerie non aggiornate)" if options else " (tutte)"))
 

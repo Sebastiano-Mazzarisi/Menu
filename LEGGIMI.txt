@@ -598,3 +598,24 @@ Se un controllo precedente è rimasto appeso, il suo file di blocco
 i pulsanti Controlla/Ricontrolla non facevano nulla. Ora un blocco più vecchio
 di 30 minuti viene ignorato (come già faceva Menu.py). Vale dal prossimo
 avvio del Monitor.
+
+Monitor - clic sul nome di un locale = SEGNALAZIONE
+---------------------------------------------------
+Cliccando sul nome di un locale nel Monitor si dice al programma "questo
+locale ha probabilmente un menu sbagliato". Per quel locale (gli altri restano
+come sono):
+- il menu di oggi (foto o testo) viene tolto e messo in dati/scartati con
+  "segnalato" nel nome;
+- la sua impronta viene ricordata in dati/segnalati.json: quella stessa foto
+  non verrà più usata per quel locale, nemmeno nei giri automatici;
+- il locale viene ricontrollato online a fondo (anche 10 post invece di 5);
+  se non si trova un menu valido diverso, il locale torna all'ultimo menu
+  buono (arancione).
+Se per errore si segnala un menu giusto, basta togliere la riga del locale da
+dati/segnalati.json e rimettere la foto da dati/scartati in ingresso.
+
+Storie Facebook di un altro profilo: finite le storie del locale, Facebook
+passa da solo a quelle di altri profili (es. "Stefy Giorgio"). Ora ogni parte
+della storia viene usata solo se in alto c'è il nome del locale ("nome_profilo"
+nella fonte, se diverso dal nome in locali.json).
+
