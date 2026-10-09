@@ -1683,7 +1683,9 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
     title_tpl = settings.get("titolo", "Menu - {data}")
     payload = json.dumps({"shops": public_shops, "results": public_results, "v": version, "titolo": title_tpl,
                           "ora": stamp["ora"],
-                          "log": settings.get("registro_click_url", "")}, ensure_ascii=False).replace("</", "<\\/")
+                          "log": settings.get("registro_click_url", ""),
+                          # visite alla pagina (foglio "Visite"): solo dopo aver aggiornato Registro_click.gs
+                          "visite": bool(settings.get("registra_visite", False))}, ensure_ascii=False).replace("</", "<\\/")
     days = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
     today = date.today()
     today_text = f"{days[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}"
@@ -1738,7 +1740,7 @@ function deviceLabel(){{const u=navigator.userAgent||'';let o='Altro',b='Altro';
 if(/iPad/.test(u))o='iPad';else if(/iPhone/.test(u))o='iPhone';else if(/Android/.test(u))o='Android';else if(/Macintosh/.test(u))o='Mac';else if(/Windows/.test(u))o='Windows';else if(/Linux/.test(u))o='Linux';
 if(/Edg\\//.test(u))b='Edge';else if(/OPR\\//.test(u))b='Opera';else if(/CriOS\\//.test(u)||/Chrome\\//.test(u))b='Chrome';else if(/FxiOS\\//.test(u)||/Firefox\\//.test(u))b='Firefox';else if(/Safari\\//.test(u))b='Safari';return o+' / '+b}}
 let placeP=null;function approxPlace(){{if(!placeP)placeP=fetch('https://ipwho.is/',{{cache:'no-store'}}).then(r=>r.json()).then(d=>d&&d.success!==false?[d.city,d.region,d.country_code].filter(Boolean).join(', '):'').catch(()=>'');return placeP}}
-if(!ADMIN&&DATA.log&&!navigator.webdriver)approxPlace();
+if(!ADMIN&&DATA.log&&!navigator.webdriver){{approxPlace();/* visita alla pagina: una per apertura del sito, anche senza aprire schede (foglio "Visite") */if(DATA.visite)Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({{tipo:'visita',pagina:decodeURIComponent(location.hash.slice(1))||'iniziale',dispositivo:deviceLabel(),posizione:p||''}})))}}
 function sendLog(body){{try{{if(navigator.sendBeacon&&navigator.sendBeacon(DATA.log,new Blob([body],{{type:'text/plain'}})))return}}catch(e){{}}try{{fetch(DATA.log,{{method:'POST',mode:'no-cors',keepalive:true,body}})}}catch(e){{}}}}
 function logClick(name){{if(ADMIN||!DATA.log||navigator.webdriver)return;/* navigator.webdriver: pagina aperta da un programma (Panorama, robot): non è una visita vera */Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({{rosticceria:name,dispositivo:deviceLabel(),posizione:p||''}})))}}const dlg=document.querySelector('#detail');let cur=0;function openCard(i,dir){{cur=i;const s=DATA.shops[i],r=DATA.results[i];const go=()=>{{
 /* cornice doppia della scheda: verde se il menu di oggi è pubblicato, arancione se no (stessi colori delle schede) */
@@ -1778,7 +1780,7 @@ let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(docu
    un tocco su "Info" apre la tabella Rosticceria / Oggi / Mese / Anno / Tutto con i totali.
    I numeri arrivano da Registro_click.gs (?azione=statistiche). Per non far aspettare, l'ultimo
    risultato è conservato sul dispositivo e mostrato subito, poi aggiornato appena arriva quello nuovo. */
-if(ADMIN&&DATA.log){{const info=document.createElement('div');info.className='infocard';info.tabIndex=0;info.setAttribute('role','button');info.innerHTML='<div class="total">–</div><h2>Info</h2>';document.querySelector('main').append(info);info.hidden=!!TOWN;
+if(ADMIN&&DATA.log){{const info=document.createElement('div');info.className='infocard';info.tabIndex=0;info.setAttribute('role','button');info.innerHTML='<div class="total">–</div><div><h2>Info</h2><small class="visits"></small></div>';document.querySelector('main').append(info);info.hidden=!!TOWN;
 const sd=document.createElement('dialog');sd.id='stats';sd.innerHTML='<div class="modal-head"><h2>Clic per rosticceria</h2><button class="x" aria-label="Chiudi">✕</button></div><div class="statwrap"><table><thead><tr><th data-k="nome">Rosticceria</th><th data-k="oggi">Oggi</th><th data-k="mese">Mese</th><th data-k="anno">Anno</th><th data-k="tutto">Tutto</th></tr></thead><tbody></tbody><tfoot></tfoot></table><p class="statnote"></p></div>';document.body.append(sd);
 sd.querySelector('.x').onclick=()=>sd.close();
 /* ordine della tabella: alfabetico all'apertura; clic su un titolo = crescente per quella colonna,
@@ -1795,7 +1797,7 @@ const ab=new Intl.Collator('it',{{sensitivity:'base'}}).compare;if(SRT.k)names.s
 sd.querySelectorAll('th[data-k]').forEach(th=>{{th.dataset.dir=th.dataset.k===SRT.k?(SRT.d===1?'▲':'▼'):''}});
 const tb=sd.querySelector('tbody');tb.innerHTML='';names.forEach(n=>{{const z=rowOf(ST,n);const tr=document.createElement('tr');tr.append(cell('td',n));P.forEach(k=>{{tot[k]+=z[k];tr.append(cell('td',z[k]))}});tb.append(tr)}});
 const tf=sd.querySelector('tfoot');tf.innerHTML='';const tr=document.createElement('tr');tr.append(cell('td','Totale'));P.forEach(k=>tr.append(cell('td',tot[k])));tf.append(tr);
-info.querySelector('.total').textContent=tot.oggi;sd.querySelector('.statnote').textContent=(loading?'Aggiornamento in corso… ':'')+(ST.ora?'Dati delle '+ST.ora:'')}}
+info.querySelector('.total').textContent=tot.oggi;const V=ST.visite&&ST.data===today()?ST.visite:(ST.visite?{{oggi:0,mese:ST.visite.mese,anno:ST.visite.anno,tutto:ST.visite.tutto}}:null);sd.querySelector('.statnote').textContent=(V?'Visite alla pagina: oggi '+V.oggi+' · mese '+V.mese+' · anno '+V.anno+' · tutto '+V.tutto+'. ':'')+(loading?'Aggiornamento in corso… ':'')+(ST.ora?'Dati delle '+ST.ora:'');const iv=info.querySelector('.visits');if(iv)iv.textContent=V?V.oggi+(V.oggi===1?' visita oggi':' visite oggi'):''}}
 function loadStats(){{if(loading)return;loading=true;render();fetch(DATA.log+'?azione=statistiche&t='+Date.now(),{{cache:'no-store'}}).then(r=>r.json()).then(d=>{{if(!d||!d.righe)return;d.ora=new Date().toLocaleTimeString('it-IT',{{hour:'2-digit',minute:'2-digit'}});ST=d;try{{localStorage.setItem('menuStats',JSON.stringify(d))}}catch(e){{}}}}).catch(()=>{{}}).finally(()=>{{loading=false;render()}})}}
 function openStats(){{render();sd.showModal();loadStats()}}info.addEventListener('click',openStats);info.addEventListener('keydown',e=>{{if(e.key==='Enter'||e.key===' '){{e.preventDefault();openStats()}}}});
 render();loadStats();setInterval(loadStats,60000);document.addEventListener('visibilitychange',()=>{{if(document.visibilityState==='visible')loadStats()}})}}</script>

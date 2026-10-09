@@ -10,6 +10,9 @@
  *  4. Copia l'URL dell'app web (finisce con /exec) in locali.json > "registro_click_url".
  *
  * Ogni click su una scheda aggiunge una riga: Data | Ora | Rosticceria | Dispositivo | Posizione approssimativa.
+ * Ogni VISITA alla pagina (apertura del sito, anche senza aprire schede) aggiunge una riga nel
+ * foglio "Visite" dello stesso file: Data | Ora | Pagina | Dispositivo | Posizione approssimativa.
+ * Il foglio "Visite" viene creato da solo (come ultimo foglio: i click restano nel primo).
  *
  * Per rispondere subito, i conteggi (oggi / mese / anno / tutto) sono tenuti già pronti nelle
  * "Proprietà dello script" e aggiornati a ogni click: non serve rileggere tutto il foglio.
@@ -21,6 +24,10 @@ function doPost(e) {
   lock.waitLock(10000); // due click contemporanei non si sovrascrivono
   try {
     var dati = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (dati.tipo === 'visita') {
+      registraVisita(dati);
+      return ContentService.createTextOutput('ok');
+    }
     var foglio = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
     if (foglio.getLastRow() === 0) {
       foglio.appendRow(['Data', 'Ora', 'Rosticceria', 'Dispositivo', 'Posizione approssimativa']);
@@ -52,7 +59,9 @@ function doPost(e) {
 function doGet(e) {
   var azione = (e && e.parameter && e.parameter.azione) || '';
   if (azione === 'statistiche' || azione === 'ricalcola') {
-    return json(statistiche(azione === 'ricalcola'));
+    var s = statistiche(azione === 'ricalcola');
+    s.visite = statisticheVisite();
+    return json(s);
   }
   if (azione === 'oggi') {
     var s = statistiche(false), conti = {};
@@ -64,7 +73,7 @@ function doGet(e) {
     var foglio = file.getSheets()[0];
     return json({ url: file.getUrl(), gid: foglio.getSheetId(), riga: foglio.getLastRow() });
   }
-  return ContentService.createTextOutput('Registro click Menu attivo');
+  return ContentService.createTextOutput('Registro click Menu attivo (con visite)');
 }
 
 function json(oggetto) {
@@ -162,4 +171,45 @@ function giornoDi(valore, tz) {
   var m = t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/); // gg/mm/aaaa
   if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
   return t.slice(0, 10);
+}
+
+/** Foglio "Visite" (creato al primo uso, in fondo: il primo foglio resta quello dei click). */
+function foglioVisite() {
+  var file = SpreadsheetApp.getActiveSpreadsheet();
+  var foglio = file.getSheetByName('Visite');
+  if (!foglio) {
+    foglio = file.insertSheet('Visite', file.getSheets().length);
+    foglio.appendRow(['Data', 'Ora', 'Pagina', 'Dispositivo', 'Posizione approssimativa']);
+  }
+  return foglio;
+}
+
+function registraVisita(dati) {
+  var adesso = new Date();
+  foglioVisite().appendRow([
+    Utilities.formatDate(adesso, 'Europe/Rome', 'yyyy-MM-dd'),
+    Utilities.formatDate(adesso, 'Europe/Rome', 'HH:mm:ss'),
+    String(dati.pagina || '').slice(0, 60),
+    String(dati.dispositivo || '').slice(0, 100),
+    String(dati.posizione || '').slice(0, 150)
+  ]);
+}
+
+/** Visite alla pagina: { oggi, mese, anno, tutto }, contate dal foglio "Visite". */
+function statisticheVisite() {
+  var foglio = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Visite');
+  var v = { oggi: 0, mese: 0, anno: 0, tutto: 0 };
+  if (!foglio || foglio.getLastRow() < 2) return v;
+  var tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  var oggi = Utilities.formatDate(new Date(), 'Europe/Rome', 'yyyy-MM-dd');
+  var date = foglio.getRange(2, 1, foglio.getLastRow() - 1, 1).getValues();
+  for (var i = 0; i < date.length; i++) {
+    var giorno = giornoDi(date[i][0], tz);
+    if (!giorno) continue;
+    if (giorno === oggi) v.oggi++;
+    if (giorno.slice(0, 7) === oggi.slice(0, 7)) v.mese++;
+    if (giorno.slice(0, 4) === oggi.slice(0, 4)) v.anno++;
+    v.tutto++;
+  }
+  return v;
 }

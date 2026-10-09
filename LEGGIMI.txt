@@ -658,3 +658,21 @@ Click falsi (Panorama) e pulsante Disabilita
 - "Disabilita" nel Monitor ora chiede conferma: un clic per sbaglio fermava i
   controlli automatici senza accorgersene.
 
+Visite alla pagina
+------------------
+Oltre ai click sulle schede, il sito registra ogni VISITA (apertura della
+pagina, anche se poi non si apre nessun locale) nel foglio "Visite" dello
+stesso file Google "Menu": Data | Ora | Pagina (iniziale o il Comune) |
+Dispositivo | Posizione approssimativa. Così si vede quante persone entrano e
+quante poi aprono un locale. I contatori dei locali non cambiano.
+Nella versione amministratore la scheda Info mostra "N visite oggi" e la
+tabella Info riporta in basso le visite di oggi, del mese, dell'anno e di sempre.
+Non contano: la versione amministratore (?v=57), la Panorama e i robot.
+Attivazione (una volta):
+1. Foglio "Menu" > Estensioni > Apps Script: incollare al posto del codice il
+   nuovo Registro_click.gs e salvare.
+2. Esegui il deployment > Gestisci deployment > matita (modifica) >
+   Versione: "Nuova versione" > Esegui il deployment. L'indirizzo non cambia.
+3. In locali.json, "impostazioni": "registra_visite": true (il foglio
+   "Visite" si crea da solo alla prima visita).
+
