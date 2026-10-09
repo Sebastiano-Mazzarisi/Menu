@@ -4,7 +4,8 @@
     "mostra_menu_vecchi": false,
     "automatico": {"dalle": "07:00", "alle": "15:00"},
     "avvisi_ogni_minuti": 60,
-    "registro_click_url": "https://script.google.com/macros/s/AKfycbx8m-b5xkenUmdR8cbIFTVbCJGMIAQOgDWjY3xTY-FFgCowQd5hdB1qeDsEANf6w7wa/exec"
+    "registro_click_url": "https://script.google.com/macros/s/AKfycbx8m-b5xkenUmdR8cbIFTVbCJGMIAQOgDWjY3xTY-FFgCowQd5hdB1qeDsEANf6w7wa/exec",
+    "registra_visite": true
   },
   "locali": [
     {
