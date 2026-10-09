@@ -648,3 +648,13 @@ Pages. Utile dopo una modifica fatta a mano (es. una foto messa in ingresso o
 tolta) o per aggiornare il sito senza aspettare il giro automatico.
 Da riga di comando: python Menu.py --solo-html --pubblica
 
+Click falsi (Panorama) e pulsante Disabilita
+--------------------------------------------
+- Le schede aperte da un programma (la Panorama, o un robot che visita il
+  sito) non contano più come click: la Panorama apre il sito in versione
+  amministratore (?v=57) e la pagina ignora i browser automatici
+  (navigator.webdriver). Il 9/10 la Panorama aveva aggiunto 3 click finti a
+  ogni locale.
+- "Disabilita" nel Monitor ora chiede conferma: un clic per sbaglio fermava i
+  controlli automatici senza accorgersene.
+

@@ -567,6 +567,13 @@ class Monitor(tk.Tk):
     def toggle_task(self) -> None:
         """Pianifica (se l'attività manca o è disabilitata) oppure Disabilita."""
         if self.is_active():
+            # disattivare ferma i controlli automatici per tutto il giorno: si chiede conferma
+            # (un clic per sbaglio su "Disabilita" li aveva fermati senza che ce ne accorgessimo)
+            from tkinter import messagebox
+            if not messagebox.askyesno("Menu", "Disattivare i controlli automatici ogni 15 minuti?\n\n"
+                                               "Il sito non verrà più aggiornato da solo finché non premi Pianifica.",
+                                       icon="warning", default="no", parent=self):
+                return
             self.say(disable_task())
         else:
             self.say(schedule_task())
