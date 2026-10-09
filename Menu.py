@@ -1126,6 +1126,38 @@ def plausible_menu_date(text: str) -> date | None:
     return None
 
 
+ALL_SHOPS: list[dict[str, Any]] = []  # tutti i locali di locali.json (impostato da run)
+# nomi di locale che sono anche parole comuni ("fantasia di verdure"): per questi conta solo il telefono
+COMMON_NAME_WORDS = {"fantasia", "impasta"}
+
+
+def plain(text: str) -> str:
+    """Minuscolo e senza accenti: "IMPASTAMÒ" -> "impastamo"."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", text or "").lower() if not unicodedata.combining(c))
+
+
+def other_shop_named(text: str, shop: dict[str, Any]) -> str:
+    """Nome dell'ALTRO locale a cui appartiene il menu letto, se nel testo (post o foto) compare
+    il suo telefono o il suo nome e non quello del locale controllato. Es. Le delizie di Michela
+    che ricondivide nella sua storia il menu di Impastamò ("IMPASTAMÒ ... 3925361536")."""
+    flat, digits = plain(text), re.sub(r"\D", "", text or "")
+    own = plain(shop.get("nome", ""))
+    own_phone = re.sub(r"\D", "", shop.get("telefono", ""))
+    if (own and re.search(rf"\b{re.escape(own)}\b", flat)) or (len(own_phone) >= 8 and own_phone in digits):
+        return ""
+    for other in ALL_SHOPS:
+        if other.get("id") == shop.get("id"):
+            continue
+        phone = re.sub(r"\D", "", other.get("telefono", ""))
+        name = plain(re.sub(r"\s*\(.*?\)", "", other.get("nome", ""))).strip()
+        if len(phone) >= 8 and phone in digits:
+            return other["nome"]
+        if name and name not in COMMON_NAME_WORDS and len(name) >= 5 and re.search(rf"\b{re.escape(name)}\b", flat):
+            return other["nome"]
+    return ""
+
+
 class NotAMenu(RuntimeError):
     """Il post letto non è un menu (pubblicità, foto di un piatto, auguri...)."""
 
@@ -1199,6 +1231,10 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
     if seen:
         print(f"  {shop['nome']} - testo letto: {seen[:160]}")  # utile nel registro
+    owner = other_shop_named(f"{browser.last_text}\n{photo_text}", shop)
+    if owner:
+        discard_wrong_menu(shop, folder, image)
+        raise NotAMenu(f"è il menu di {owner}")
     learn_rest_days(shop, f"{browser.last_text}\n{photo_text}")
     closed = closure_period(f"{browser.last_text}\n{browser.last_alt}\n{photo_text}")
     if closed:
@@ -1351,6 +1387,16 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
         try:
             if kind == "cartella":
                 image = newest_image(folder)
+                # foto di oggi salvata da una versione precedente ma che è il menu di un ALTRO
+                # locale (es. storia di Michela con il menu di Impastamò): via in dati/scartati
+                while image and image_date(image) == date.today() and image.suffix.lower() in IMAGE_EXTENSIONS:
+                    owner = other_shop_named(ocr_image(image), shop)
+                    if not owner:
+                        break
+                    DISCARDED.mkdir(parents=True, exist_ok=True)
+                    image.replace(DISCARDED / f"{shop['id']}_{image.name}")
+                    print(f"  {shop['nome']} - tolto {image.name}: era il menu di {owner} (ora in dati/scartati)")
+                    image = newest_image(folder)
                 if image:
                     return Result(image, image_date(image), "cartella", checked, "; ".join(errors))
                 raise RuntimeError("nessuna immagine")
@@ -1368,6 +1414,14 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                 image = browser.capture_fb_story(shop, source)
                 if image is None:
                     raise RuntimeError("nessuna storia di oggi in questo momento")
+                owner = other_shop_named(ocr_image(image), shop)
+                if owner:
+                    # la storia mostrava il menu di un altro locale (ricondiviso, o Facebook è passato
+                    # da solo alla storia successiva): non è il menu di questo locale
+                    DISCARDED.mkdir(parents=True, exist_ok=True)
+                    image.replace(DISCARDED / f"{shop['id']}_{image.name}")
+                    print(f"  {shop['nome']} - la storia mostra il menu di {owner}: non la uso (ora in dati/scartati)")
+                    raise RuntimeError(f"la storia mostra il menu di {owner}")
                 image, new_day = keep_first_seen(folder, image)  # stessa foto di ieri = non è il menu di oggi
                 return Result(image, new_day, source.get("nome", kind), checked)
             elif kind == "browser":
@@ -1526,7 +1580,7 @@ main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-temp
 #nomenu{{padding:40px 18px;text-align:center;color:#cbd5e1}}
 dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b}}dialog::backdrop{{background:#000c}}.modal-head{{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #334155}}.nav{{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:52px;height:52px;padding:0;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:34px;line-height:48px;box-shadow:0 6px 18px #0008;text-shadow:0 1px 4px #000c}}.nav:hover,.nav:focus-visible{{background:rgba(255,255,255,.25)}}#prev{{left:max(6px,calc(50vw - min(460px,48vw) - 66px))}}#next{{right:max(6px,calc(50vw - min(460px,48vw) - 66px))}}
 .modal-head h2{{margin:0}}#addr{{margin:4px 0 0;font-size:15px;font-weight:400;color:#cbd5e1}}button{{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}}#close{{background:#52525b;color:white;font-size:18px}}#full{{display:block;max-width:100%;max-height:68vh;margin:auto;object-fit:contain}}#full[hidden]{{display:none}}.actions{{padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}}.actions a{{color:white;text-decoration:none;background:#166534;padding:10px 14px;border-radius:10px;font-weight:700}}.actions .source{{background:#1d4ed8}}#meta{{color:#cbd5e1;flex-basis:100%;text-align:center}}#meta:empty{{display:none}}footer{{text-align:center;color:#94a3b8;padding:0 20px 28px;font-size:13px}}
-#home{{flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;width:52px;height:52px;border-radius:14px;background:#334155;color:#fff;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 6px 18px #0006}}.towncard{{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 8px;width:100%;text-align:left;font:inherit;background:var(--card);color:var(--ink);border:0;border-left:10px solid #16a34a;border-radius:16px;padding:14px 22px;box-shadow:0 10px 28px #0005;cursor:pointer}}.towncard.all{{border-left-color:#16a34a}}.towncard.none{{border-left-color:#f97316}}.infocard{{padding:3px 20px 3px 26px}}.infocard .total{{width:40px;height:40px;font-size:20px;border-radius:10px}}.towncard{{flex-wrap:nowrap;white-space:nowrap}}.towncard b{{font-size:25px}}.towncard small{{flex:none}}.towncard .tnum{{font-size:25px;font-weight:700;color:var(--ink)}}.towncard small{{font-size:15px;color:#334155}}.card[hidden],.towncard[hidden],.infocard[hidden],#home[hidden]{{display:none!important}}@media(max-width:600px){{header{{align-items:center}}h1{{font-size:clamp(22px,7vw,30px)}}#home{{width:46px;height:46px;font-size:24px}}main{{grid-template-columns:1fr;padding-inline:12px}}}}
+#home{{flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;width:52px;height:52px;border-radius:14px;background:#334155;color:#fff;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 6px 18px #0006}}.towncard{{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 8px;width:100%;text-align:left;font:inherit;background:var(--card);color:var(--ink);border:0;border-left:10px solid #16a34a;border-radius:16px;padding:14px 22px;box-shadow:0 10px 28px #0005;cursor:pointer}}.towncard.all{{border-left-color:#16a34a}}.towncard.none{{border-left-color:#f97316}}.infocard{{padding:3px 20px 3px 26px}}.infocard .total{{width:40px;height:40px;font-size:20px;border-radius:10px}}.towncard{{flex-wrap:nowrap;white-space:nowrap}}.towncard b{{font-size:25px}}.towncard small{{flex:none}}.towncard{{background:#e0f2fe}}.towncard .tok{{color:#166534}}.towncard .ttot{{color:#1e3a8a}}.towncard small{{font-size:15px;color:#334155}}.card[hidden],.towncard[hidden],.infocard[hidden],#home[hidden]{{display:none!important}}@media(max-width:600px){{header{{align-items:center}}h1{{font-size:clamp(22px,7vw,30px)}}#home{{width:46px;height:46px;font-size:24px}}main{{grid-template-columns:1fr;padding-inline:12px}}}}
 </style></head><body>
 <header><h1>{title}</h1><button id="home" hidden aria-label="Torna alla scelta del Comune" title="Torna alla scelta del Comune">🏠</button></header>
 <main>{''.join(cards)}</main>
@@ -1562,7 +1616,7 @@ if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visu
 let TOWN=decodeURIComponent(location.hash.slice(1));
 function townList(){{const c={{}};DATA.shops.forEach(s=>{{const k=s.comune||'Altro';c[k]=(c[k]||0)+1}});const col=new Intl.Collator('it',{{sensitivity:'base'}});return Object.keys(c).sort((a,b)=>(c[b]-c[a])||col.compare(a,b)).map(k=>[k,c[k]])}}
 function buildTowns(){{const main=document.querySelector('main'),n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');main.querySelectorAll('.towncard').forEach(e=>e.remove());const first=main.firstChild;
-const add=(name,label,tot,ok,cls)=>{{const b=document.createElement('button');b.type='button';b.className='towncard'+(cls?' '+cls:'')+(ok===tot?'':' none');b.dataset.town=name;b.innerHTML='<b></b><small></small>';b.children[0].textContent=label;const nb=document.createElement('span');nb.className='tnum';nb.textContent=tot;b.children[1].append('(',nb,tot===1?' locale)':' locali)');b.onclick=()=>{{location.hash=encodeURIComponent(name)}};main.insertBefore(b,first)}};
+const add=(name,label,tot,ok,cls)=>{{const b=document.createElement('button');b.type='button';b.className='towncard'+(cls?' '+cls:'')+(ok===tot?'':' none');b.dataset.town=name;b.innerHTML='<b></b>';const sp=(c,v)=>{{const e=document.createElement('span');e.className=c;e.textContent=v;return e}};b.children[0].append(label+' - ',sp('tok',ok),'/',sp('ttot',tot));b.title=ok+' locali su '+tot+' con il menu di oggi';b.onclick=()=>{{location.hash=encodeURIComponent(name)}};main.insertBefore(b,first)}};
 let all=0,allOk=0;townList().forEach(([k,c])=>{{const ok=DATA.shops.filter((s,i)=>(s.comune||'Altro')===k&&DATA.results[i].menu_date===iso).length;all+=c;allOk+=ok;add(k,k,c,ok,'')}});add('Tutti','Tutti i Comuni',all,allOk,'all')}}
 function applyTown(){{const names=townList().map(x=>x[0]);if(TOWN&&TOWN!=='Tutti'&&!names.includes(TOWN))TOWN='';
 document.querySelectorAll('.card').forEach(c=>{{const s=DATA.shops[+c.dataset.index];c.hidden=!TOWN||(TOWN!=='Tutti'&&(s.comune||'Altro')!==TOWN)}});
@@ -2058,6 +2112,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     NOTICE_MINUTES = int(settings.get("avvisi_ogni_minuti", NOTICE_MINUTES))
     FACEBOOK_LOGIN.clear()
     FACEBOOK_LOGIN.update(find_facebook_login(shops, settings))
+    ALL_SHOPS[:] = shops
     results: list[dict[str, Any]] = []
     previous_sources = {item.get("id"): item.get("source", "") for item in read_json(STATE, {}).get("results", [])}
     # stesso ordine della finestra di controllo e del sito: prima quelle già aggiornate oggi

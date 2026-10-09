@@ -17,9 +17,10 @@ Navigazione per Comune (due livelli)
 1) Pagina iniziale: titolo "Menu - Giovedì 8 ottobre" e un riquadro per ogni
    Comune che ha almeno un locale in locali.json (campo "comune"), ordinati
    per numero di locali e poi in ordine alfabetico, più "Tutti i Comuni".
-   Ogni riquadro, su una sola riga, mostra il nome del Comune e, a destra in
-   piccolo, quanti locali ha (es. "Conversano (1 locale)": il numero è grande
-   come il nome del Comune, parentesi e "locale/locali" piccoli); la fascia a
+   Ogni riquadro (fondo celeste chiaro), su una sola riga, mostra il nome del
+   Comune seguito da "aggiornati/totale", es. "Putignano - 3/8": 3 locali con
+   il menu di oggi (verde scuro) su 8 locali del Comune (blu scuro), tutto
+   grande come il nome; la fascia a
    sinistra è VERDE se tutti i locali di quel Comune hanno pubblicato il menu
    di oggi, ARANCIONE se almeno uno non l'ha ancora pubblicato (vale anche
    per "Tutti i Comuni"). Nella versione
@@ -412,6 +413,11 @@ scritte e che il post parli di menu.
 Foto senza scritte (es. una teglia di pasta): il menu deve essere scritto nel
 post, con le portate (primi, secondi...) o la data/il giorno. Una frase come
 "il menù del giorno te lo portiamo a casa" (pubblicità "Pranzo Pass") non basta.
+Menu di un altro locale: se nel testo del post o nelle scritte della foto c'è
+il telefono o il nome di UN ALTRO locale di locali.json (e non quello del
+locale controllato), non viene usato. Es. la storia di Le delizie di Michela
+che mostrava il menu di Impastamò ("IMPASTAMÒ ... 3925361536"). Una foto così
+già salvata come menu di oggi viene spostata in dati/scartati.
 Foto e video: se la storia (o il post) mostra la foto con un indirizzo
 "blob:" (non scaricabile da fuori) la foto viene letta dalla pagina stessa;
 se è un video si usa la sua copertina o, in mancanza, il fotogramma del
