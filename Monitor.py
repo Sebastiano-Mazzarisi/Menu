@@ -339,7 +339,7 @@ class Monitor(tk.Tk):
         layout = (("Controlla", self.check, 0, 0), ("Ricontrolla", self.recheck, 0, 1),
                   ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
                   ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2),
-                  ("Panoramica", self.overview, 2, 0))
+                  ("Panorama", self.overview, 2, 0))
         for text, action, row, column in layout:
             button = tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
                                activebackground="#334155", activeforeground=FG, relief="flat", width=11)
@@ -595,7 +595,7 @@ class Monitor(tk.Tk):
         webbrowser.open(target)
 
     def overview(self) -> None:
-        """Panoramica: crea e apre un PDF con, per ogni locale, la scheda del sito e la fonte
+        """Panorama: crea e apre un PDF con, per ogni locale, la scheda del sito e la fonte
         (post Facebook, storia Facebook/Instagram, sito) come appare adesso."""
         if sys.platform != "win32":
             return
@@ -607,9 +607,9 @@ class Monitor(tk.Tk):
         exe = f'"{exe}"' if " " in exe else exe
         closing = (f"echo. & echo La finestra si chiude da sola tra {CONSOLE_SECONDS} secondi "
                    f"(un tasto qualsiasi la chiude subito) & timeout /t {CONSOLE_SECONDS} >nul")
-        subprocess.Popen(f'cmd /c "title Menu - panoramica & {exe} Menu.py --panoramica & {closing}"', cwd=ROOT,
+        subprocess.Popen(f'cmd /c "title Menu - panorama & {exe} Menu.py --panorama & {closing}"', cwd=ROOT,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
-        self.say("Panoramica avviata: tra qualche minuto si apre il PDF")
+        self.say("Panorama avviato: tra qualche minuto si apre il PDF")
 
     def open_site(self) -> None:
         webbrowser.open(WEB_URL + "?v=57")  # amministratore: i click non vengono registrati

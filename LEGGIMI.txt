@@ -19,7 +19,7 @@ Navigazione per Comune (due livelli)
    per numero di locali e poi in ordine alfabetico, più "Tutti i Comuni".
    Ogni riquadro (fondo celeste chiaro), su una sola riga, mostra il nome del
    Comune seguito da "aggiornati/totale", es. "Putignano - 3/8": 3 locali con
-   il menu di oggi (verde scuro) su 8 locali del Comune (blu scuro), tutto
+   il menu di oggi (arancione) su 8 locali del Comune (verde), tutto
    grande come il nome; la fascia a
    sinistra è VERDE se tutti i locali di quel Comune hanno pubblicato il menu
    di oggi, ARANCIONE se almeno uno non l'ha ancora pubblicato (vale anche
@@ -627,9 +627,9 @@ L'ora cambia solo quando cambia qualcosa (un menu nuovo, uno tolto...): un
 giro senza novità non la modifica e non crea una nuova pubblicazione.
 L'ora è salvata in dati/pubblicazione.json.
 
-Monitor - pulsante Panoramica
+Monitor - pulsante Panorama
 -----------------------------
-Crea un solo PDF (dati/panoramica/Panoramica_AAAA-MM-GG_HHMM.pdf) e lo apre:
+Crea un solo PDF (dati/panorama/Panorama_AAAA-MM-GG_HHMM.pdf) e lo apre:
 - prima pagina: la pagina iniziale del sito con tutti i locali;
 - poi una pagina per locale: a sinistra la scheda come appare sul sito, a
   destra la fonte come appare adesso (post Facebook, storia Facebook o
@@ -638,5 +638,5 @@ Crea un solo PDF (dati/panoramica/Panoramica_AAAA-MM-GG_HHMM.pdf) e lo apre:
 Serve per controllare a colpo d'occhio se qualche menu è sbagliato (poi si
 può segnalare cliccando il nome del locale nel Monitor). Richiede qualche
 minuto; si tengono gli ultimi 10 PDF. Da riga di comando:
-    python Menu.py --panoramica
+    python Menu.py --panorama
 

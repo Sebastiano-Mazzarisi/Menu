@@ -576,7 +576,7 @@ class BrowserCollector:
 
     def snapshot_source(self, shop: dict[str, Any], source: dict[str, Any]) -> bytes | None:
         """Fotografia (JPEG) della fonte così come appare adesso: il post Facebook, la storia
-        Facebook/Instagram aperta, il sito del locale. Serve alla Panoramica; non salva nulla."""
+        Facebook/Instagram aperta, il sito del locale. Serve alla Panorama; non salva nulla."""
         self.start(source)
         page = self.context.new_page()
         try:
@@ -1723,7 +1723,7 @@ main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-temp
 #nomenu{{padding:40px 18px;text-align:center;color:#cbd5e1}}
 dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b}}dialog::backdrop{{background:#000c}}.modal-head{{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #334155}}.nav{{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:52px;height:52px;padding:0;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:34px;line-height:48px;box-shadow:0 6px 18px #0008;text-shadow:0 1px 4px #000c}}.nav:hover,.nav:focus-visible{{background:rgba(255,255,255,.25)}}#prev{{left:max(6px,calc(50vw - min(460px,48vw) - 66px))}}#next{{right:max(6px,calc(50vw - min(460px,48vw) - 66px))}}
 .modal-head h2{{margin:0}}#addr{{margin:4px 0 0;font-size:15px;font-weight:400;color:#cbd5e1}}button{{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}}#close{{background:#52525b;color:white;font-size:18px}}#full{{display:block;max-width:100%;max-height:68vh;margin:auto;object-fit:contain}}#full[hidden]{{display:none}}.actions{{padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}}.actions a{{color:white;text-decoration:none;background:#166534;padding:10px 14px;border-radius:10px;font-weight:700}}.actions .source{{background:#1d4ed8}}#meta{{color:#cbd5e1;flex-basis:100%;text-align:center}}#meta:empty{{display:none}}footer{{text-align:center;color:#94a3b8;padding:0 20px 28px;font-size:13px}}
-#home{{flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;width:52px;height:52px;border-radius:14px;background:#334155;color:#fff;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 6px 18px #0006}}.towncard{{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 8px;width:100%;text-align:left;font:inherit;background:var(--card);color:var(--ink);border:0;border-left:10px solid #16a34a;border-radius:16px;padding:14px 22px;box-shadow:0 10px 28px #0005;cursor:pointer}}.towncard.all{{border-left-color:#16a34a}}.towncard.none{{border-left-color:#f97316}}.infocard{{padding:3px 20px 3px 26px}}.infocard .total{{width:40px;height:40px;font-size:20px;border-radius:10px}}.towncard{{flex-wrap:nowrap;white-space:nowrap}}.towncard b{{font-size:25px}}.towncard small{{flex:none}}.towncard{{background:#e0f2fe}}.towncard .tok{{color:#166534}}.towncard .ttot{{color:#1e3a8a}}.towncard small{{font-size:15px;color:#334155}}.card[hidden],.towncard[hidden],.infocard[hidden],#home[hidden]{{display:none!important}}@media(max-width:600px){{header{{align-items:center}}h1{{font-size:clamp(22px,7vw,30px)}}#home{{width:46px;height:46px;font-size:24px}}main{{grid-template-columns:1fr;padding-inline:12px}}}}
+#home{{flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;width:52px;height:52px;border-radius:14px;background:#334155;color:#fff;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 6px 18px #0006}}.towncard{{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 8px;width:100%;text-align:left;font:inherit;background:var(--card);color:var(--ink);border:0;border-left:10px solid #16a34a;border-radius:16px;padding:14px 22px;box-shadow:0 10px 28px #0005;cursor:pointer}}.towncard.all{{border-left-color:#16a34a}}.towncard.none{{border-left-color:#f97316}}.infocard{{padding:3px 20px 3px 26px}}.infocard .total{{width:40px;height:40px;font-size:20px;border-radius:10px}}.towncard{{flex-wrap:nowrap;white-space:nowrap}}.towncard b{{font-size:25px}}.towncard small{{flex:none}}.towncard{{background:#e0f2fe}}.towncard .tok{{color:#ea580c}}.towncard .ttot{{color:#15803d}}.towncard small{{font-size:15px;color:#334155}}.card[hidden],.towncard[hidden],.infocard[hidden],#home[hidden]{{display:none!important}}@media(max-width:600px){{header{{align-items:center}}h1{{font-size:clamp(22px,7vw,30px)}}#home{{width:46px;height:46px;font-size:24px}}main{{grid-template-columns:1fr;padding-inline:12px}}}}
 </style></head><body>
 <header><h1>{title}</h1><button id="home" hidden aria-label="Torna alla scelta del Comune" title="Torna alla scelta del Comune">🏠</button></header>
 <main>{''.join(cards)}</main>
@@ -2118,11 +2118,11 @@ def notify_phone(message: str) -> None:
         print(f"  notifica al cellulare non riuscita: {exc}")
 
 
-OVERVIEW = DATA / "panoramica"  # PDF creati dal pulsante "Panoramica" del Monitor
+OVERVIEW = DATA / "panorama"  # PDF creati dal pulsante "Panorama" del Monitor
 
 
 def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
-    """Pulsante "Panoramica" del Monitor: un solo PDF con, per ogni locale, la scheda come appare
+    """Pulsante "Panorama" del Monitor: un solo PDF con, per ogni locale, la scheda come appare
     sul sito (a sinistra) e la fonte come appare adesso (a destra: post Facebook, storia
     Facebook/Instagram o sito del locale). Prima pagina: la pagina iniziale del sito."""
     from io import BytesIO
@@ -2160,16 +2160,23 @@ def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
     page.goto(site + "#Tutti", wait_until="load")
     page.wait_for_timeout(1500)
     cover = Image.new("RGB", (width, height), "white")
-    ImageDraw.Draw(cover).text((margin, margin), f"Panoramica menu - {datetime.now():%d/%m/%Y %H:%M}",
+    ImageDraw.Draw(cover).text((margin, margin), f"Panorama menu - {datetime.now():%d/%m/%Y %H:%M}",
                                fill="#0f172a", font=font(44))
     paste(cover, page.screenshot(type="jpeg", quality=80, full_page=True),
           (margin, 120, width - margin, height - margin), "")
     pages.append(cover)
     shots: dict[str, bytes | None] = {}
-    for index, shop in enumerate(shops):
+    for shop in shops:
         try:
-            page.evaluate(f"openCard({index})")
-            page.wait_for_timeout(1800)
+            # la pagina elenca i locali in un altro ordine (prima quelli aggiornati): la scheda si
+            # cerca per NOME, e si fotografa solo quando il titolo mostra davvero quel locale
+            found = page.evaluate("name => { const i = DATA.shops.findIndex(s => s.nome === name);"
+                                  " if (i >= 0) openCard(i); return i; }", shop["nome"])
+            if found < 0:
+                raise RuntimeError("locale non presente nella pagina")
+            page.wait_for_function("name => (document.querySelector('#name').textContent || '').startsWith(name)",
+                                   arg=shop["nome"], timeout=5000)
+            page.wait_for_timeout(1500)
             shots[shop["id"]] = page.locator("#detail .sheet").screenshot(type="jpeg", quality=80)
             page.evaluate("document.querySelector('#detail').close()")
         except Exception:
@@ -2199,9 +2206,9 @@ def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
               "fonte non disponibile" if source else "nessuna fonte online")
         pages.append(sheet)
     OVERVIEW.mkdir(parents=True, exist_ok=True)
-    target = OVERVIEW / f"Panoramica_{datetime.now():%Y-%m-%d_%H%M}.pdf"
+    target = OVERVIEW / f"Panorama_{datetime.now():%Y-%m-%d_%H%M}.pdf"
     pages[0].save(target, "PDF", resolution=150, save_all=True, append_images=pages[1:])
-    for old in sorted(OVERVIEW.glob("Panoramica_*.pdf"))[:-10]:
+    for old in sorted(OVERVIEW.glob("Panorama_*.pdf"))[:-10]:
         old.unlink(missing_ok=True)  # si tengono solo le ultime 10
     return target
 
@@ -2223,9 +2230,9 @@ def main() -> None:
     parser.add_argument("--prova-beep", action="store_true", help="Fa sentire i tre beep e termina.")
     parser.add_argument("--prova-notifica", action="store_true",
                         help="Manda una notifica di prova al cellulare (app Bark, tre beep) e termina.")
-    parser.add_argument("--panoramica", action="store_true",
+    parser.add_argument("--panorama", "--panoramica", dest="panorama", action="store_true",
                         help="Crea un PDF con la scheda di ogni locale sul sito e la sua fonte come appare adesso "
-                             "(pulsante \"Panoramica\" del Monitor) e lo apre.")
+                             "(pulsante \"Panorama\" del Monitor) e lo apre.")
     parser.add_argument("--ocr", metavar="IMMAGINE", help="Mostra il testo letto in una foto e l'eventuale chiusura.")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
@@ -2246,13 +2253,13 @@ def main() -> None:
         return
     make_folders()
     config = read_json(CONFIG, {"impostazioni": {}, "locali": []})
-    if args.panoramica:
+    if args.panorama:
         if not take_lock():
             print("Un controllo è in corso da oltre 20 minuti: riprova più tardi.")
             return
         browser = BrowserCollector(visible=False)
         try:
-            print("Panoramica: fotografo il sito e le fonti di ogni locale (qualche minuto)...")
+            print("Panorama: fotografo il sito e le fonti di ogni locale (qualche minuto)...")
             target = make_overview(config, browser)
             print(f"Creato: {target}")
             if sys.platform == "win32":
