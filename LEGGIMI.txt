@@ -19,7 +19,8 @@ Navigazione per Comune (due livelli)
    per numero di locali e poi in ordine alfabetico, più "Tutti i Comuni".
    Ogni riquadro (fondo celeste chiaro), su una sola riga, mostra il nome del
    Comune seguito da "aggiornati/totale", es. "Putignano - 3/8": 3 locali con
-   il menu di oggi (arancione) su 8 locali del Comune (verde), tutto
+   il menu di oggi (arancione; verde quando sono tutti, es. "Noci - 2/2")
+   su 8 locali del Comune (verde), tutto
    grande come il nome; la fascia a
    sinistra è VERDE se tutti i locali di quel Comune hanno pubblicato il menu
    di oggi, ARANCIONE se almeno uno non l'ha ancora pubblicato (vale anche
@@ -675,4 +676,10 @@ Attivazione (una volta):
    Versione: "Nuova versione" > Esegui il deployment. L'indirizzo non cambia.
 3. In locali.json, "impostazioni": "registra_visite": true (il foglio
    "Visite" si crea da solo alla prima visita).
+
+Monitor - colonna Visite
+------------------------
+A destra di ogni rosticceria il Monitor mostra quante volte oggi è stata
+aperta la sua scheda sul sito (gli stessi click della tabella Info), letti
+dal registro Google ogni minuto. "–" finché non arriva la prima lettura.
 

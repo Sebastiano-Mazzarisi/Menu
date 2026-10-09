@@ -355,6 +355,10 @@ class Monitor(tk.Tk):
         self.next_run: datetime | None = None
         self.task_state = ""
         self.last_query = datetime.min
+        # click di oggi per rosticceria (dal registro Google, ogni minuto in un thread)
+        self.clicks: dict[str, int] | None = None
+        self.clicks_at = datetime.min
+        self.clicks_busy = False
         self.tick()
 
     # --- aggiornamento --------------------------------------------------------------------------
@@ -376,6 +380,10 @@ class Monitor(tk.Tk):
             self.querying = True  # domanda a Windows in un thread: la finestra non si blocca
             self.last_query = now
             threading.Thread(target=self.query_task, daemon=True).start()
+        if not self.clicks_busy and (now - self.clicks_at).total_seconds() > 60:
+            self.clicks_busy, self.clicks_at = True, now
+            threading.Thread(target=self.query_clicks, args=(settings.get("registro_click_url", ""),),
+                             daemon=True).start()
         active = self.is_active()
         self.toggle_button.config(text="Disabilita" if active else "Pianifica")
 
@@ -406,10 +414,25 @@ class Monitor(tk.Tk):
         self.outcome.config(text=text, fg=colour)
         self.after(1000, self.tick)
 
+    def query_clicks(self, log_url: str) -> None:
+        """Click di oggi per ogni rosticceria, letti dal registro Google (?azione=statistiche)."""
+        import urllib.request
+        try:
+            if log_url:
+                with urllib.request.urlopen(f"{log_url}?azione=statistiche&t={int(time.time())}", timeout=30) as answer:
+                    data = json.loads(answer.read().decode("utf-8"))
+                rows = data.get("righe", {}) if data.get("data") == date.today().isoformat() else {}
+                self.clicks = {name: int(values.get("oggi", 0)) for name, values in rows.items()}
+        except Exception:
+            pass  # rete assente: resta l'ultimo valore letto
+        finally:
+            self.clicks_busy = False
+
     def show_shops(self, config: dict) -> None:
         results = {item.get("id"): item for item in read_json(STATE, {}).get("results", [])}
         today = date.today().isoformat()
-        signature = (today, json.dumps(config.get("locali", [])), json.dumps(results, sort_keys=True))
+        signature = (today, json.dumps(config.get("locali", [])), json.dumps(results, sort_keys=True),
+                     json.dumps(self.clicks, sort_keys=True))
         if signature == getattr(self, "_signature", None):
             return  # niente di nuovo: non ridisegno (evita lo sfarfallio)
         self._signature = signature
@@ -425,6 +448,10 @@ class Monitor(tk.Tk):
             name = unicodedata.normalize("NFD", shop.get("nome", ""))
             return (not published, "".join(ch for ch in name if not unicodedata.combining(ch)).casefold())
 
+        head = tk.Frame(self.rows, bg=BG)
+        head.pack(fill="x")
+        for text, width, anchor in (("", 2, "w"), ("Rosticceria", 20, "w"), ("Menu", 7, "w"), ("Visite", 6, "e")):
+            tk.Label(head, text=text, fg=MUTED, bg=BG, font=("Segoe UI", 8), width=width, anchor=anchor).pack(side="left")
         for shop in sorted(shops, key=order):
             result = results.get(shop.get("id"), {})
             day = result.get("menu_date", "")
@@ -440,7 +467,14 @@ class Monitor(tk.Tk):
             tk.Label(row, text=mark, fg=colour, bg=BG, font=("Segoe UI", 11)).pack(side="left")
             tk.Label(row, text=shop.get("nome", "?"), fg=FG, bg=BG, font=("Segoe UI", 10), width=20,
                      anchor="w").pack(side="left")
-            tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10)).pack(side="left")
+            tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10), width=7, anchor="w").pack(side="left")
+            # terza colonna: click di oggi sulla scheda (anche con i nomi usati prima di un cambio di nome)
+            if self.clicks is None:
+                seen = "–"
+            else:
+                seen = str(sum(self.clicks.get(name, 0) for name in [shop.get("nome", "")] + shop.get("nomi_precedenti", [])))
+            tk.Label(row, text=seen, fg=FG if seen not in ("0", "–") else MUTED, bg=BG, font=("Segoe UI", 10, "bold"),
+                     width=5, anchor="e").pack(side="left")
             # clic su una rosticceria = SEGNALAZIONE "il suo menu è probabilmente sbagliato": il menu di
             # oggi viene scartato (e non più riusato) e il locale viene ricontrollato a fondo;
             # le altre rosticcerie restano invariate
