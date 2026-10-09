@@ -66,29 +66,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Rigatoni all’amatriciana",
+          "nome": "Penne alla boscaiola",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette alla pastorella",
-          "prezzo": "€7.50",
-          "descrizione": "Con pomodoro e ricotta"
+          "nome": "Gnocchi di patate con gorgonzola e piastcchi",
+          "prezzo": "€8.00",
+          "descrizione": ""
         },
         {
-          "nome": "Risotto con zucca e porcini",
+          "nome": "Risotto con gamberetti, patate e curry",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatellucci al grano arso con cernia e zucchina",
+          "nome": "Cavatelli al grano arso con zucca e battuto di salsiccia",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Minestrone di verdure",
+          "nome": "Minestra di piselli e farro",
           "prezzo": "€6.00",
-          "descrizione": "Fagiolini, piselli, patate, carote, zucchina, cavolfiore, melanzane e cipolla. Con o senza pasta"
+          "descrizione": ""
         }
       ]
     },
@@ -96,12 +96,12 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di baccalà con patate",
+          "nome": "Baccalà gratinato con patate",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Straccetti di vitello con funghi misti",
+          "nome": "Sfilacci di vitello con funghi misti",
           "prezzo": "€7.50",
           "descrizione": ""
         }
