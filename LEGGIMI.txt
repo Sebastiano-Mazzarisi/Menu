@@ -702,6 +702,13 @@ Dallo stesso logo il programma ricava da solo, quando il file cambia:
 - le icone dell'app (icone/icona-180.png per iPhone "Aggiungi a Home",
   icona-192/512 per Android, favicon.png per la scheda del browser);
 - icone/logo-titolo.png, il logo ritagliato senza il bordo bianco.
+Musica del logo (Menu.mp3): se nella cartella Menu c'è il file Menu.mp3, il
+logo del titolo si può cliccare: la musica parte subito e si apre una
+piccola finestra sotto il logo con, a sinistra, il tasto Riproduci/Pausa
+(il simbolo cambia a ogni tocco) e, a destra, la X nel cerchio per chiudere
+(chiudendo la musica si ferma e la volta dopo riparte dall'inizio).
+Per cambiare musica basta sostituire Menu.mp3 e premere "Pubblica" nel
+Monitor; senza Menu.mp3 il logo non è cliccabile.
 Per cambiare logo basta sostituire loghi/Logo-Menu.jpg (immagine quadrata);
 se manca si usa il vecchio loghi/Menu.jpg.
 Sul telefono l'icona già aggiunta alla Home può restare quella vecchia:
