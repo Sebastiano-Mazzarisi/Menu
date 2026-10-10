@@ -66,29 +66,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Penne alla boscaiola",
+          "nome": "Penne all'arrabbiata",
           "prezzo": "€6.50",
+          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+        },
+        {
+          "nome": "Orecchiette con datterino giallo, speck e asparagi",
+          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Gnocchi di patate con gorgonzola e piastcchi",
-          "prezzo": "€8.00",
-          "descrizione": ""
-        },
-        {
-          "nome": "Risotto con gamberetti, patate e curry",
+          "nome": "Risotto con funghi porcini e zafferano",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con zucca e battuto di salsiccia",
+          "nome": "Tagliolino con pesto di zucchina e cernia",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Minestra di piselli e farro",
+          "nome": "Minestrone di verdure",
           "prezzo": "€6.00",
-          "descrizione": ""
+          "descrizione": "Fagiolini, piselli, patate, carote, zucchina, cavolfiore, melanzane e cipolla. Con o senza pasta"
         }
       ]
     },
@@ -96,14 +96,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Baccalà gratinato con patate",
+          "nome": "Filetto di merluzzo gratinato con zucchina",
           "prezzo": "€8.50",
-          "descrizione": ""
+          "descrizione": "Con pomodorino"
         },
         {
-          "nome": "Sfilacci di vitello con funghi misti",
+          "nome": "Bombette di capocollo con ciliegino giallo e rughetta",
           "prezzo": "€7.50",
-          "descrizione": ""
+          "descrizione": "5 pezzi"
         }
       ]
     }
