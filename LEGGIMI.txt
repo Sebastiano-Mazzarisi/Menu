@@ -710,7 +710,8 @@ cerchio per chiudere (chiudendo la musica si ferma e la volta dopo riparte
 dall'inizio). Dopo una pausa, Riproduci riparte da 2 secondi prima.
 La finestra resta nella prima videata: scorrendo la pagina va via insieme
 al titolo e non copre i riquadri. Si può spostare trascinandola dal centro
-(il segno ⠿, dove non ci sono pulsanti).
+(dove non ci sono pulsanti). Al centro, scritto piccolo, il tempo trascorso
+e la durata totale, es. "1:05 / 3:42".
 Per cambiare musica basta sostituire Menu.mp3 e premere "Pubblica" nel
 Monitor; senza Menu.mp3 il logo non è cliccabile.
 Per cambiare logo basta sostituire loghi/Logo-Menu.jpg (immagine quadrata);
