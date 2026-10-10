@@ -26,7 +26,8 @@ Navigazione per Comune (due livelli)
    di oggi, ARANCIONE se almeno uno non l'ha ancora pubblicato (vale anche
    per "Tutti i Comuni"). Sotto, scritto piccolo (come "20 visite oggi"
    in Info), l'elenco dei locali del Comune in ordine alfabetico, uno per
-   riga (in "Tutti i Comuni" l'elenco non c'è). Nella versione
+   riga, in nero e preceduto da un punto "•" (in "Tutti i Comuni", che ha
+   il fondo verde chiaro, l'elenco non c'è). Nella versione
    amministratore qui c'è anche la scheda Info.
 2) Toccando un Comune si vedono solo i suoi locali; il titolo diventa
    "Noci - Giovedì 8 ottobre" e a destra compare la casetta 🏠 che riporta
