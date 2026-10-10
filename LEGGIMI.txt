@@ -83,6 +83,11 @@ Scheda del menu (tocco su un locale)
 Pulsante "Testo" (icona del taccuino, nella barra in basso della scheda):
 apre una finestra con il menu trasformato in testo, da leggere comodamente o
 copiare (pulsante "Copia testo", poi incollarlo in WhatsApp, Note...).
+PER ORA (funzione in prova) il pulsante compare SOLO all'amministratore,
+cioè con la pagina aperta con ?v=57 (o l'app admin.html). Per mostrarlo a
+tutti: in locali.json > impostazioni mettere
+    "testo_per_tutti": true
+e premere "Pubblica" nel Monitor.
 La finestra del testo resta SOPRA la foto senza coprirla tutta, così si
 confrontano testo e originale:
 - si sposta trascinando la testata (le tre lineette a sinistra del nome);

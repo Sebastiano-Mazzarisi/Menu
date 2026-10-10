@@ -1985,7 +1985,9 @@ function openCard(i,dir){cur=i;const s=DATA.shops[i],r=DATA.results[i];logClick(
   const mp=document.getElementById('map');mp.hidden=!s.indirizzo;mp.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\s*\(.*\)/,'')+', '+(s.indirizzo||''));
   const so=document.getElementById('source');so.hidden=!s.url;so.href=s.url||'';
   /* "Testo" solo dove serve: c'è un menu e il locale non ha "testo": {"attivo": false} (scritti a mano) */
-  const nt=document.getElementById('notes');nt.hidden=(s.testo||{}).attivo===false||!(r.image||(r.sections||[]).length);
+  /* finché è in prova il pulsante si vede solo all'amministratore (?v=57 / admin.html); con
+     "testo_per_tutti": true in locali.json > impostazioni lo vedono tutti */
+  const nt=document.getElementById('notes');nt.hidden=!(ADMIN||DATA.testo_per_tutti)||(s.testo||{}).attivo===false||!(r.image||(r.sections||[]).length);
   document.getElementById('sourceL').textContent=/instagram\./.test(s.url||'')?'Instagram':/facebook\./.test(s.url||'')?'Facebook':'Sito';
   const k=ORDER.indexOf(i);document.getElementById('pos').textContent=k>=0?(k+1)+' di '+ORDER.length:'';
   if(!dlg.open)dlg.showModal();
@@ -2189,6 +2191,8 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
     payload = json.dumps({"shops": public_shops, "results": public_results, "v": version,
                           "titolo": settings.get("titolo", "Menu - {data}"),
                           "ora": stamp["ora"], "data": stamp["data"],
+                          # pulsante "Testo" (taccuino): false = solo amministratore (in prova)
+                          "testo_per_tutti": bool(settings.get("testo_per_tutti", False)),
                           "log": settings.get("registro_click_url", ""),
                           # visite alla pagina (foglio "Visite"): solo dopo aver aggiornato Registro_click.gs
                           "visite": bool(settings.get("registra_visite", False))}, ensure_ascii=False).replace("</", "<\\/")
