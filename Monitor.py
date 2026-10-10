@@ -32,7 +32,6 @@ POSITION = ROOT / "dati" / "monitor.json"
 TASK = "Menu"
 CONSOLE_TITLE = "Menu - controllo manuale"
 CONSOLE_SECONDS = 60  # la finestra DOS del controllo manuale si chiude da sola dopo questi secondi
-INTERVAL = timedelta(minutes=15)
 WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -69,14 +68,27 @@ def pythonw() -> str:
     return str(candidate if candidate.exists() else exe)
 
 
+def plan(settings: dict) -> tuple[str, str, int]:
+    """Orari del controllo automatico da locali.json > impostazioni > automatico
+    (come in Menu.py: predefiniti 08:00-20:00 ogni 30 minuti)."""
+    window = settings.get("automatico", {})
+    try:
+        every = max(5, int(window.get("ogni_minuti", 30)))
+    except (TypeError, ValueError):
+        every = 30
+    return window.get("dalle", "08:00"), window.get("alle", "20:00"), every
+
+
 def schedule_task() -> str:
-    """Crea (o ricrea) l'attività "Menu": ogni 15 minuti a orari fissi, a partire dalle 07:00
-    (07:00, 07:15, 07:30 ...). Restituisce un messaggio di esito."""
-    action = f'"{pythonw()}" "{ROOT / "Menu.py"}" --automatico'
-    done = subprocess.run(["schtasks", "/Create", "/F", "/TN", TASK, "/SC", "MINUTE", "/MO", "15",
-                           "/ST", "07:00", "/TR", action], capture_output=True, text=True,
-                          creationflags=NO_WINDOW)
-    return "Pianificazione attivata" if done.returncode == 0 else "Pianificazione NON riuscita"
+    """Crea (o ricrea) l'attività "Menu" con gli orari di locali.json: lo fa Menu.py --pianifica,
+    così Monitor, Pianifica.bat e il giro automatico usano la stessa regola."""
+    python = Path(sys.executable).with_name("python.exe")
+    exe = str(python) if python.exists() else sys.executable
+    done = subprocess.run([exe, str(ROOT / "Menu.py"), "--pianifica"], cwd=ROOT, capture_output=True,
+                          text=True, encoding="utf-8", errors="replace", creationflags=NO_WINDOW)
+    dalle, alle, every = plan(read_json(CONFIG, {}).get("impostazioni", {}))
+    return (f"Pianificazione attivata: ogni {every} minuti dalle {dalle} alle {alle}"
+            if done.returncode == 0 and "NON" not in done.stdout else "Pianificazione NON riuscita")
 
 
 def disable_task() -> str:
@@ -86,9 +98,8 @@ def disable_task() -> str:
 
 
 def in_window(moment: datetime, settings: dict) -> bool:
-    window = settings.get("automatico", {})
-    hhmm = moment.strftime("%H:%M")
-    return window.get("dalle", "00:00") <= hhmm <= window.get("alle", "23:59")
+    dalle, alle, _ = plan(settings)
+    return dalle <= moment.strftime("%H:%M") <= alle
 
 
 def next_effective(next_run: datetime, settings: dict) -> datetime:
@@ -97,7 +108,7 @@ def next_effective(next_run: datetime, settings: dict) -> datetime:
     for _ in range(200):
         if in_window(moment, settings):
             return moment
-        moment += INTERVAL
+        moment += timedelta(minutes=plan(settings)[2])
     return next_run
 
 
@@ -402,7 +413,7 @@ class Monitor(tk.Tk):
             hours, rest = divmod(seconds, 3600)
             text = f"{hours}:{rest // 60:02d}:{rest % 60:02d}" if hours else f"{rest // 60:02d}:{rest % 60:02d}"
             self.countdown.config(text=text, fg=FG)
-            note = "" if active else "\norari non allineati ai quarti d'ora: premi Pianifica"
+            note = "" if active else "\norari diversi da locali.json: premi Pianifica"
             self.subtitle.config(text=f"al prossimo controllo (ore {target:%H:%M}){note}")
 
         self.show_shops(config)
@@ -485,10 +496,13 @@ class Monitor(tk.Tk):
         self.set_icon(updated, len(shops))
 
     def is_active(self) -> bool:
-        """Attività attiva e con orari fissi (:00, :15, :30, :45). Una vecchia attività creata
-        a un'ora qualsiasi va ricreata con Pianifica."""
+        """Attività attiva e con gli orari di locali.json (es. ogni 30 minuti a partire dalle 08:00:
+        08:00, 08:30 ...). Un'attività con orari diversi va ricreata con Pianifica (lo fa da sola
+        anche Menu.py al primo giro automatico dopo il cambio)."""
         running = self.task_state.lower() in ("ready", "running", "queued")
-        aligned = self.next_run is None or self.next_run.minute % 15 == 0
+        dalle, _, every = plan(read_json(CONFIG, {}).get("impostazioni", {}))
+        start = int(dalle[:2]) * 60 + int(dalle[3:5])
+        aligned = self.next_run is None or (self.next_run.hour * 60 + self.next_run.minute - start) % every == 0
         return running and aligned
 
     def set_icon(self, updated: int, total: int) -> None:
@@ -551,7 +565,7 @@ class Monitor(tk.Tk):
 
     # --- pulsanti -------------------------------------------------------------------------------
     def check(self) -> None:
-        """Controlla: come il giro automatico ogni 15 minuti, ma subito e a qualunque ora.
+        """Controlla: come il giro automatico, ma subito e a qualunque ora.
         Le rosticcerie che hanno già il menu di oggi non vengono ricontrollate online."""
         self.run_now("--salta-aggiornati")
 
@@ -604,7 +618,8 @@ class Monitor(tk.Tk):
             # disattivare ferma i controlli automatici per tutto il giorno: si chiede conferma
             # (un clic per sbaglio su "Disabilita" li aveva fermati senza che ce ne accorgessimo)
             from tkinter import messagebox
-            if not messagebox.askyesno("Menu", "Disattivare i controlli automatici ogni 15 minuti?\n\n"
+            dalle, alle, every = plan(read_json(CONFIG, {}).get("impostazioni", {}))
+            if not messagebox.askyesno("Menu", f"Disattivare i controlli automatici (ogni {every} minuti, {dalle}-{alle})?\n\n"
                                                "Il sito non verrà più aggiornato da solo finché non premi Pianifica.",
                                        icon="warning", default="no", parent=self):
                 return

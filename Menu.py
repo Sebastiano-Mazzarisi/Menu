@@ -966,17 +966,20 @@ def check_notice(shop: dict[str, Any], browser: "BrowserCollector | None", check
 
 OCR_SCRIPT = ROOT / "ocr.ps1"
 OCR_CACHE = DATA / "ocr.json"
+SCHEDULE_STATE = DATA / "pianificazione.json"  # orari applicati all'attività "Menu" di Windows
 
 
-def ocr_image(path: Path) -> str:
-    """Testo scritto dentro la foto, letto con l'OCR integrato di Windows (ocr.ps1).
+def ocr_lines(path: Path) -> str:
+    """Testo scritto dentro la foto, RIGA PER RIGA (righe separate da "\n"), letto con l'OCR
+    integrato di Windows (ocr.ps1). Serve al pulsante "Testo" (taccuino) della scheda del sito e,
+    unito in una riga sola, a ocr_image.
 
     I risultati sono ricordati in dati/ocr.json per impronta del file: la stessa foto
     non viene riletta a ogni giro. Su sistemi diversi da Windows restituisce ""."""
     if sys.platform != "win32" or not OCR_SCRIPT.exists() or not path.exists():
         return ""
     import subprocess
-    key = "v2:" + file_hash(path)  # v2: foto ingrandita prima dell'OCR
+    key = "v3:" + file_hash(path)  # v3: foto ingrandita prima dell'OCR, righe tenute separate
     cache = read_json(OCR_CACHE, {})
     if key in cache:
         return cache[key]
@@ -1001,10 +1004,16 @@ def ocr_image(path: Path) -> str:
     if done.returncode != 0:
         print(f"  OCR non riuscito: {(done.stderr or '').strip()[:200]}")
         return ""
-    text = " ".join(done.stdout.split())
+    text = "\n".join(" ".join(line.split()) for line in done.stdout.splitlines() if line.strip())
+    cache = read_json(OCR_CACHE, {})  # riletta: intanto può averla aggiornata un'altra foto
     cache[key] = text
     save_json(OCR_CACHE, dict(list(cache.items())[-200:]))  # tiene solo le ultime 200 foto
     return text
+
+
+def ocr_image(path: Path) -> str:
+    """Testo scritto dentro la foto in una riga sola (per date, avvisi di chiusura, nomi)."""
+    return " ".join(ocr_lines(path).split())
 
 
 DAY_NAMES = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
@@ -1767,14 +1776,34 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 .dish small{grid-column:1/-1;color:#9aa89f;font-size:14px;margin-top:2px}
 .nomenu{padding:60px 24px;text-align:center;color:var(--sheet-muted)}
 .bar{flex:none;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #ffffff14;background:#0b100d}
-.acts{display:flex;justify-content:center;gap:6px;min-width:0}
-.act{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:66px;padding:6px 8px;border-radius:12px;color:#e7ece8;text-decoration:none;font-size:12px;font-weight:700}
+.acts{display:flex;justify-content:center;gap:2px;min-width:0}
+.act{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:54px;padding:6px 4px;border-radius:12px;color:#e7ece8;text-decoration:none;font-size:12px;font-weight:700}
 .act svg{width:24px;height:24px}
 .act:hover{background:#ffffff12}
 .act.call{color:#f2b134}
 .nav{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#ffffff12;color:#eef1ea}
 .nav svg{width:22px;height:22px}
 #pos{font-size:12px;color:#8f9c94;text-align:center;font-variant-numeric:tabular-nums;margin-top:2px}
+
+/* ---------- finestra "Testo" (taccuino): il menu trasformato in testo ---------- */
+.act{background:none;border:0;cursor:pointer;font:inherit;font-size:12px;font-weight:700}
+#textdlg{width:min(640px,calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(86dvh,900px);padding:0;border:0;border-radius:18px;background:var(--surface);color:var(--ink);box-shadow:0 30px 80px #000a;overflow:hidden}
+#textdlg::backdrop{background:#000b}
+.tsheet{height:100%;display:flex;flex-direction:column;outline:none}
+.th{flex:none;display:grid;grid-template-columns:1fr 44px;gap:10px;align-items:center;padding:14px 14px 10px 18px;border-bottom:1px solid var(--line)}
+#tname{margin:0;font-family:var(--f-display);font-weight:800;font-size:20px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tsub{margin:3px 0 0;font-size:13px;color:var(--muted)}
+#textdlg .x{width:44px;height:44px;border-radius:50%;background:var(--surface2);display:grid;place-items:center}
+#textdlg .x svg{width:20px;height:20px}
+#tbody{flex:1;min-height:0;overflow:auto;padding:6px 18px 18px;-webkit-overflow-scrolling:touch}
+#tbody h4{margin:18px 0 4px;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+#tbody .tl{display:grid;grid-template-columns:1fr auto;column-gap:14px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:16px}
+#tbody .tl b{font-variant-numeric:tabular-nums;white-space:nowrap}
+#tbody .wait{padding:50px 10px;text-align:center;color:var(--muted)}
+#tbody progress{display:block;width:70%;margin:14px auto 0;accent-color:var(--accent)}
+.tbar{flex:none;display:flex;align-items:center;gap:12px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)) 18px;border-top:1px solid var(--line)}
+#tnote{flex:1;font-size:12px;color:var(--muted)}
+#tcopy{flex:none;padding:10px 14px;border-radius:12px;background:var(--ink);color:var(--bg);font-weight:700;font-size:14px}
 
 /* ---------- statistiche (amministratore) ---------- */
 #stats{width:min(480px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:90dvh;padding:0;border:0;border-radius:18px;background:var(--sheet);color:var(--sheet-ink);box-shadow:0 30px 80px #000a}
@@ -1829,12 +1858,19 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
       <div class="acts">
         <a class="act call" id="phone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>Chiama</a>
         <a class="act" id="map" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Mappa</a>
+        <button type="button" class="act" id="notes" title="Il menu scritto come testo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/><path d="M3 7h3M3 12h3M3 17h3"/></svg>Testo</button>
         <a class="act" id="source" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span id="sourceL">Fonte</span></a>
       </div>
       <div id="pos"></div>
     </div>
     <button class="nav" id="next" aria-label="Rosticceria successiva"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
   </div>
+</div></dialog>
+<dialog id="textdlg" aria-label="Testo del menu"><div class="tsheet" tabindex="-1" autofocus>
+  <div class="th"><div class="sh-title"><h3 id="tname"></h3><p id="tsub"></p></div>
+    <button type="button" class="x" id="tclose" aria-label="Chiudi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div id="tbody"></div>
+  <div class="tbar"><span id="tnote"></span><button type="button" id="tcopy">Copia testo</button></div>
 </div></dialog>
 <script>const DATA=@@PAYLOAD@@;
 /* Registro dei click sul foglio Google "Menu" (Apps Script in Registro_click.gs).
@@ -1911,7 +1947,7 @@ function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).
   (secs||[]).forEach(sec=>{cur={titolo:sec.titolo,piatti:[]};out.push(cur);
     (sec.piatti||[]).forEach(p=>{const raw=p.nome||'';let n=raw.replace(/^[●•·\-\s]+/,'').trim(),pr=(p.prezzo||'').trim();if(!n)return;
       if(/^MEN[UÙ] (DI|DEL) /i.test(n))return;
-      if(!pr&&!/^[●•]/.test(raw)&&n===n.toUpperCase()&&n.split(/\s+/).length<=4&&/PIATT|PRIM|SECOND|CONTORN|ANTIPAST|DOLC|FRITT|PIZZ/i.test(n)){cur={titolo:cap(n),piatti:[]};out.push(cur);return}
+      if(!pr&&!/^[●•]/.test(raw)&&!/\d/.test(n)&&n.split(/\s+/).length<=4&&((n===n.toUpperCase()&&/PIATT|PRIM|SECOND|CONTORN|ANTIPAST|DOLC|FRITT|PIZZ/i.test(n))||/^(i |gli |le )?(primi|secondi|contorni|antipasti|dolci|fritti|pizze|panini|insalate)( piatti| del giorno)?:?$/i.test(n))){cur={titolo:cap(n.replace(/:$/,'')),piatti:[]};out.push(cur);return}
       const m=n.match(/\s(\d{1,2}[,.]\d{1,2})\s*€?$/);if(m&&!pr){pr=m[1];n=n.slice(0,m.index).trim()}
       if(pr){pr=pr.replace('€','').trim().replace('.',',');if(/^\d+,\d$/.test(pr))pr+='0';if(/^\d+(,\d+)?$/.test(pr))pr='€ '+pr}
       if(n===n.toUpperCase()&&/[A-Z]/.test(n))n=cap(n);
@@ -1952,11 +1988,41 @@ function step(d){const n=ORDER.length;if(!n)return;const k=ORDER.indexOf(cur);op
 document.getElementById('prev').onclick=()=>step(-1);document.getElementById('next').onclick=()=>step(1);
 document.getElementById('close').onclick=()=>dlg.close();
 dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
-document.addEventListener('keydown',e=>{if(!dlg.open)return;if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}else if(e.key==='ArrowRight'){e.preventDefault();step(1)}});
+document.addEventListener('keydown',e=>{if(!dlg.open||tdlg.open)return;if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}else if(e.key==='ArrowRight'){e.preventDefault();step(1)}});
 let tx=null,ty=0;stage.addEventListener('touchstart',e=>{if(e.touches.length!==1||stage.classList.contains('zoom')){tx=null;return}tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
 stage.addEventListener('touchmove',e=>{if(e.touches.length!==1)tx=null},{passive:true});
 stage.addEventListener('touchend',e=>{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
   if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)});
+
+/* ---------- "Testo" (taccuino): il menu trasformato in testo in una finestra.
+   Menu scritto (Pane & Co...) = il suo testo; menu in foto = testo letto dal PC con l'OCR di
+   Windows (campo "testo" dei dati); se il PC non l'ha letto, il telefono prova da sé con
+   Tesseract.js (scaricato solo la prima volta che serve, ~3 MB). La lettura può avere errori. ---------- */
+const tdlg=document.getElementById('textdlg'),tbody=document.getElementById('tbody');let TXT='',tjob=0;
+function linesToSections(text){return cleanSections([{titolo:'',piatti:text.split(/\n+/).map(l=>l.trim()).filter(l=>l&&/[\p{L}\d]/u.test(l)).map(l=>({nome:l}))}])}
+function showText(secs,note){tbody.innerHTML='';const out=[];
+  secs.forEach(sec=>{if(sec.titolo){const h=document.createElement('h4');h.textContent=sec.titolo;tbody.append(h);out.push('','== '+sec.titolo+' ==')}
+    sec.piatti.forEach(p=>{const d=document.createElement('div');d.className='tl';d.innerHTML='<span></span><b></b>';d.children[0].textContent=p.nome+(p.descrizione?' ('+p.descrizione+')':'');d.children[1].textContent=p.prezzo;tbody.append(d);out.push(p.nome+(p.descrizione?' ('+p.descrizione+')':'')+(p.prezzo?'  '+p.prezzo:''))})});
+  if(!secs.length){tbody.innerHTML='<div class="wait">Nella foto non ho trovato testo leggibile.</div>'}
+  TXT=out.join('\n').trim();document.getElementById('tnote').textContent=note;document.getElementById('tcopy').hidden=!TXT}
+let tessP=null;function tesseract(){if(!tessP)tessP=new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';sc.onload=()=>ok(window.Tesseract);sc.onerror=()=>{tessP=null;ko(new Error('rete'))};document.head.append(sc)});return tessP}
+function openText(){const i=cur,s=DATA.shops[i],r=DATA.results[i],job=++tjob;
+  document.getElementById('tname').textContent=s.nome;document.getElementById('tsub').textContent=r.menu_date?'Menu di '+longDate(r.menu_date):'';
+  TXT='';document.getElementById('tcopy').hidden=true;tdlg.showModal();tdlg.querySelector('.tsheet').scrollTop=0;
+  if(!r.image&&(r.sections||[]).length){showText(cleanSections(r.sections),'Testo pubblicato dal locale.');return}
+  if(!r.image){showText([],'');tbody.innerHTML='<div class="wait">Per questo locale non c\'è ancora un menu da leggere.</div>';return}
+  if(r.testo){showText(linesToSections(r.testo),'Testo letto automaticamente dalla foto: può contenere errori.');return}
+  tbody.innerHTML='<div class="wait">Sto leggendo la foto del menu…<progress max="1" value="0"></progress></div>';document.getElementById('tnote').textContent='La prima volta può volerci qualche secondo.';
+  const bar=tbody.querySelector('progress');
+  tesseract().then(T=>T.recognize(new URL(imgUrl(r),location.href).href,'ita',{logger:m=>{if(job===tjob&&bar&&m.status==='recognizing text')bar.value=m.progress}}))
+    .then(res=>{if(job!==tjob)return;const t=(res&&res.data&&res.data.text)||'';r.testo=t;showText(linesToSections(t),'Testo letto automaticamente dalla foto: può contenere errori.')})
+    .catch(()=>{if(job!==tjob)return;tbody.innerHTML='<div class="wait">Non sono riuscito a leggere la foto (serve la connessione a internet). Riprova più tardi.</div>';document.getElementById('tnote').textContent=''})}
+document.getElementById('notes').onclick=openText;
+document.getElementById('tclose').onclick=()=>tdlg.close();
+tdlg.addEventListener('close',()=>{tjob++});tdlg.addEventListener('click',e=>{if(e.target===tdlg)tdlg.close()});
+document.getElementById('tcopy').onclick=()=>{const b=document.getElementById('tcopy'),done=()=>{b.textContent='Copiato';setTimeout(()=>{b.textContent='Copia testo'},1500)};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(TXT).then(done).catch(()=>selectAll());else selectAll();
+  function selectAll(){const rg=document.createRange();rg.selectNodeContents(tbody);const sl=getSelection();sl.removeAllRanges();sl.addRange(rg)}};
 
 window.addEventListener('hashchange',()=>{TOWN=decodeURIComponent(location.hash.slice(1))||'Tutti';if(location.href.endsWith('#'))history.replaceState(null,'',location.pathname+location.search);if(dlg.open)dlg.close();refresh();window.scrollTo(0,0)});
 /* tocco sulla data o sul pulsante ↻: ricarica la pagina dal server, senza cache */
@@ -2037,7 +2103,7 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
                      # nomi usati prima di un cambio di nome: i loro click restano sommati al locale
                      "nomi_precedenti": shop.get("nomi_precedenti", [])} for shop in shops]
     # niente orari di controllo nella pagina: se i menu non cambiano la pagina resta identica
-    # e la pubblicazione automatica non crea un nuovo invio ogni 15 minuti
+    # e la pubblicazione automatica non crea un nuovo invio a ogni giro
     public_results = [{key: value for key, value in result.items() if key != "checked_at"} for result in results]
     # versione di ogni foto = impronta del suo contenuto: se il menu cambia ma il file ha lo stesso
     # nome (es. menu/eclettico.jpg riscaricato più pulito), l'indirizzo cambia e browser e
@@ -2046,6 +2112,11 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
         picture = ROOT / item["image"] if item.get("image") else None
         if picture and picture.is_file():
             item["v"] = file_hash(picture)[:10]
+            # testo letto nella foto (OCR di Windows, già in memoria in dati/ocr.json): lo mostra il
+            # pulsante "Testo" (taccuino) della scheda. Se manca, il telefono prova a leggerlo da sé.
+            text = ocr_lines(picture)
+            if text:
+                item["testo"] = text
     version = hashlib.sha1(json.dumps(public_results, sort_keys=True).encode()).hexdigest()[:10]
     # ora dell'ultimo aggiornamento pubblicato ("aggiornato alle 09:43"): cambia solo quando cambia
     # il contenuto, così un giro senza novità non crea una nuova pubblicazione
@@ -2258,11 +2329,62 @@ AUTO_LOG = DATA / "automatico.log"
 AUTO_LOCK = DATA / "automatico.lock"
 
 
-def in_time_window(settings: dict[str, Any]) -> bool:
-    """True se adesso è dentro la fascia "automatico" di locali.json (predefinita 08:00-14:00)."""
+def schedule_plan(settings: dict[str, Any]) -> dict[str, Any]:
+    """Orari del controllo automatico, da locali.json > impostazioni > automatico:
+    {"dalle": "08:00", "alle": "20:00", "ogni_minuti": 30} (questi sono anche i valori predefiniti)."""
     window = settings.get("automatico", {})
+    every = window.get("ogni_minuti", 30)
+    try:
+        every = max(5, int(every))
+    except (TypeError, ValueError):
+        every = 30
+    return {"dalle": window.get("dalle", "08:00"), "alle": window.get("alle", "20:00"), "ogni_minuti": every}
+
+
+def in_time_window(settings: dict[str, Any]) -> bool:
+    """True se adesso è dentro la fascia "automatico" di locali.json (predefinita 08:00-20:00)."""
+    plan = schedule_plan(settings)
     now = datetime.now().strftime("%H:%M")
-    return window.get("dalle", "08:00") <= now <= window.get("alle", "14:00")
+    return plan["dalle"] <= now <= plan["alle"]
+
+
+def create_schedule(settings: dict[str, Any]) -> bool:
+    """Crea (o ricrea) l'attività "Menu" di Windows con gli orari di locali.json: ogni giorno dalle
+    "dalle" alle "alle" (compresa), ogni "ogni_minuti" minuti a orari fissi (es. 08:00, 08:30 ...
+    20:00). Lancia "pythonw Menu.py --automatico" senza aprire finestre. Gli orari applicati sono
+    ricordati in dati/pianificazione.json. Usata da --pianifica, Pianifica.bat, dal pulsante
+    Pianifica del Monitor e, da sola, quando gli orari in locali.json cambiano."""
+    if sys.platform != "win32":
+        print("Pianificazione: solo su Windows.")
+        return False
+    import subprocess
+    plan = schedule_plan(settings)
+    start = datetime.strptime(plan["dalle"], "%H:%M")
+    end = datetime.strptime(plan["alle"], "%H:%M")
+    span = int((end - start).total_seconds() // 60)
+    if span < 0:
+        span += 24 * 60  # fascia che passa la mezzanotte (es. 22:00-02:00)
+    span += 1  # un minuto in più: anche il giro delle "alle" (es. 20:00) viene eseguito
+    exe = Path(sys.executable).with_name("pythonw.exe")
+    exe = exe if exe.exists() else Path(sys.executable)
+    action = f'"{exe}" "{ROOT / "Menu.py"}" --automatico'
+    done = subprocess.run(["schtasks", "/Create", "/F", "/TN", "Menu", "/SC", "DAILY", "/ST", plan["dalle"],
+                           "/RI", str(plan["ogni_minuti"]), "/DU", f"{span // 60:04d}:{span % 60:02d}",
+                           "/TR", action], capture_output=True, text=True,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if done.returncode != 0:
+        print("Pianificazione NON riuscita: " + (done.stderr or done.stdout).strip())
+        return False
+    save_json(SCHEDULE_STATE, plan)
+    print(f"Pianificazione attiva: ogni {plan['ogni_minuti']} minuti dalle {plan['dalle']} alle {plan['alle']}.")
+    return True
+
+
+def ensure_schedule(settings: dict[str, Any]) -> None:
+    """Se gli orari in locali.json sono diversi da quelli applicati all'attività di Windows
+    (dati/pianificazione.json), la ricrea da sola: basta cambiare locali.json."""
+    if sys.platform == "win32" and read_json(SCHEDULE_STATE, {}) != schedule_plan(settings):
+        create_schedule(settings)
 
 
 def start_auto_log() -> None:
@@ -2505,7 +2627,7 @@ def main() -> None:
     parser.add_argument("--pubblica", action="store_true", help="Dopo l'aggiornamento invia la pagina a GitHub Pages.")
     parser.add_argument("--salta-aggiornati", action="store_true",
                         help="Non ricontrolla online le rosticcerie che hanno già il menu di oggi "
-                             "(pulsante \"Controlla\" della finestra di controllo; il giro ogni 15 minuti fa lo stesso).")
+                             "(pulsante \"Controlla\" della finestra di controllo; il giro automatico fa lo stesso).")
     parser.add_argument("--solo", metavar="ID",
                         help="Segnala una rosticceria (id di locali.json) come probabilmente sbagliata e la "
                              "ricontrolla a fondo: il menu di oggi va in dati/scartati e quella foto non verrà più "
@@ -2518,6 +2640,9 @@ def main() -> None:
                         help="Crea un PDF con la scheda di ogni locale sul sito e la sua fonte come appare adesso "
                              "(pulsante \"Panorama\" del Monitor) e lo apre.")
     parser.add_argument("--ocr", metavar="IMMAGINE", help="Mostra il testo letto in una foto e l'eventuale chiusura.")
+    parser.add_argument("--pianifica", action="store_true",
+                        help="Crea o aggiorna l'attività \"Menu\" di Windows con gli orari di locali.json "
+                             "(impostazioni > automatico: dalle, alle, ogni_minuti).")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
@@ -2552,7 +2677,14 @@ def main() -> None:
             browser.stop()
             AUTO_LOCK.unlink(missing_ok=True)
         return
+    if args.pianifica:
+        create_schedule(config.get("impostazioni", {}))
+        return
     if args.automatico:
+        try:  # orari cambiati in locali.json: l'attività di Windows viene aggiornata da sola
+            ensure_schedule(config.get("impostazioni", {}))
+        except Exception:
+            pass
         if not in_time_window(config.get("impostazioni", {})):
             return  # fuori fascia: nessun accesso, nessun log
         start_auto_log()

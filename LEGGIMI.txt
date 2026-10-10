@@ -10,105 +10,115 @@ Eseguire:
 Il programma legge locali.json, aggiorna i menu disponibili e ricrea sempre
 Menu.html. Per aprire la pagina basta fare doppio clic su Menu.html.
 
-Come si usa Menu.html
----------------------
-Navigazione per Comune (due livelli)
-------------------------------------
-1) Pagina iniziale: titolo "Menu - Giovedì 8 ottobre" e un riquadro per ogni
-   Comune che ha almeno un locale in locali.json (campo "comune"), ordinati
-   per numero di locali e poi in ordine alfabetico, più "Tutti i Comuni".
-   Ogni riquadro (fondo celeste chiaro, come il riquadro "Info") mostra in
-   alto il nome del Comune seguito da "aggiornati/totale", es. "Putignano - 3/8": 3 locali con
-   il menu di oggi (arancione; verde quando sono tutti, es. "Noci - 2/2")
-   su 8 locali del Comune (verde), tutto
-   grande come il nome; la fascia a
-   sinistra è VERDE se tutti i locali di quel Comune hanno pubblicato il menu
-   di oggi, ARANCIONE se almeno uno non l'ha ancora pubblicato (vale anche
-   per "Tutti i Comuni"). Sotto, scritto piccolo (come "20 visite oggi"
-   in Info), l'elenco dei locali del Comune in ordine alfabetico, uno per
-   riga, in nero e preceduto da un punto "•" (in "Tutti i Comuni", che ha
-   il fondo verde chiaro, l'elenco non c'è). Nella versione
-   amministratore qui c'è anche la scheda Info.
-2) Toccando un Comune si vedono solo i suoi locali; il titolo diventa
-   "Noci - Giovedì 8 ottobre" e a destra compare la casetta 🏠 che riporta
-   alla pagina iniziale (la casetta è centrata nel suo riquadro e non compare
-   nella pagina iniziale). Le frecce ‹ › nella finestra di dettaglio girano
-   solo fra i locali del Comune scelto.
-Il Comune scelto resta nell'indirizzo (es. .../Menu/#Noci): il tasto
-"indietro" del telefono torna alla scelta del Comune, e ricaricando la
-pagina (o aprendo un preferito con #Noci) si resta su quel Comune.
-Un nuovo Comune compare da solo appena si aggiunge un locale con quel
-"comune" in locali.json.
+Come si usa Menu.html (design di ottobre 2026)
+----------------------------------------------
+Copia della versione precedente (programma, pagine, manuale) in
+backup\2026-10-10-2314\ : per tornare indietro basta rimettere al suo posto
+backup\2026-10-10-2314\Menu.py e lanciare Avvia.bat. La cartella backup resta
+solo sul PC (è in .gitignore, non va su GitHub).
 
-La pagina mostra una scheda compatta per ogni rosticceria con il nome e la
-data dell'ultimo menu disponibile, più un'etichetta di stato:
-- Oggi (verde): il menu è di oggi
-- Non di oggi (giallo): l'ultimo menu è di un giorno precedente
-- Non disponibile (rosso): nessun menu trovato
-Il titolo della pagina è "titolo" in locali.json: {data} viene sostituito
-con la data di oggi, es. "Menu - {data}" -> "Menu - Domenica 4 ottobre".
-La pagina mostra soltanto il titolo e le schede (niente sottotitolo né note).
-Nel titolo "Menu" e il numero del giorno sono grandi, il resto (" - Mercoledì",
-"ottobre") a metà dimensione. La scheda Info ha la stessa disposizione delle
-altre: il numero di clic di oggi al posto del logo e "Info" al posto del nome.
-Un clic sul titolo ("Menu - Mercoledì 7 ottobre") ricarica la pagina dal
-server saltando la cache, quindi mostra sempre l'ultima versione pubblicata.
-Ordine delle schede (uguale nella finestra di controllo): prima le
-rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o riposo
-pubblicato oggi), poi tutte le altre (menu non di oggi, nessun menu); dentro ciascun
-gruppo in ordine alfabetico (senza badare ad accenti e maiuscole). La
-pagina rifà l'ordinamento da sola quando cambia il giorno. Le frecce della
-finestra di dettaglio seguono lo stesso ordine.
-La tabella Info (?v=57) elenca le rosticcerie in ordine alfabetico.
-Fascia sul lato sinistro della scheda: verde se il menu è di oggi,
-arancione in tutti gli altri casi. Anche lo sfondo della scheda lo dice:
-verde chiaro = menu di oggi pubblicato, giallo chiaro = in attesa del menu
-di oggi. Nelle schede non compaiono più né le etichette "Oggi" / "Non di
-oggi" né la data (basta quella del titolo); la data resta nella finestra di
-dettaglio, accanto al nome.
-In alto a destra di ogni scheda c'è il Comune della rosticceria (scritta
-piccola, nera, non in grassetto): campo "comune" di locali.json, es.
-    "comune": "Castellana",
-Se "comune" manca viene ricavato dall'indirizzo (la parola dopo il CAP, o
-quella dopo " - ", es. "Via Tripoli 28 - Putignano"). Quando si aggiunge un
-locale con --aggiungi il programma chiede anche il Comune.
-Cliccando su una scheda si apre la finestra con il nome del locale, sotto
-il suo indirizzo (carattere più piccolo, non in grassetto) nella forma
-"Via e numero - Comune" (es. "Via Mazzini 28 - Castellana"), l'immagine del
-menu, il telefono, Google Maps e la fonte.
-La testata della finestra (nome, indirizzo e ✕) è grigio scuro, come quella
-della tabella Info.
-Il nome in alto è seguito da giorno e mese del menu, con il mese in lettere
-e il numero del giorno grande come il nome, il mese più piccolo
-(es. "Fantasia - 8 ottobre");
-in basso, centrati, i pulsanti telefono, Google Maps e Fonte; sopra di loro
-l'eventuale nota (es. "Chiuso fino al 07/10").
-Le schede della pagina mostrano solo la data, senza "Ultimo menu:".
-La finestra ha una cornice singola di 5 mm: verde (come la fascia delle
-schede) se la rosticceria ha pubblicato il menu di oggi, arancione se no.
-Nella finestra si passa alla rosticceria precedente o successiva, in modo
-circolare (dopo l'ultima torna la prima), con le frecce ‹ › ai lati (cerchio
-con fondo bianco trasparente al 90%), con i
-tasti ← → della tastiera o, sul telefono, facendo scorrere il dito a
-sinistra (successiva) o a destra (precedente). Ogni rosticceria vista così
-conta come un click nel registro.
-Passando da una scheda all'altra la foto nuova viene caricata prima di
-cambiare la finestra. La finestra ha sempre la stessa dimensione (quasi
-tutto lo schermo), qualunque sia la foto o il menu scritto; nome e indirizzo
-stanno su una riga sola (se troppo lunghi finiscono con "..."): così niente
-salti né sfarfallio, solo una breve dissolvenza.
+Colori: la pagina segue l'impostazione del telefono/PC. Tema chiaro = "carta
+da banco" (grigio-verde chiaro), tema scuro = "lavagna da rosticceria"
+(verde quasi nero). Tutti i colori sono all'inizio di PAGE_TEMPLATE in Menu.py
+(righe --bg, --ink, --accent ...): due elenchi, uno per tema.
+Caratteri: Bricolage Grotesque (titoli) e Atkinson Hyperlegible (testo), da
+Google Fonts; senza internet si usano quelli di sistema.
+
+Testata (resta ferma in alto scorrendo l'elenco)
+- A sinistra il logo del sito: toccandolo parte la musica (Menu.mp3, se c'è).
+  Il riquadro della musica compare in basso: ▶/❚❚, il tempo (toccandolo
+  compare la barra per spostarsi nel brano), ✕ per chiudere; si può
+  trascinare dove si vuole.
+- Al centro la data ("Sabato 10 ottobre") e sotto il riepilogo
+  "12 su 13 menu di oggi · aggiornato alle 21:48" (l'ora è quella
+  dell'ultima pubblicazione con novità; il giorno dopo l'ora sparisce finché
+  il PC non pubblica di nuovo). Toccando la data, o il pulsante ↻ a destra,
+  la pagina si ricarica dal server saltando la cache.
+- Sotto, una riga di pulsanti per Comune: "Tutti 12/13", "Putignano 7/8",
+  "Noci 2/2"... (menu di oggi / locali del Comune; il numero è verde quando
+  tutti hanno il menu di oggi). Se non stanno tutti si scorrono col dito.
+  Ordine: "Tutti", poi i Comuni con più locali, a parità in ordine alfabetico.
+  Un nuovo Comune compare da solo quando si aggiunge un locale con quel
+  "comune" in locali.json.
+  Il Comune scelto resta nell'indirizzo (es. .../Menu/#Noci): il tasto
+  "indietro" del telefono torna al Comune di prima, e ricaricando la pagina
+  (o aprendo un preferito con #Noci) si resta su quel Comune. Senza Comune
+  nell'indirizzo (o con #Tutti) si vedono tutti i locali.
+
+Elenco dei locali, in due gruppi
+- "MENU DI OGGI · 12": locali con il menu di oggi (vale anche un avviso di
+  chiusura o di riposo pubblicato oggi).
+- "NON ANCORA AGGIORNATI · 1": tutti gli altri, con il logo sbiadito e a
+  destra un'etichetta arancione con la data dell'ultimo menu: "Domani",
+  "Ieri", "8 ott"; "Non disponibile" se non c'è nessun menu, "Errore" se il
+  controllo non è riuscito.
+Dentro ogni gruppo in ordine alfabetico (senza badare ad accenti e
+maiuscole). Ogni riga: logo, nome, Comune e, se c'è, la nota in arancione
+(es. "Chiuso fino al 07/10"). Su PC le righe si dispongono su più colonne.
+Data ed etichette sono ricalcolate dal telefono: se il PC non ha aggiornato
+la pagina, il giorno dopo i menu passano da soli in "Non ancora aggiornati".
+Il campo "comune" di locali.json (es. "comune": "Castellana") dà il Comune;
+se manca viene ricavato dall'indirizzo (la parola dopo il CAP, o quella dopo
+" - "). Con --aggiungi il programma chiede anche il Comune.
+
+Scheda del menu (tocco su un locale)
+- Occupa tutto lo schermo sul telefono (su PC è una finestra grande al
+  centro). In alto: logo, nome, timbro verde "Oggi" (arancione "Domani ·
+  domenica 11 ottobre", "Ieri · ...", ecc.) e l'indirizzo "Via e numero -
+  Comune"; ✕ per chiudere (anche ESC o clic fuori su PC).
+- Sotto la testata, se c'è, la nota del locale su fondo arancione scuro.
+- Al centro il menu:
+  * in foto: si vede intera; un tocco la ingrandisce (poi si scorre col dito),
+    un altro tocco la riporta intera;
+  * scritto (Pane & Co, Bollenti piatti...): sezioni in arancione, piatti a
+    sinistra e prezzi allineati a destra. Il testo viene ripulito da solo:
+    tolti i pallini "●", parole tutte maiuscole riscritte normali, righe come
+    "PRIMI PIATTI" trasformate in titoli, "MENÙ DI SABATO" tolto, prezzi in
+    fondo al nome ("LASAGNA AL FORNO 5,0") spostati a destra come "€ 5,00".
+  * nessun menu: un messaggio al posto della foto.
+- In basso una barra fissa: ‹ precedente, "Chiama" (il numero del locale),
+  "Mappa" (Google Maps), "Testo" (vedi sotto), "Facebook"/"Instagram"/"Sito"
+  (la fonte del menu),
+  › successiva, e sotto la posizione ("3 di 13").
+Pulsante "Testo" (icona del taccuino, nella barra in basso della scheda):
+apre una finestra con il menu trasformato in testo, da leggere comodamente o
+copiare (pulsante "Copia testo", poi incollarlo in WhatsApp, Note...).
+- Menu scritto (Pane & Co, Bollenti piatti...): il suo testo, già ripulito.
+- Menu in foto: il testo che il PC ha letto nella foto con l'OCR di Windows
+  (ocr.ps1, lo stesso usato per gli avvisi di chiusura). Ogni foto viene
+  letta una volta sola e ricordata in dati/ocr.json; il testo entra nella
+  pagina a ogni pubblicazione. Le righe vengono sistemate come i menu
+  scritti: "primi", "Secondi", "PRIMI PIATTI" diventano titoli e i prezzi
+  in fondo alla riga vanno a destra ("8,00€" -> "€ 8,00").
+- Se il PC non è riuscito a leggere la foto, ci prova il telefono stesso
+  (Tesseract.js, scaricato da internet solo la prima volta che serve, circa
+  3 MB, poi resta in memoria): compare "Sto leggendo la foto del menu…" con
+  una barra di avanzamento, qualche secondo.
+In fondo alla finestra è scritto da dove viene il testo; quello letto da una
+foto può contenere errori (scritte decorative, foto storte o sfocate).
+Per provare l'OCR di Windows su una foto: python Menu.py --ocr menu\fantasia.jpg
+Si passa al locale precedente o successivo in modo circolare con ‹ ›, con i
+tasti ← → o facendo scorrere il dito sul menu (a sinistra = successivo; non
+mentre la foto è ingrandita). L'ordine è quello dell'elenco e del Comune
+scelto. Le foto dei locali vicini si scaricano in anticipo, così compaiono
+subito. Ogni locale aperto conta come un click nel registro.
 Google Maps cerca "nome del locale, indirizzo" (il nome senza un'eventuale
-parte tra parentesi), così trova la scheda del locale e non solo la
-via. Gli indirizzi in locali.json vanno scritti completi di CAP e provincia,
-es. "Via Noci 48-50, 70017 Putignano (BA)": senza CAP Google può confondere
-"Via Noci" con il paese di Noci. Nella scheda viene mostrato solo "via e numero - Comune":
-l'indirizzo completo resta in locali.json e serve solo a Google Maps. Si chiude con ✕, con ESC o cliccando fuori.
+parte tra parentesi). Gli indirizzi in locali.json vanno scritti completi di
+CAP e provincia, es. "Via Noci 48-50, 70017 Putignano (BA)": senza CAP Google
+può confondere "Via Noci" con il paese di Noci. Nella scheda si vede solo
+"via e numero - Comune".
 Cambio del nome di un locale: si modifica "nome" in locali.json e si
 aggiunge il nome vecchio in "nomi_precedenti", es.
     "nome": "Santoro Gastronomia",
     "nomi_precedenti": ["Santoro (Castellana)"],
 così i click registrati col nome vecchio restano sommati al locale nei
 contatori e nella tabella Info.
+
+Per chi modifica il programma: la pagina è il testo PAGE_TEMPLATE in Menu.py
+(subito prima di generate_html). Le parti @@NOME@@ vengono riempite da
+generate_html (dati, versioni di icone e logo, musica, data). Il pulsante
+"Panorama" del Monitor usa openCard(i), #detail .sheet e #name: se si cambia
+la pagina questi tre nomi vanno mantenuti.
 
 Versione per cellulare (GitHub Pages)
 -------------------------------------
@@ -151,23 +161,26 @@ come una app con la scritta "Menu".
   scarica quelle modifiche e poi invia le proprie; in caso di conflitto
   prevale la versione del PC.
 - Riaprendo l'app dopo più di 5 minuti la pagina si ricarica da sola.
-- Data nel titolo ed etichette "Oggi"/"Non di oggi" sono ricalcolate dal
+- Data, gruppi ed etichette ("Oggi", "Ieri", "8 ott"...) sono ricalcolati dal
   telefono all'apertura: se il PC non ha aggiornato la pagina, il giorno
-  dopo i menu compaiono correttamente come "Non di oggi" (fascia arancione).
+  dopo i menu passano da soli in "Non ancora aggiornati".
 
-Aggiornamento automatico (ogni 15 minuti)
------------------------------------------
-- Attivazione, una volta sola: pulsante "Pianifica" nella finestra di
-  controllo (oppure doppio clic su Pianifica.bat). Crea in Utilità di
-  pianificazione di Windows l'attività "Menu", che ogni 15 minuti, a orari
-  fissi a partire dalle 07:00 (07:00, 07:15, 07:30, 07:45, 08:00 ...),
-  esegue senza aprire finestre:
+Aggiornamento automatico (ogni 30 minuti, dalle 08:00 alle 20:00)
+------------------------------------------------------------------
+- Gli orari si decidono in locali.json, sezione impostazioni:
+      "automatico": {"dalle": "08:00", "alle": "20:00", "ogni_minuti": 30}
+  cioè un giro alle 08:00, 08:30, 09:00 ... 19:30, 20:00 (25 giri al giorno).
+  Per cambiarli basta modificare questi tre valori e salvare: al primo giro
+  automatico Menu.py si accorge del cambio e aggiorna da solo l'attività di
+  Windows (gli orari applicati sono scritti in dati/pianificazione.json).
+  Per applicarli subito: pulsante "Pianifica" del Monitor, oppure doppio clic
+  su Pianifica.bat, oppure
+      python Menu.py --pianifica
+- L'attività di Windows si chiama "Menu": ogni giorno dalle "dalle" alle
+  "alle", ogni "ogni_minuti" minuti, esegue senza aprire finestre:
       pythonw Menu.py --automatico
-- Fascia oraria: in locali.json, sezione impostazioni:
-      "automatico": {"dalle": "07:00", "alle": "15:00"}
-  (per 24 ore su 24: "dalle": "00:00", "alle": "23:59")
-  Fuori fascia il programma si chiude subito senza fare nulla. Per cambiare
-  orario basta modificare questi valori (non serve rilanciare Pianifica.bat).
+  Fuori fascia (es. un giro lanciato a mano dal Pianificatore alle 22:00) il
+  programma si chiude subito senza fare nulla.
 - In ogni giro: aggiorna i menu, ricrea la pagina e la pubblica su GitHub.
   I locali che hanno già il menu di oggi non vengono ricontrollati online
   (meno accessi a Facebook/Instagram). Se nessun menu è cambiato non viene
@@ -206,7 +219,7 @@ viene ricordata alla chiusura, in dati/monitor.json). Mostra:
   "nessuno";
 - l'esito dell'ultimo giro (pubblicato, nessuna novità, errore).
 Pulsanti:
-"Controlla": controllo immediato come quello automatico ogni 15 minuti: le
+"Controlla": controllo immediato come quello automatico: le
 rosticcerie che hanno già il menu di oggi non vengono ricontrollate online
 (Menu.py --pubblica --salta-aggiornati).
 "Ricontrolla": ricontrolla online tutte le rosticcerie, anche quelle già
@@ -232,9 +245,9 @@ non c'è più, cancella il file e torna al conto alla rovescia (lo stesso fa
 Menu.py al giro successivo).
 "Registro" (apre
 dati/automatico.log), "Sito" (apre la pagina su GitHub Pages),
-"Pianifica"/"Disabilita": se l'attività è attiva la disabilita; se manca, è
-disabilitata o ha orari non allineati ai quarti d'ora, la (ri)crea con gli
-orari fissi dalle 07:00. L'ultimo giro con novità è scritto in verde.
+"Pianifica"/"Disabilita": se l'attività è attiva la disabilita (chiede
+conferma); se manca, è disabilitata o ha orari diversi da quelli di
+locali.json, la (ri)crea con quegli orari (Menu.py --pianifica). L'ultimo giro con novità è scritto in verde.
 Si aggiorna da sola ogni secondo. Se Monitor.py viene modificato, la
 finestra si chiude e si riapre da sola con la versione nuova.
 Pulsanti su due righe (finestra stretta).
@@ -277,14 +290,14 @@ modalità amministratore): l'indirizzo admin.html resta anche nell'app
 aggiunta alla Home (iPhone a volte perde la parte "?v=57"), che quindi si
 apre sempre come amministratore (manifest-admin.webmanifest). Menu.py scrive
 index.html, Menu.html e admin.html. Senza ?v=57 si crea la normale app
-"Menu". Le frecce ‹ › stanno sopra la cornice della scheda anche su iPhone
-(la scheda scorre al suo interno, le frecce no).
-Contatori (solo con ?v=57 nell'indirizzo): in basso a destra di ogni scheda
-il numero di click di oggi su quella rosticceria; in fondo una scheda "Info"
-(sfondo grigio, cornice gialla) con il totale dei click di oggi.
+"Menu".
+Contatori (solo con ?v=57 nell'indirizzo): accanto a ogni locale un pallino
+scuro con il numero di click di oggi; in fondo all'elenco la riga "Info"
+(cornice tratteggiata arancione) con il totale dei click di oggi e le visite.
 Toccando "Info" si apre la tabella Rosticceria | Oggi | Mese | Anno | Tutto
-con la riga "Totale" in fondo (Esc o ✕ per chiudere): finestra stretta, righe
-compatte, cornice azzurra di 5 mm, testata (titolo e ✕ per uscire) grigio scuro. Nella pagina si scrive "clic".
+con la riga "Totale" in fondo (Esc o ✕ per chiudere); i nomi lunghi vanno a
+capo così la tabella sta sempre nello schermo del telefono. Nella pagina si
+scrive "clic".
 All'apertura le righe sono in ordine alfabetico. Un clic su un titolo giallo
 (Rosticceria, Oggi, Mese, Anno, Tutto) ordina in modo crescente per quella
 colonna; un altro clic sullo stesso titolo inverte (decrescente). Una
