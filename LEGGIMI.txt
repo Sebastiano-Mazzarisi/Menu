@@ -711,7 +711,11 @@ dall'inizio). Dopo una pausa, Riproduci riparte da 2 secondi prima.
 La finestra resta nella prima videata: scorrendo la pagina va via insieme
 al titolo e non copre i riquadri. Si può spostare trascinandola dal centro
 (dove non ci sono pulsanti). Al centro, scritto piccolo, il tempo trascorso
-e la durata totale, es. "1:05 / 3:42".
+e la durata totale, es. "1:05 / 3:42": toccandolo la finestra si allarga e
+compare sotto una barra con la pallina da trascinare per andare avanti o
+indietro; toccandolo di nuovo la finestra torna piccola.
+La finestra si vede solo nella pagina iniziale (quella dei Comuni): entrando
+in un Comune sparisce (la musica continua) e torna quando si torna indietro.
 Per cambiare musica basta sostituire Menu.mp3 e premere "Pubblica" nel
 Monitor; senza Menu.mp3 il logo non è cliccabile.
 Per cambiare logo basta sostituire loghi/Logo-Menu.jpg (immagine quadrata);
