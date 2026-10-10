@@ -1,0 +1,91 @@
+{
+  "data": "2026-10-10",
+  "testo": "MENÙ DI SABATO\nPRIMI PIATTI\n●TIMBALLINO CON CICORIA, PATATE, SPECK CROCCANTE E MOZZARELLA 5,5\n●LASAGNA AL FORNO 5,0\n●SPAGHETTI E FAGIOLINI CON CACIORICOTTA 5,5\n●CAVATELLI AI FRUTTI DI MARE 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●ROSE DI CAPOCOLLO CON CARNE MACINATA E GALBANINO CON SPINACI\n●TRAMEZZINO DI CARNE CON PROSCIUTTO E GALBANINO AI FUNGHI MISTI CON PORCINI\n●INVOLTINI DI SOVRAVOSCIA DI POLLO PANCETTATI AL ROSMARINO E ORIGANO ARROSTO\n●RUSTICO MELANZANA GRIGLIATA, COPPA E GALBANINO\n●MELANZANE RIPIENE\n●SFORMATO DI ZUCCHINE AL SALMONE CREMOSO\n●POLPETTE DI PANE\n●OLIVE FRITTE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI SABATO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TIMBALLINO CON CICORIA, PATATE, SPECK CROCCANTE E MOZZARELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPAGHETTI E FAGIOLINI CON CACIORICOTTA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CAVATELLI AI FRUTTI DI MARE 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ROSE DI CAPOCOLLO CON CARNE MACINATA E GALBANINO CON SPINACI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRAMEZZINO DI CARNE CON PROSCIUTTO E GALBANINO AI FUNGHI MISTI CON PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INVOLTINI DI SOVRAVOSCIA DI POLLO PANCETTATI AL ROSMARINO E ORIGANO ARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RUSTICO MELANZANA GRIGLIATA, COPPA E GALBANINO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MELANZANE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SFORMATO DI ZUCCHINE AL SALMONE CREMOSO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI PANE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●OLIVE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
