@@ -83,6 +83,18 @@ Scheda del menu (tocco su un locale)
 Pulsante "Testo" (icona del taccuino, nella barra in basso della scheda):
 apre una finestra con il menu trasformato in testo, da leggere comodamente o
 copiare (pulsante "Copia testo", poi incollarlo in WhatsApp, Note...).
+La finestra del testo resta SOPRA la foto senza coprirla tutta, così si
+confrontano testo e originale:
+- si sposta trascinando la testata (le tre lineette a sinistra del nome);
+- si ridimensiona trascinando l'angolo in basso a destra (le righine);
+- la foto sotto si può ancora toccare per ingrandirla;
+- passando ad un altro locale (‹ ›, frecce della tastiera, dito sulla foto)
+  il testo diventa quello del nuovo locale;
+- si chiude con ✕, con ESC (il primo ESC chiude il testo, il secondo la
+  scheda) o toccando di nuovo "Testo".
+La prima volta compare sul telefono in basso, sopra la barra dei pulsanti,
+e su PC a destra; poi posizione e misure restano quelle scelte (ricordate
+su ogni dispositivo).
 - Menu scritto (Pane & Co, Bollenti piatti...): il suo testo, già ripulito.
 - Menu in foto: il testo che il PC ha letto nella foto con l'OCR di Windows
   (ocr.ps1, lo stesso usato per gli avvisi di chiusura). Ogni foto viene

@@ -1787,23 +1787,24 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 
 /* ---------- finestra "Testo" (taccuino): il menu trasformato in testo ---------- */
 .act{background:none;border:0;cursor:pointer;font:inherit;font-size:12px;font-weight:700}
-#textdlg{width:min(640px,calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(86dvh,900px);padding:0;border:0;border-radius:18px;background:var(--surface);color:var(--ink);box-shadow:0 30px 80px #000a;overflow:hidden}
-#textdlg::backdrop{background:#000b}
-.tsheet{height:100%;display:flex;flex-direction:column;outline:none}
-.th{flex:none;display:grid;grid-template-columns:1fr 44px;gap:10px;align-items:center;padding:14px 14px 10px 18px;border-bottom:1px solid var(--line)}
-#tname{margin:0;font-family:var(--f-display);font-weight:800;font-size:20px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#textdlg{position:fixed;z-index:20;left:8px;top:40%;width:min(440px,calc(100vw - 16px));height:45dvh;display:flex;flex-direction:column;border-radius:16px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 18px 50px #000c;overflow:hidden;min-width:220px;min-height:160px}
+.th{flex:none;display:grid;grid-template-columns:auto 1fr 40px;gap:8px;align-items:center;padding:8px 8px 8px 10px;border-bottom:1px solid var(--line);background:var(--surface2);cursor:move;touch-action:none;user-select:none;-webkit-user-select:none}
+.th .drag{display:grid;gap:3px;padding:4px 2px}
+.th .drag i{display:block;width:16px;height:2px;border-radius:2px;background:var(--muted)}
+#tname{margin:0;font-family:var(--f-display);font-weight:800;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #tsub{margin:3px 0 0;font-size:13px;color:var(--muted)}
-#textdlg .x{width:44px;height:44px;border-radius:50%;background:var(--surface2);display:grid;place-items:center}
+#textdlg .x{width:40px;height:40px;border-radius:50%;background:var(--surface2);display:grid;place-items:center}
 #textdlg .x svg{width:20px;height:20px}
-#tbody{flex:1;min-height:0;overflow:auto;padding:6px 18px 18px;-webkit-overflow-scrolling:touch}
+#tbody{flex:1;min-height:0;overflow:auto;padding:4px 14px 14px;-webkit-overflow-scrolling:touch}
 #tbody h4{margin:18px 0 4px;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
-#tbody .tl{display:grid;grid-template-columns:1fr auto;column-gap:14px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:16px}
+#tbody .tl{display:grid;grid-template-columns:1fr auto;column-gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:15px}
 #tbody .tl b{font-variant-numeric:tabular-nums;white-space:nowrap}
 #tbody .wait{padding:50px 10px;text-align:center;color:var(--muted)}
 #tbody progress{display:block;width:70%;margin:14px auto 0;accent-color:var(--accent)}
-.tbar{flex:none;display:flex;align-items:center;gap:12px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)) 18px;border-top:1px solid var(--line)}
+.tbar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 30px 8px 14px;border-top:1px solid var(--line)}
+.tgrip{position:absolute;right:0;bottom:0;width:28px;height:28px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 50%,var(--muted) 50%,var(--muted) 58%,transparent 58%,transparent 70%,var(--muted) 70%,var(--muted) 78%,transparent 78%)}
 #tnote{flex:1;font-size:12px;color:var(--muted)}
-#tcopy{flex:none;padding:10px 14px;border-radius:12px;background:var(--ink);color:var(--bg);font-weight:700;font-size:14px}
+#tcopy{flex:none;padding:8px 12px;border-radius:12px;background:var(--ink);color:var(--bg);font-weight:700;font-size:14px}
 
 /* ---------- statistiche (amministratore) ---------- */
 #stats{width:min(480px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:90dvh;padding:0;border:0;border-radius:18px;background:var(--sheet);color:var(--sheet-ink);box-shadow:0 30px 80px #000a}
@@ -1865,13 +1866,15 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
     </div>
     <button class="nav" id="next" aria-label="Rosticceria successiva"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
   </div>
-</div></dialog>
-<dialog id="textdlg" aria-label="Testo del menu"><div class="tsheet" tabindex="-1" autofocus>
-  <div class="th"><div class="sh-title"><h3 id="tname"></h3><p id="tsub"></p></div>
+</div>
+<div id="textdlg" role="dialog" aria-label="Testo del menu" hidden>
+  <div class="th" title="Trascina per spostare"><span class="drag" aria-hidden="true"><i></i><i></i><i></i></span><div class="sh-title"><h3 id="tname"></h3><p id="tsub"></p></div>
     <button type="button" class="x" id="tclose" aria-label="Chiudi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div id="tbody"></div>
   <div class="tbar"><span id="tnote"></span><button type="button" id="tcopy">Copia testo</button></div>
+  <span class="tgrip" title="Trascina per ridimensionare" aria-hidden="true"></span>
 </div></dialog>
+
 <script>const DATA=@@PAYLOAD@@;
 /* Registro dei click sul foglio Google "Menu" (Apps Script in Registro_click.gs).
    ?v=57 nell'indirizzo = amministratore: quei click non vengono registrati. Senza ?v=57 si registra
@@ -1981,14 +1984,15 @@ function openCard(i,dir){cur=i;const s=DATA.shops[i],r=DATA.results[i];logClick(
   if(!dlg.open)dlg.showModal();
   if(dir&&stage.animate)stage.animate([{opacity:.3,transform:'translateX('+(dir*24)+'px)'},{opacity:1,transform:'none'}],{duration:200,easing:'ease-out'});
   /* le foto vicine si scaricano in anticipo: passando alla successiva compaiono subito */
-  [-1,1].forEach(d=>{if(k<0)return;const j=ORDER[(k+d+ORDER.length)%ORDER.length],n=DATA.results[j];if(n&&n.image){const p=new Image();p.src=imgUrl(n)}})}
+  [-1,1].forEach(d=>{if(k<0)return;const j=ORDER[(k+d+ORDER.length)%ORDER.length],n=DATA.results[j];if(n&&n.image){const p=new Image();p.src=imgUrl(n)}});
+  if(tdlg&&!tdlg.hidden)openText()}
 /* scheda precedente / successiva in modo circolare: frecce in basso, tasti ← → e, sul telefono,
    scorrimento del dito a destra o a sinistra (non con la foto ingrandita) */
 function step(d){const n=ORDER.length;if(!n)return;const k=ORDER.indexOf(cur);openCard(ORDER[((k<0?0:k)+d+n)%n],d)}
 document.getElementById('prev').onclick=()=>step(-1);document.getElementById('next').onclick=()=>step(1);
 document.getElementById('close').onclick=()=>dlg.close();
 dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
-document.addEventListener('keydown',e=>{if(!dlg.open||tdlg.open)return;if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}else if(e.key==='ArrowRight'){e.preventDefault();step(1)}});
+document.addEventListener('keydown',e=>{if(!dlg.open)return;if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}else if(e.key==='ArrowRight'){e.preventDefault();step(1)}});
 let tx=null,ty=0;stage.addEventListener('touchstart',e=>{if(e.touches.length!==1||stage.classList.contains('zoom')){tx=null;return}tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
 stage.addEventListener('touchmove',e=>{if(e.touches.length!==1)tx=null},{passive:true});
 stage.addEventListener('touchend',e=>{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
@@ -1998,7 +2002,7 @@ stage.addEventListener('touchend',e=>{if(tx===null)return;const t=e.changedTouch
    Menu scritto (Pane & Co...) = il suo testo; menu in foto = testo letto dal PC con l'OCR di
    Windows (campo "testo" dei dati); se il PC non l'ha letto, il telefono prova da sé con
    Tesseract.js (scaricato solo la prima volta che serve, ~3 MB). La lettura può avere errori. ---------- */
-const tdlg=document.getElementById('textdlg'),tbody=document.getElementById('tbody');let TXT='',tjob=0;
+var tdlg=document.getElementById('textdlg'),tbody=document.getElementById('tbody');let TXT='',tjob=0;
 function linesToSections(text){return cleanSections([{titolo:'',piatti:text.split(/\n+/).map(l=>l.trim()).filter(l=>l&&/[\p{L}\d]/u.test(l)).map(l=>({nome:l}))}])}
 function showText(secs,note){tbody.innerHTML='';const out=[];
   secs.forEach(sec=>{if(sec.titolo){const h=document.createElement('h4');h.textContent=sec.titolo;tbody.append(h);out.push('','== '+sec.titolo+' ==')}
@@ -2006,9 +2010,9 @@ function showText(secs,note){tbody.innerHTML='';const out=[];
   if(!secs.length){tbody.innerHTML='<div class="wait">Nella foto non ho trovato testo leggibile.</div>'}
   TXT=out.join('\n').trim();document.getElementById('tnote').textContent=note;document.getElementById('tcopy').hidden=!TXT}
 let tessP=null;function tesseract(){if(!tessP)tessP=new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';sc.onload=()=>ok(window.Tesseract);sc.onerror=()=>{tessP=null;ko(new Error('rete'))};document.head.append(sc)});return tessP}
-function openText(){const i=cur,s=DATA.shops[i],r=DATA.results[i],job=++tjob;
+function openText(){const i=cur,s=DATA.shops[i],r=DATA.results[i],job=++tjob;tdlg.dataset.i=i;
   document.getElementById('tname').textContent=s.nome;document.getElementById('tsub').textContent=r.menu_date?'Menu di '+longDate(r.menu_date):'';
-  TXT='';document.getElementById('tcopy').hidden=true;tdlg.showModal();tdlg.querySelector('.tsheet').scrollTop=0;
+  TXT='';document.getElementById('tcopy').hidden=true;if(tdlg.hidden){tdlg.hidden=false;tpPlace()}tbody.scrollTop=0;
   if(!r.image&&(r.sections||[]).length){showText(cleanSections(r.sections),'Testo pubblicato dal locale.');return}
   if(!r.image){showText([],'');tbody.innerHTML='<div class="wait">Per questo locale non c\'è ancora un menu da leggere.</div>';return}
   if(r.testo){showText(linesToSections(r.testo),'Testo letto automaticamente dalla foto: può contenere errori.');return}
@@ -2017,9 +2021,32 @@ function openText(){const i=cur,s=DATA.shops[i],r=DATA.results[i],job=++tjob;
   tesseract().then(T=>T.recognize(new URL(imgUrl(r),location.href).href,'ita',{logger:m=>{if(job===tjob&&bar&&m.status==='recognizing text')bar.value=m.progress}}))
     .then(res=>{if(job!==tjob)return;const t=(res&&res.data&&res.data.text)||'';r.testo=t;showText(linesToSections(t),'Testo letto automaticamente dalla foto: può contenere errori.')})
     .catch(()=>{if(job!==tjob)return;tbody.innerHTML='<div class="wait">Non sono riuscito a leggere la foto (serve la connessione a internet). Riprova più tardi.</div>';document.getElementById('tnote').textContent=''})}
-document.getElementById('notes').onclick=openText;
-document.getElementById('tclose').onclick=()=>tdlg.close();
-tdlg.addEventListener('close',()=>{tjob++});tdlg.addEventListener('click',e=>{if(e.target===tdlg)tdlg.close()});
+/* la finestra del testo resta sopra la foto e si può SPOSTARE (trascinando la testata) e
+   RIDIMENSIONARE (angolo in basso a destra), per confrontare testo e originale; la foto sotto si
+   può ancora ingrandire. Cambiando locale (‹ › o dito) il testo segue il nuovo locale.
+   Posizione e misure sono ricordate su questo dispositivo. */
+const TP={};try{Object.assign(TP,JSON.parse(localStorage.getItem('menuTesto')||'{}'))}catch(e){}
+function tpPlace(){const W=document.documentElement.clientWidth,H=innerHeight;
+  const w=Math.max(220,Math.min(TP.w||Math.min(440,W-16),W-8)),h=Math.max(160,Math.min(TP.h||Math.round(H*.45),H-8));
+  const wide=W>=900;/* prima volta: su PC a destra della scheda, sul telefono in basso sopra la barra */
+  const x=Math.max(0,Math.min(TP.x!=null?TP.x:wide?W-w-16:Math.round((W-w)/2),W-w)),y=Math.max(0,Math.min(TP.y!=null?TP.y:wide?Math.round((H-h)/2):H-h-96,H-h));
+  Object.assign(tdlg.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'})}
+function tpSave(){const r=tdlg.getBoundingClientRect();Object.assign(TP,{x:Math.round(r.left),y:Math.round(r.top),w:Math.round(r.width),h:Math.round(r.height)});try{localStorage.setItem('menuTesto',JSON.stringify(TP))}catch(e){}}
+function tpDrag(handle,move){let sx=0,sy=0,r0=null;
+  handle.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;sx=e.clientX;sy=e.clientY;r0=tdlg.getBoundingClientRect();handle.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation()});
+  handle.addEventListener('pointermove',e=>{if(!r0)return;move(r0,e.clientX-sx,e.clientY-sy)});
+  ['pointerup','pointercancel'].forEach(t=>handle.addEventListener(t,()=>{if(!r0)return;r0=null;tpSave()}))}
+tpDrag(tdlg.querySelector('.th'),(r,dx,dy)=>{const W=document.documentElement.clientWidth,H=innerHeight;
+  tdlg.style.left=Math.max(0,Math.min(r.left+dx,W-r.width))+'px';tdlg.style.top=Math.max(0,Math.min(r.top+dy,H-r.height))+'px'});
+tpDrag(tdlg.querySelector('.tgrip'),(r,dx,dy)=>{const W=document.documentElement.clientWidth,H=innerHeight;
+  tdlg.style.width=Math.max(220,Math.min(r.width+dx,W-r.left))+'px';tdlg.style.height=Math.max(160,Math.min(r.height+dy,H-r.top))+'px'});
+['touchstart','touchmove','touchend'].forEach(t=>tdlg.addEventListener(t,e=>e.stopPropagation(),{passive:true}));
+window.addEventListener('resize',()=>{if(!tdlg.hidden)tpPlace()});
+function closeText(){tdlg.hidden=true;tjob++}
+document.getElementById('notes').onclick=()=>{if(!tdlg.hidden&&tdlg.dataset.i==String(cur))closeText();else openText()};
+document.getElementById('tclose').onclick=closeText;
+dlg.addEventListener('close',closeText);
+dlg.addEventListener('cancel',e=>{if(!tdlg.hidden){e.preventDefault();closeText()}});  /* ESC: prima chiude il testo */
 document.getElementById('tcopy').onclick=()=>{const b=document.getElementById('tcopy'),done=()=>{b.textContent='Copiato';setTimeout(()=>{b.textContent='Copia testo'},1500)};
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(TXT).then(done).catch(()=>selectAll());else selectAll();
   function selectAll(){const rg=document.createRange();rg.selectNodeContents(tbody);const sl=getSelection();sl.removeAllRanges();sl.addRange(rg)}};
