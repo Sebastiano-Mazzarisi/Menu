@@ -33,7 +33,10 @@ WEB_PAGE = ROOT / "index.html"  # pagina pubblicata su GitHub Pages (cellulare)
 ADMIN_PAGE = ROOT / "admin.html"
 WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
 ICONS = ROOT / "icone"
-APP_LOGO = LOGOS / "Menu.jpg"
+# logo del sito: nel titolo al posto della scritta "Menu" e icona dell'app ("Aggiungi a Home");
+# se manca si usa il vecchio loghi/Menu.jpg
+APP_LOGO = LOGOS / "Logo-Menu.jpg" if (LOGOS / "Logo-Menu.jpg").exists() else LOGOS / "Menu.jpg"
+TITLE_LOGO = "logo-titolo.png"  # in icone/: il logo ritagliato (senza bordo bianco) per il titolo
 ICON_SIZES = {"icona-512.png": 512, "icona-192.png": 192, "icona-180.png": 180, "favicon.png": 64}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 TEXT_EXTENSION = ".json"  # menu testuali letti da un sito (es. Pane & Co)
@@ -1708,7 +1711,7 @@ document.write('<link rel="manifest" href="'+(adm?'manifest-admin':'manifest')+'
 <style>
 :root{{--bg:#0b1220;--card:#fff;--ink:#172033;--muted:#64748b;--accent:#16a34a}}
 *{{box-sizing:border-box}}body{{margin:0;background:linear-gradient(150deg,#09111f,#172033);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:white;min-height:100vh}}
-header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:flex-start;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px);cursor:pointer}}h1 .sub{{font-size:.5em}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
+header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:flex-start;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px);cursor:pointer}}h1 .sub{{font-size:.5em}}h1 .logo{{height:1.6em;width:auto;vertical-align:middle;background:#fff;border-radius:9px;padding:2px 3px;margin-right:4px;box-shadow:0 4px 14px #0006}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
 main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}}
 .card{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;width:100%;background:var(--card);color:var(--ink);border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;cursor:pointer;transition:.18s transform,.18s box-shadow;font:inherit;position:relative}}
 .card{{flex-direction:row;align-items:center;gap:16px}}.info{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;flex:1}}.logo{{width:64px;height:64px;flex:none;border-radius:14px;object-fit:cover;background:#fff;box-shadow:0 2px 8px #0003}}
@@ -1768,7 +1771,7 @@ document.querySelectorAll('.card').forEach(c=>{{const s=DATA.shops[+c.dataset.in
 document.querySelectorAll('.towncard').forEach(e=>e.hidden=!!TOWN);const info=document.querySelector('.infocard');if(info)info.hidden=!!TOWN;document.querySelector('#home').hidden=!TOWN}}
 window.addEventListener('hashchange',()=>{{TOWN=decodeURIComponent(location.hash.slice(1));if(!TOWN&&location.href.endsWith('#'))history.replaceState(null,'',location.pathname+location.search);if(dlg.open)dlg.close();refresh();window.scrollTo(0,0);if(document.activeElement)document.activeElement.blur()}});
 document.querySelector('#home').onclick=()=>{{location.hash=''}};
-function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const dd=gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()],lab=TOWN&&TOWN!=='Tutti'?TOWN:'';const t=lab?lab+' - '+dd:DATA.titolo.replace('{{data}}',dd);const h1=document.querySelector('h1'),cut=lab?lab.length:t.startsWith('Menu')?4:0,rest=t.slice(cut),dm=rest.match(/\\d+/);h1.textContent=t.slice(0,cut);const part=(x,c)=>{{if(!x)return;const e=document.createElement('span');if(c)e.className=c;e.textContent=x;h1.append(e)}};if(dm){{part(rest.slice(0,dm.index),'sub');part(dm[0],'');part(rest.slice(dm.index+dm[0].length),'sub')}}else part(rest,'sub');if(DATA.ora)part(' - '+DATA.ora,'sub');document.querySelectorAll('.card').forEach(c=>{{const i=+c.dataset.index,r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}});
+function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const dd=gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()],lab=TOWN&&TOWN!=='Tutti'?TOWN:'';const t=lab?lab+' - '+dd:DATA.titolo.replace('{{data}}',dd);const h1=document.querySelector('h1'),cut=lab?lab.length:t.startsWith('Menu')?4:0,rest=t.slice(cut),dm=rest.match(/\\d+/);h1.textContent=t.slice(0,cut);if(!lab&&t.startsWith('Menu')){{h1.textContent='';const lg=document.createElement('img');lg.className='logo';lg.src='icone/{TITLE_LOGO}?v={iv}';lg.alt='Menu';h1.append(lg)}}const part=(x,c)=>{{if(!x)return;const e=document.createElement('span');if(c)e.className=c;e.textContent=x;h1.append(e)}};if(dm){{part(rest.slice(0,dm.index),'sub');part(dm[0],'');part(rest.slice(dm.index+dm[0].length),'sub')}}else part(rest,'sub');if(DATA.ora)part(' - '+DATA.ora,'sub');document.querySelectorAll('.card').forEach(c=>{{const i=+c.dataset.index,r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}});
 /* ordine: prima le rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o riposo di oggi),
    poi le altre; in ciascun gruppo in ordine alfabetico. Rifatto anche quando cambia il giorno. */
 const main=document.querySelector('main'),col=new Intl.Collator('it',{{sensitivity:'base'}}),has=i=>DATA.results[i].menu_date===iso;
@@ -1810,13 +1813,15 @@ render();loadStats();setInterval(loadStats,60000);document.addEventListener('vis
 
 
 def make_icons(force: bool = False) -> bool:
-    """Ricava le icone dell'app da loghi/Menu.jpg se il logo è più recente delle icone.
+    """Ricava le icone dell'app (e il logo del titolo) da loghi/Logo-Menu.jpg se il logo è più
+    recente delle icone.
 
     Restituisce True se le icone sono state rigenerate."""
     if not APP_LOGO.exists():
         return False
     newest = ICONS / "icona-512.png"
-    if not force and newest.exists() and newest.stat().st_mtime >= APP_LOGO.stat().st_mtime:
+    if not force and newest.exists() and (ICONS / TITLE_LOGO).exists() \
+            and newest.stat().st_mtime >= APP_LOGO.stat().st_mtime:
         return False
     try:
         from PIL import Image
@@ -1831,7 +1836,19 @@ def make_icons(force: bool = False) -> bool:
         square = logo.crop((left, top, left + side, top + side))
         for name, size in ICON_SIZES.items():
             square.resize((size, size), Image.LANCZOS).save(ICONS / name, optimize=True)
-    print("Icone dell'app rigenerate da loghi/Menu.jpg")
+        # logo del titolo: si toglie il bordo bianco (resta un piccolo margine) e si tiene alto 200 px
+        from PIL import ImageChops
+        background = Image.new("RGB", logo.size, logo.getpixel((2, 2)))
+        box = ImageChops.difference(logo, background).convert("L").point(lambda v: 255 if v > 28 else 0).getbbox()
+        if box:
+            pad = int(max(box[2] - box[0], box[3] - box[1]) * 0.03)
+            box = (max(0, box[0] - pad), max(0, box[1] - pad), min(logo.width, box[2] + pad), min(logo.height, box[3] + pad))
+            title = logo.crop(box)
+        else:
+            title = logo
+        title.thumbnail((400, 200), Image.LANCZOS)
+        title.save(ICONS / TITLE_LOGO, optimize=True)
+    print(f"Icone dell'app e logo del titolo rigenerati da loghi/{APP_LOGO.name}")
     return True
 
 

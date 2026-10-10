@@ -683,3 +683,17 @@ A destra di ogni rosticceria il Monitor mostra quante volte oggi è stata
 aperta la sua scheda sul sito (gli stessi click della tabella Info), letti
 dal registro Google ogni minuto. "–" finché non arriva la prima lettura.
 
+Logo del sito (loghi/Logo-Menu.jpg)
+-----------------------------------
+Il titolo della pagina iniziale mostra il logo (borsa, menu e scritta "Menu")
+al posto della parola "Menu": "[logo] - Sabato 10 ottobre - 16:58". Nelle
+pagine dei Comuni resta il nome del Comune.
+Dallo stesso logo il programma ricava da solo, quando il file cambia:
+- le icone dell'app (icone/icona-180.png per iPhone "Aggiungi a Home",
+  icona-192/512 per Android, favicon.png per la scheda del browser);
+- icone/logo-titolo.png, il logo ritagliato senza il bordo bianco.
+Per cambiare logo basta sostituire loghi/Logo-Menu.jpg (immagine quadrata);
+se manca si usa il vecchio loghi/Menu.jpg.
+Sul telefono l'icona già aggiunta alla Home può restare quella vecchia:
+per vedere la nuova va tolta e aggiunta di nuovo.
+
