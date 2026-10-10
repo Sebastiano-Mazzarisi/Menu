@@ -17,14 +17,16 @@ Navigazione per Comune (due livelli)
 1) Pagina iniziale: titolo "Menu - Giovedì 8 ottobre" e un riquadro per ogni
    Comune che ha almeno un locale in locali.json (campo "comune"), ordinati
    per numero di locali e poi in ordine alfabetico, più "Tutti i Comuni".
-   Ogni riquadro (fondo celeste chiaro), su una sola riga, mostra il nome del
-   Comune seguito da "aggiornati/totale", es. "Putignano - 3/8": 3 locali con
+   Ogni riquadro (fondo celeste chiaro, come il riquadro "Info") mostra in
+   alto il nome del Comune seguito da "aggiornati/totale", es. "Putignano - 3/8": 3 locali con
    il menu di oggi (arancione; verde quando sono tutti, es. "Noci - 2/2")
    su 8 locali del Comune (verde), tutto
    grande come il nome; la fascia a
    sinistra è VERDE se tutti i locali di quel Comune hanno pubblicato il menu
    di oggi, ARANCIONE se almeno uno non l'ha ancora pubblicato (vale anche
-   per "Tutti i Comuni"). Nella versione
+   per "Tutti i Comuni"). Sotto, scritto piccolo (come "20 visite oggi"
+   in Info), l'elenco dei locali del Comune in ordine alfabetico, uno per
+   riga (in "Tutti i Comuni" l'elenco non c'è). Nella versione
    amministratore qui c'è anche la scheda Info.
 2) Toccando un Comune si vedono solo i suoi locali; il titolo diventa
    "Noci - Giovedì 8 ottobre" e a destra compare la casetta 🏠 che riporta
