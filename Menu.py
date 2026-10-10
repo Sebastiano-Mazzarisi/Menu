@@ -1713,7 +1713,7 @@ document.write('<link rel="manifest" href="'+(adm?'manifest-admin':'manifest')+'
 <style>
 :root{{--bg:#0b1220;--card:#fff;--ink:#172033;--muted:#64748b;--accent:#16a34a}}
 *{{box-sizing:border-box}}body{{margin:0;background:linear-gradient(150deg,#09111f,#172033);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:white;min-height:100vh}}
-header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:flex-start;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px);cursor:pointer}}h1 .sub{{font-size:.5em}}h1 .logo{{height:2.4em;width:auto;vertical-align:middle;background:#fff;border-radius:9px;padding:2px 3px;margin-right:4px;box-shadow:0 4px 14px #0006}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
+header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:flex-start;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px);cursor:pointer}}h1 .sub{{font-size:.5em}}h1 .logo{{height:2.4em;width:auto;vertical-align:middle;background:#fff;border-radius:14px;padding:5px 9px;margin-right:4px;box-shadow:0 4px 14px #0006}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
 main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}}
 .card{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;width:100%;background:var(--card);color:var(--ink);border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;cursor:pointer;transition:.18s transform,.18s box-shadow;font:inherit;position:relative}}
 .card{{flex-direction:row;align-items:center;gap:16px}}.info{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;flex:1}}.logo{{width:64px;height:64px;flex:none;border-radius:14px;object-fit:cover;background:#fff;box-shadow:0 2px 8px #0003}}
@@ -1843,7 +1843,7 @@ def make_icons(force: bool = False) -> bool:
         background = Image.new("RGB", logo.size, logo.getpixel((2, 2)))
         box = ImageChops.difference(logo, background).convert("L").point(lambda v: 255 if v > 28 else 0).getbbox()
         if box:
-            pad = int(max(box[2] - box[0], box[3] - box[1]) * 0.03)
+            pad = int(max(box[2] - box[0], box[3] - box[1]) * 0.06)
             box = (max(0, box[0] - pad), max(0, box[1] - pad), min(logo.width, box[2] + pad), min(logo.height, box[3] + pad))
             title = logo.crop(box)
         else:
