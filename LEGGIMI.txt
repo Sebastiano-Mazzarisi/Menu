@@ -605,8 +605,9 @@ Monitor - clic sul nome di un locale = SEGNALAZIONE
 Cliccando sul nome di un locale nel Monitor si dice al programma "questo
 locale ha probabilmente un menu sbagliato". Per quel locale (gli altri restano
 come sono):
-- il menu di oggi (foto o testo) viene tolto e messo in dati/scartati con
-  "segnalato" nel nome;
+- la foto mostrata in quel momento (anche se è di un altro giorno, es. un
+  evento di domani) viene tolta e messa in dati/scartati con "segnalato" nel
+  nome; solo se non si trova si tolgono le foto/testi di oggi;
 - la sua impronta viene ricordata in dati/segnalati.json: quella stessa foto
   non verrà più usata per quel locale, nemmeno nei giri automatici;
 - il locale viene ricontrollato online a fondo (anche 10 post invece di 5);
@@ -614,6 +615,10 @@ come sono):
   buono (arancione).
 Se per errore si segnala un menu giusto, basta togliere la riga del locale da
 dati/segnalati.json e rimettere la foto da dati/scartati in ingresso.
+
+Menu con data futura: se un locale pubblica oggi il menu di domani (es.
+L'Eclettico, "Domenica 11 ottobre"), oggi resta il menu di oggi; quello di
+domani compare da domani. Il menu futuro si usa solo se manca quello di oggi.
 
 Storie Facebook di un altro profilo: finite le storie del locale, Facebook
 passa da solo a quelle di altri profili (es. "Stefy Giorgio"). Ora ogni parte

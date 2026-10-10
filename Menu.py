@@ -101,7 +101,11 @@ AUXILIARY_FILES = ("_avviso_controllo",)  # file di servizio: non sono mai un me
 def newest_image(folder: Path) -> Path | None:
     images = [item for item in folder.glob("*") if item.is_file() and item.suffix.lower() in MENU_EXTENSIONS
               and not any(mark in item.stem for mark in AUXILIARY_FILES)]
-    return max(images, key=lambda item: (image_date(item), item.stat().st_mtime), default=None)
+    # prima il menu di oggi; un menu con data futura (es. evento di domenica pubblicato il
+    # sabato) non prende il posto di quello di oggi, ma vale più dei menu dei giorni passati
+    today = date.today()
+    return max(images, key=lambda item: (image_date(item) == today, image_date(item), item.stat().st_mtime),
+               default=None)
 
 
 def copy_current(shop: dict[str, Any], source: Path, menu_day: date) -> Path:
@@ -1435,8 +1439,14 @@ def report_wrong(shop: dict[str, Any], folder: Path) -> None:
     today = date.today().isoformat()
     marks = read_json(REPORTED, {})
     known = set(marks.get(shop["id"], []))
-    candidates = [item for item in folder.glob(f"{today}*") if item.is_file() and not item.stem.endswith("_riposo")]
-    candidates += [item for item in CURRENT.glob(f"{shop['id']}.*") if item.is_file()]
+    shown = [item for item in CURRENT.glob(f"{shop['id']}.*") if item.is_file()]
+    shown_hashes = {file_hash(item) for item in shown}
+    files = [item for item in folder.glob("*") if item.is_file() and not item.stem.endswith("_riposo")]
+    # si toglie la foto che la pagina mostra davvero (può essere anche di un altro giorno, es. un
+    # evento di domani); solo se non si trova si tolgono le foto/testi di oggi
+    candidates = [item for item in files if file_hash(item) in shown_hashes] or \
+        [item for item in files if item.name.startswith(today)]
+    candidates += shown
     for item in candidates:
         known.add(file_hash(item))
         if item.parent == folder:
