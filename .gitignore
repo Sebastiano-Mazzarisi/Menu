@@ -1,4 +1,5 @@
 # dati privati o pesanti: restano solo sul PC
+# copie di sicurezza (backup/AAAA-MM-GG-HHMM): restano solo sul PC
 profilo/
 errori/
 ingresso/
@@ -6,3 +7,4 @@ archivio/
 dati/
 __pycache__/
 *.pyc
+backup/

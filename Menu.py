@@ -1619,7 +1619,7 @@ def write_manifest() -> str:
     manifest = {
         "name": "Menu", "short_name": "Menu", "description": "Menu del giorno delle rosticcerie",
         "start_url": "./", "scope": "./", "display": "standalone",
-        "background_color": "#0b1220", "theme_color": "#0b1220", "lang": "it",
+        "background_color": "#121915", "theme_color": "#121915", "lang": "it",
         "icons": [
             {"src": f"icone/icona-192.png?v={iv}", "sizes": "192x192", "type": "image/png"},
             {"src": f"icone/icona-512.png?v={iv}", "sizes": "512x512", "type": "image/png"},
@@ -1649,33 +1649,392 @@ def display_order(shops: list[dict[str, Any]], results: list[dict[str, Any]]) ->
     return sorted(range(len(shops)), key=key)
 
 
+# Modello della pagina (Menu.html, index.html, admin.html). Le parti @@NOME@@ vengono riempite da
+# generate_html: @@PAYLOAD@@ = dati dei locali e dei menu, @@IV@@ = versione delle icone,
+# @@TV@@ = versione del logo del titolo, @@SONG@@ = musica, @@TITLE@@ = data di oggi.
+# Design ottobre 2026 (copia del precedente in backup/2026-10-10-2314/Menu.py).
+PAGE_TEMPLATE = r'''<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e9ece6" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#121915" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark"><title>Menu</title>
+<meta property="og:title" content="Menu"><meta property="og:description" content="Menu del giorno delle rosticcerie">
+<meta property="og:type" content="website"><meta property="og:url" content="@@WEB_URL@@">
+<meta property="og:image" content="@@WEB_URL@@icone/icona-512.png?v=@@IV@@"><meta property="og:image:width" content="512"><meta property="og:image:height" content="512">
+<script>/* ?v=57 = amministratore: si passa a admin.html (stessa pagina), il cui indirizzo resta anche
+   nell'app aggiunta alla Home; lì il manifest "amministratore" fa riaprire l'app sempre su admin.html */
+(function(){const adm=location.pathname.endsWith('/admin.html');
+if(!adm&&new URLSearchParams(location.search).get('v')==='57'){location.replace('admin.html'+location.hash);return}
+document.write('<link rel="manifest" href="'+(adm?'manifest-admin':'manifest')+'.webmanifest?v=@@IV@@">')})()</script><link rel="icon" type="image/png" href="icone/favicon.png?v=@@IV@@">
+<link rel="apple-touch-icon" sizes="180x180" href="icone/icona-180.png?v=@@IV@@"><meta name="apple-mobile-web-app-title" content="Menu">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Design 2026-10: testata fissa con data e Comuni a pillole; elenco diviso in "Menu di oggi" e
+   "Non ancora aggiornati"; scheda del menu a tutto schermo con barra azioni in basso.
+   Tema chiaro = carta da banco, tema scuro = lavagna da rosticceria: segue l'impostazione del telefono.
+   Tutti i colori sono qui sotto (variabili --...): per cambiarli basta toccare questi due elenchi. */
+:root{--bg:#e9ece6;--surface:#fff;--surface2:#f4f6f1;--ink:#18221d;--muted:#5d6b63;--line:#d5dbd3;
+  --accent:#b8700a;--ok:#1d7f46;--ok-soft:#dff1e5;--warn:#b4501a;--warn-soft:#fbe7da;
+  --sheet:#101613;--sheet-ink:#eef1ea;--sheet-muted:#a9b5ad;--shadow:0 1px 2px #18221d14,0 6px 18px #18221d12;
+  --f-display:"Bricolage Grotesque",ui-rounded,system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;--r:14px;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#121915;--surface:#1b2520;--surface2:#16201b;--ink:#eef1ea;--muted:#9aa89f;--line:#2a3630;
+  --accent:#f2b134;--ok:#6fd394;--ok-soft:#1c3a28;--warn:#f39a62;--warn-soft:#3b2619;
+  --sheet:#0b100d;--shadow:0 1px 0 #ffffff08 inset,0 8px 24px #0006;color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* ---------- testata ---------- */
+.top{position:sticky;top:0;z-index:10;padding-top:env(safe-area-inset-top,0px);background:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:auto;padding:12px 16px 0;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.brand{width:48px;height:48px;border-radius:12px;background:#fff;padding:3px;box-shadow:var(--shadow)}
+.brand img{width:100%;height:100%;object-fit:contain;display:block}
+.day{min-width:0;cursor:pointer}
+h1{margin:0;font-family:var(--f-display);font-weight:800;font-size:clamp(22px,5.4vw,30px);line-height:1.05;letter-spacing:-.01em}
+h1 .wd{font-weight:600;color:var(--muted)}
+.day p{margin:3px 0 0;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.day p b{color:var(--ok)}
+.iconbtn{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--muted)}
+.iconbtn:hover{background:var(--surface2);color:var(--ink)}
+.iconbtn svg{width:22px;height:22px}
+.towns{max-width:1180px;margin:auto;display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none}
+.towns::-webkit-scrollbar{display:none}
+.chip{flex:none;display:flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-weight:700;font-size:15px;white-space:nowrap}
+.chip .frac{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip .frac.full{color:var(--ok)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"] .frac{color:inherit;opacity:.75}
+
+/* ---------- elenco ---------- */
+main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-inset-bottom,0px))}
+.group{margin-top:16px}
+.group h2{margin:0 0 10px;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.group h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.group.late h2 .dot{background:var(--warn)}
+.list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
+.card{display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center;width:100%;text-align:left;padding:10px 12px 10px 10px;border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow);transition:transform .15s ease}
+.card:hover{transform:translateY(-2px)}
+.card:active{transform:scale(.985)}
+.card .logo{width:56px;height:56px;border-radius:11px;object-fit:cover;background:#fff;display:block}
+.card .t{min-width:0}
+.card .n{font-family:var(--f-display);font-weight:800;font-size:18px;line-height:1.15;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .c{font-size:14px;color:var(--muted);display:block;margin-top:2px}
+.card .note{display:block;margin-top:3px;font-size:13px;font-weight:700;color:var(--warn);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .end{display:flex;align-items:center;gap:8px}
+.tag{font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap;background:var(--warn-soft);color:var(--warn)}
+.chev{font-size:24px;line-height:1;color:var(--muted)}
+.count{min-width:26px;padding:2px 8px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:13px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.group.late .card .logo{filter:saturate(.35);opacity:.8}
+.empty-list{padding:40px 0;text-align:center;color:var(--muted)}
+.foot{margin:28px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+
+/* amministratore (?v=57): riga Info con i click di oggi */
+.infocard{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;padding:10px 14px;border-radius:var(--r);border:2px dashed var(--accent);background:var(--surface);text-align:left}
+.infocard .total{min-width:44px;height:44px;padding:0 8px;border-radius:10px;display:grid;place-items:center;background:var(--accent);color:var(--surface);font-family:var(--f-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.infocard b{font-family:var(--f-display);font-size:18px}
+.infocard small{display:block;color:var(--muted);font-size:13px}
+
+/* ---------- scheda del menu ---------- */
+#detail{padding:0;border:0;margin:0;width:100vw;max-width:100vw;height:100vh;height:100dvh;max-height:100dvh;background:var(--sheet);color:var(--sheet-ink);overflow:hidden}
+#detail::backdrop{background:#000b}
+@media(min-width:900px){#detail{width:min(860px,94vw);height:92dvh;margin:auto;border-radius:20px;box-shadow:0 30px 80px #000a}}
+#detail .sheet{height:100%;display:flex;flex-direction:column;outline:none}
+.sh-head{flex:none;display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px}
+.sh-head .lg{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#fff}
+.sh-title{min-width:0}
+#name{margin:0;font-family:var(--f-display);font-weight:800;font-size:20px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#addr{margin:3px 0 0;font-size:13px;color:var(--sheet-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stamp{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:6px;font-weight:700;font-size:12px;vertical-align:1px}
+.stamp.ok{background:#1c3a28;color:#7be0a0}.stamp.late{background:#3b2619;color:#f6a674}
+#close{width:44px;height:44px;border-radius:50%;background:#ffffff14;display:grid;place-items:center}
+#close svg{width:20px;height:20px}
+#meta{flex:none;margin:0 12px 8px;padding:8px 12px;border-radius:10px;background:#3b2619;color:#f6c9a8;font-size:14px;font-weight:700}
+#stage{flex:1;min-height:0;position:relative;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#stage img{display:block;margin:auto;max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in;transition:opacity .18s}
+#stage.fit img{height:100%}
+#stage.zoom img{max-height:none;max-width:none;width:180%;cursor:zoom-out}
+.hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-size:12px;color:#cfd8d2;background:#0009;padding:4px 10px;border-radius:999px;pointer-events:none;transition:opacity .4s;white-space:nowrap}
+.txt{max-width:640px;margin:auto;padding:4px 20px 24px}
+.txt h4{margin:22px 0 6px;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#f2b134}
+.dish{display:grid;grid-template-columns:1fr auto;column-gap:16px;padding:10px 0;border-bottom:1px dashed #ffffff1f}
+.dish b{font-variant-numeric:tabular-nums;color:#f6e7c8;white-space:nowrap}
+.dish small{grid-column:1/-1;color:#9aa89f;font-size:14px;margin-top:2px}
+.nomenu{padding:60px 24px;text-align:center;color:var(--sheet-muted)}
+.bar{flex:none;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #ffffff14;background:#0b100d}
+.acts{display:flex;justify-content:center;gap:6px;min-width:0}
+.act{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:66px;padding:6px 8px;border-radius:12px;color:#e7ece8;text-decoration:none;font-size:12px;font-weight:700}
+.act svg{width:24px;height:24px}
+.act:hover{background:#ffffff12}
+.act.call{color:#f2b134}
+.nav{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#ffffff12;color:#eef1ea}
+.nav svg{width:22px;height:22px}
+#pos{font-size:12px;color:#8f9c94;text-align:center;font-variant-numeric:tabular-nums;margin-top:2px}
+
+/* ---------- statistiche (amministratore) ---------- */
+#stats{width:min(480px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:90dvh;padding:0;border:0;border-radius:18px;background:var(--sheet);color:var(--sheet-ink);box-shadow:0 30px 80px #000a}
+#stats::backdrop{background:#000b}
+#stats .modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #ffffff1a}
+#stats h2{margin:0;font-family:var(--f-display);font-size:19px}
+#stats .x{width:40px;height:40px;border-radius:50%;background:#ffffff14;font-size:18px}
+.statwrap{padding:8px 10px 16px;overflow:auto;max-height:calc(90dvh - 70px)}
+#stats table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+#stats th,#stats td{padding:5px 5px;line-height:1.25;white-space:nowrap;border-bottom:1px solid #ffffff14;text-align:right}
+#stats th:first-child,#stats td:first-child{text-align:left;white-space:normal;width:100%}
+#stats th{color:#f2b134;font-size:13px;cursor:pointer;user-select:none}
+#stats th::after{content:attr(data-dir);font-size:10px;margin-left:3px}
+#stats tfoot td{font-weight:800;border-top:2px solid #f2b134;border-bottom:0}
+.statnote{margin:10px 0 0;color:var(--sheet-muted);font-size:13px}
+
+/* ---------- musica (tocco sul logo) ---------- */
+#player{position:fixed;z-index:50;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:12px;row-gap:8px;width:min(340px,calc(100vw - 32px));padding:10px 12px;border-radius:18px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 14px 40px #0005;touch-action:none;user-select:none;-webkit-user-select:none}
+#player.moved{transform:none}
+#player .pp{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--surface)}
+#player .pp svg{width:22px;height:22px;fill:currentColor}
+#player .grip{flex:1;align-self:stretch;display:flex;flex-direction:column;justify-content:center;cursor:grab;min-width:0}
+#player .grip b{font-family:var(--f-display);font-size:15px}
+#player .tm{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;cursor:pointer}
+#player.drag .grip{cursor:grabbing}
+#player .px{width:36px;height:36px;border-radius:50%;background:var(--surface2);font-size:16px;font-weight:700}
+#player .seek{display:none;flex-basis:100%}
+#player.big .seek{display:block}
+#player .seek input{width:100%;height:28px;margin:0;accent-color:var(--accent);cursor:pointer;touch-action:auto}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style></head><body>
+<header class="top">
+  <div class="top-in">
+    <button class="brand" id="brand" aria-label="Menu"><img src="icone/@@TITLE_LOGO@@?v=@@TV@@" alt="Menu"></button>
+    <div class="day" id="day" title="Tocca per ricaricare"><h1 id="title">@@TITLE@@</h1><p id="sub"></p></div>
+    <button class="iconbtn" id="reload" aria-label="Aggiorna" title="Aggiorna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+  </div>
+  <nav class="towns" id="towns" aria-label="Comuni"></nav>
+</header>
+<main id="main"></main>
+<dialog id="detail" aria-label="Menu"><div class="sheet" tabindex="-1" autofocus>
+  <div class="sh-head">
+    <img class="lg" id="dLogo" alt="">
+    <div class="sh-title"><h3 id="name"></h3><p id="addr"></p></div>
+    <button id="close" aria-label="Chiudi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <p id="meta" hidden></p>
+  <div id="stage" class="fit"></div>
+  <div class="bar">
+    <button class="nav" id="prev" aria-label="Rosticceria precedente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div>
+      <div class="acts">
+        <a class="act call" id="phone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>Chiama</a>
+        <a class="act" id="map" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Mappa</a>
+        <a class="act" id="source" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span id="sourceL">Fonte</span></a>
+      </div>
+      <div id="pos"></div>
+    </div>
+    <button class="nav" id="next" aria-label="Rosticceria successiva"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+</div></dialog>
+<script>const DATA=@@PAYLOAD@@;
+/* Registro dei click sul foglio Google "Menu" (Apps Script in Registro_click.gs).
+   ?v=57 nell'indirizzo = amministratore: quei click non vengono registrati. Senza ?v=57 si registra
+   sempre, anche sullo stesso dispositivo (non viene ricordato nulla). */
+const Q=new URLSearchParams(location.search);const ADMIN=Q.get('v')==='57'||location.pathname.endsWith('/admin.html');
+try{localStorage.removeItem('menuAdmin')}catch(e){}
+function deviceLabel(){const u=navigator.userAgent||'';let o='Altro',b='Altro';
+if(/iPad/.test(u))o='iPad';else if(/iPhone/.test(u))o='iPhone';else if(/Android/.test(u))o='Android';else if(/Macintosh/.test(u))o='Mac';else if(/Windows/.test(u))o='Windows';else if(/Linux/.test(u))o='Linux';
+if(/Edg\//.test(u))b='Edge';else if(/OPR\//.test(u))b='Opera';else if(/CriOS\//.test(u)||/Chrome\//.test(u))b='Chrome';else if(/FxiOS\//.test(u)||/Firefox\//.test(u))b='Firefox';else if(/Safari\//.test(u))b='Safari';return o+' / '+b}
+let placeP=null;function approxPlace(){if(!placeP)placeP=fetch('https://ipwho.is/',{cache:'no-store'}).then(r=>r.json()).then(d=>d&&d.success!==false?[d.city,d.region,d.country_code].filter(Boolean).join(', '):'').catch(()=>'');return placeP}
+function sendLog(body){try{if(navigator.sendBeacon&&navigator.sendBeacon(DATA.log,new Blob([body],{type:'text/plain'})))return}catch(e){}try{fetch(DATA.log,{method:'POST',mode:'no-cors',keepalive:true,body})}catch(e){}}
+/* navigator.webdriver: pagina aperta da un programma (Panorama, robot): non è una visita vera */
+if(!ADMIN&&DATA.log&&!navigator.webdriver){approxPlace();/* visita alla pagina: una per apertura del sito (foglio "Visite") */if(DATA.visite)Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({tipo:'visita',pagina:decodeURIComponent(location.hash.slice(1))||'iniziale',dispositivo:deviceLabel(),posizione:p||''})))}
+function logClick(name){if(ADMIN||!DATA.log||navigator.webdriver)return;Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({rosticceria:name,dispositivo:deviceLabel(),posizione:p||''})))}
+
+/* ---------- date ---------- */
+const GG=['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'],MM=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+const col=new Intl.Collator('it',{sensitivity:'base'});
+function isoToday(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')}
+let TODAY=isoToday();
+const isOk=i=>DATA.results[i].menu_date===TODAY;
+/* etichetta della data del menu: Oggi / Domani / Ieri / 8 ott; senza data: Non disponibile o Errore */
+function dateLabel(r){if(!r.menu_date)return r.error&&!r.image&&!(r.sections||[]).length?'Errore':'Non disponibile';
+  const d=new Date(r.menu_date+'T12:00'),k=Math.round((d-new Date(TODAY+'T12:00'))/864e5);
+  if(k===0)return'Oggi';if(k===1)return'Domani';if(k===-1)return'Ieri';return d.getDate()+' '+MM[d.getMonth()].slice(0,3)}
+function longDate(iso){const d=new Date(iso+'T12:00');return GG[d.getDay()]+' '+d.getDate()+' '+MM[d.getMonth()]}
+
+/* ---------- Comuni: pillole in alto; il Comune scelto resta nell'indirizzo (#Noci) così
+   funzionano "indietro", ricaricamento e preferiti. Senza Comune (o #Tutti) = tutti i locali. ---------- */
+let TOWN=decodeURIComponent(location.hash.slice(1))||'Tutti';
+function townList(){const c={};DATA.shops.forEach((s,i)=>{const k=s.comune||'Altro';(c[k]=c[k]||[]).push(i)});
+  return [['Tutti',DATA.shops.map((s,i)=>i)]].concat(Object.entries(c).sort((a,b)=>(b[1].length-a[1].length)||col.compare(a[0],b[0])))}
+function drawTowns(){const nav=document.getElementById('towns'),list=townList();if(!list.some(t=>t[0]===TOWN))TOWN='Tutti';nav.innerHTML='';
+  list.forEach(([k,ids])=>{const ok=ids.filter(isOk).length,b=document.createElement('button');b.type='button';b.className='chip';
+    b.setAttribute('aria-pressed',k===TOWN);b.title=ok+' locali su '+ids.length+' con il menu di oggi';
+    b.innerHTML='<span></span><span class="frac'+(ok===ids.length?' full':'')+'"></span>';b.children[0].textContent=k;b.children[1].textContent=ok+'/'+ids.length;
+    b.onclick=()=>{if(k===TOWN)return;location.hash=k==='Tutti'?'':encodeURIComponent(k)};nav.append(b)});
+  const sel=nav.querySelector('[aria-pressed="true"]');if(sel&&sel.scrollIntoView)sel.scrollIntoView({block:'nearest',inline:'nearest'})}
+
+let renderStats=null; /* disegna i numeri dell'amministratore (vedi in fondo) */
+/* ---------- elenco: prima "Menu di oggi" (menu, avviso di chiusura o riposo di oggi), poi
+   "Non ancora aggiornati"; in ciascun gruppo in ordine alfabetico. Rifatto quando cambia il giorno. ---------- */
+let ORDER=[];
+function drawList(){const m=document.getElementById('main');m.querySelectorAll('.group,.foot,.empty-list').forEach(e=>e.remove());
+  const vis=DATA.shops.map((s,i)=>i).filter(i=>TOWN==='Tutti'||(DATA.shops[i].comune||'Altro')===TOWN).sort((a,b)=>col.compare(DATA.shops[a].nome,DATA.shops[b].nome));
+  const groups=[['Menu di oggi',vis.filter(isOk),''],['Non ancora aggiornati',vis.filter(i=>!isOk(i)),'late']];
+  ORDER=groups.flatMap(g=>g[1]);
+  const info=m.querySelector('.infocard');
+  groups.forEach(([title,ids,cls])=>{if(!ids.length)return;const g=document.createElement('section');g.className='group '+cls;
+    g.innerHTML='<h2><span class="dot"></span><span></span></h2><div class="list"></div>';g.querySelector('h2 span+span').textContent=title+' · '+ids.length;
+    ids.forEach(i=>{const s=DATA.shops[i],r=DATA.results[i],b=document.createElement('button');b.type='button';b.className='card';b.dataset.index=i;
+      b.innerHTML='<img class="logo" alt="" width="56" height="56" loading="lazy"><span class="t"><span class="n"></span><span class="c"></span></span><span class="end"><span class="count" hidden></span><span></span></span>';
+      const lg=b.querySelector('.logo');if(s.logo)lg.src=s.logo;else lg.style.visibility='hidden';
+      b.querySelector('.n').textContent=s.nome;b.querySelector('.c').textContent=s.comune||'';
+      if(r.nota){const n=document.createElement('span');n.className='note';n.textContent=r.nota;b.querySelector('.t').append(n)}
+      const e=b.querySelector('.end span+span');if(isOk(i)){e.className='chev';e.textContent='›'}else{e.className='tag';e.textContent=dateLabel(r)}
+      b.onclick=()=>openCard(i);g.lastChild.append(b)});
+    m.insertBefore(g,info)});
+  if(!vis.length){const e=document.createElement('p');e.className='empty-list';e.textContent='Nessun locale in questo Comune.';m.insertBefore(e,info)}
+  const f=document.createElement('p');f.className='foot';f.textContent='Tocca una rosticceria per vedere il menu. Nel menu scorri col dito a destra o a sinistra per passare alla successiva.';m.append(f);
+  if(typeof renderStats==='function')renderStats()}
+
+/* ---------- testata ---------- */
+function drawHead(){const d=new Date(TODAY+'T12:00'),g=GG[d.getDay()];const h=document.getElementById('title');h.innerHTML='<span class="wd"></span> ';
+  h.firstChild.textContent=g[0].toUpperCase()+g.slice(1);h.append(d.getDate()+' '+MM[d.getMonth()]);
+  const ok=DATA.shops.filter((s,i)=>isOk(i)).length,p=document.getElementById('sub');p.innerHTML='<b></b>';p.firstChild.textContent=ok+' su '+DATA.shops.length;
+  p.append(' menu di oggi'+(DATA.ora&&DATA.data===TODAY?' · aggiornato alle '+DATA.ora:''))}
+function refresh(){TODAY=isoToday();drawHead();drawTowns();drawList()}
+
+/* ---------- pulizia dei menu scritti: "●LASAGNA AL FORNO 5,0" diventa "Lasagna al forno  € 5,00",
+   le righe "PRIMI PIATTI" diventano titoli, "MENÙ DI SABATO" sparisce ---------- */
+function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).toUpperCase()+t.slice(1).toLowerCase();
+  (secs||[]).forEach(sec=>{cur={titolo:sec.titolo,piatti:[]};out.push(cur);
+    (sec.piatti||[]).forEach(p=>{const raw=p.nome||'';let n=raw.replace(/^[●•·\-\s]+/,'').trim(),pr=(p.prezzo||'').trim();if(!n)return;
+      if(/^MEN[UÙ] (DI|DEL) /i.test(n))return;
+      if(!pr&&!/^[●•]/.test(raw)&&n===n.toUpperCase()&&n.split(/\s+/).length<=4&&/PIATT|PRIM|SECOND|CONTORN|ANTIPAST|DOLC|FRITT|PIZZ/i.test(n)){cur={titolo:cap(n),piatti:[]};out.push(cur);return}
+      const m=n.match(/\s(\d{1,2}[,.]\d{1,2})\s*€?$/);if(m&&!pr){pr=m[1];n=n.slice(0,m.index).trim()}
+      if(pr){pr=pr.replace('€','').trim().replace('.',',');if(/^\d+,\d$/.test(pr))pr+='0';if(/^\d+(,\d+)?$/.test(pr))pr='€ '+pr}
+      if(n===n.toUpperCase()&&/[A-Z]/.test(n))n=cap(n);
+      cur.piatti.push({nome:n,prezzo:pr,descrizione:p.descrizione||''})})});
+  return out.filter(s=>s.piatti.length)}
+
+/* ---------- scheda del menu (Panorama usa openCard(i), #detail .sheet e #name) ---------- */
+const dlg=document.getElementById('detail'),stage=document.getElementById('stage');let cur=0;
+const imgUrl=r=>r.image+'?v='+(r.v||DATA.v);
+function openCard(i,dir){cur=i;const s=DATA.shops[i],r=DATA.results[i];logClick(s.nome);
+  document.getElementById('dLogo').src=s.logo||'';document.getElementById('dLogo').style.visibility=s.logo?'':'hidden';
+  document.getElementById('name').textContent=s.nome;
+  const ad=document.getElementById('addr');ad.innerHTML='<span class="stamp '+(isOk(i)?'ok':'late')+'"></span>';
+  const lab=dateLabel(r);ad.firstChild.textContent=r.menu_date&&lab!=='Oggi'?lab+' · '+longDate(r.menu_date):lab;ad.append(s.indirizzo_breve||s.indirizzo||'');
+  const meta=document.getElementById('meta');meta.textContent=r.nota||'';meta.hidden=!r.nota;
+  stage.innerHTML='';stage.className='fit';stage.scrollTop=0;stage.scrollLeft=0;
+  if(r.image){const im=new Image();im.alt='Menu di '+s.nome;im.src=imgUrl(r);
+    im.onclick=()=>{const z=stage.classList.toggle('zoom');stage.classList.toggle('fit',!z);if(z)requestAnimationFrame(()=>{stage.scrollLeft=(stage.scrollWidth-stage.clientWidth)/2;stage.scrollTop=(stage.scrollHeight-stage.clientHeight)/3})};
+    stage.append(im);const h=document.createElement('div');h.className='hint';h.textContent='Tocca la foto per ingrandire';stage.append(h);setTimeout(()=>{h.style.opacity=0},1800)}
+  else if((r.sections||[]).length){const t=document.createElement('div');t.className='txt';
+    cleanSections(r.sections).forEach(sec=>{const h=document.createElement('h4');h.textContent=sec.titolo;t.append(h);
+      sec.piatti.forEach(p=>{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b>'+(p.descrizione?'<small></small>':'');
+        d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;if(p.descrizione)d.children[2].textContent=p.descrizione;t.append(d)})});
+    stage.append(t)}
+  else{const e=document.createElement('div');e.className='nomenu';e.textContent=r.menu_date?'Il menu di questa data non è pubblicato (vedi archivio).':'Il menu non è ancora stato pubblicato. Riprova più tardi o chiama il locale.';stage.append(e)}
+  const ph=document.getElementById('phone');ph.hidden=!s.telefono;ph.title=s.telefono||'';ph.href='tel:'+(s.telefono||'').replace(/[^+\d]/g,'');
+  const mp=document.getElementById('map');mp.hidden=!s.indirizzo;mp.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\s*\(.*\)/,'')+', '+(s.indirizzo||''));
+  const so=document.getElementById('source');so.hidden=!s.url;so.href=s.url||'';
+  document.getElementById('sourceL').textContent=/instagram\./.test(s.url||'')?'Instagram':/facebook\./.test(s.url||'')?'Facebook':'Sito';
+  const k=ORDER.indexOf(i);document.getElementById('pos').textContent=k>=0?(k+1)+' di '+ORDER.length:'';
+  if(!dlg.open)dlg.showModal();
+  if(dir&&stage.animate)stage.animate([{opacity:.3,transform:'translateX('+(dir*24)+'px)'},{opacity:1,transform:'none'}],{duration:200,easing:'ease-out'});
+  /* le foto vicine si scaricano in anticipo: passando alla successiva compaiono subito */
+  [-1,1].forEach(d=>{if(k<0)return;const j=ORDER[(k+d+ORDER.length)%ORDER.length],n=DATA.results[j];if(n&&n.image){const p=new Image();p.src=imgUrl(n)}})}
+/* scheda precedente / successiva in modo circolare: frecce in basso, tasti ← → e, sul telefono,
+   scorrimento del dito a destra o a sinistra (non con la foto ingrandita) */
+function step(d){const n=ORDER.length;if(!n)return;const k=ORDER.indexOf(cur);openCard(ORDER[((k<0?0:k)+d+n)%n],d)}
+document.getElementById('prev').onclick=()=>step(-1);document.getElementById('next').onclick=()=>step(1);
+document.getElementById('close').onclick=()=>dlg.close();
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+document.addEventListener('keydown',e=>{if(!dlg.open)return;if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}else if(e.key==='ArrowRight'){e.preventDefault();step(1)}});
+let tx=null,ty=0;stage.addEventListener('touchstart',e=>{if(e.touches.length!==1||stage.classList.contains('zoom')){tx=null;return}tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+stage.addEventListener('touchmove',e=>{if(e.touches.length!==1)tx=null},{passive:true});
+stage.addEventListener('touchend',e=>{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
+  if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)});
+
+window.addEventListener('hashchange',()=>{TOWN=decodeURIComponent(location.hash.slice(1))||'Tutti';if(location.href.endsWith('#'))history.replaceState(null,'',location.pathname+location.search);if(dlg.open)dlg.close();refresh();window.scrollTo(0,0)});
+/* tocco sulla data o sul pulsante ↻: ricarica la pagina dal server, senza cache */
+const hardReload=()=>{const u=new URL(location.href);u.searchParams.set('r',Date.now());location.replace(u.href)};
+document.getElementById('day').onclick=hardReload;document.getElementById('reload').onclick=hardReload;
+let loaded=Date.now();document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;if(Date.now()-loaded>300000){location.reload();return}if(isoToday()!==TODAY)refresh()});
+
+/* ---------- musica: tocco sul logo (se Menu.mp3 c'è). Il riquadro si può trascinare;
+   tocco sul tempo = barra per spostarsi nel brano ---------- */
+const SONG='@@SONG@@';let audio=null;const PLAY='<svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>',PAUSE='<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+function player(){let p=document.getElementById('player');if(p)return p;p=document.createElement('div');p.id='player';p.hidden=true;
+  p.innerHTML='<button type="button" class="pp" aria-label="Pausa"></button><span class="grip" title="Trascina per spostare"><b>Menu</b><span class="tm">0:00 / 0:00</span></span><button type="button" class="px" aria-label="Chiudi">✕</button><div class="seek"><input type="range" min="0" max="0" step="0.1" value="0" aria-label="Posizione"></div>';
+  document.body.append(p);const pp=p.querySelector('.pp');const show=()=>{const on=audio&&!audio.paused;pp.innerHTML=on?PAUSE:PLAY;pp.setAttribute('aria-label',on?'Pausa':'Riproduci')};
+  audio=new Audio(SONG);audio.preload='auto';['play','pause','ended'].forEach(e=>audio.addEventListener(e,show));
+  const tm=p.querySelector('.tm'),mmss=x=>{x=Math.floor(isFinite(x)?x:0);return Math.floor(x/60)+':'+String(x%60).padStart(2,'0')},sk=p.querySelector('.seek input');let seeking=false;
+  const tick=()=>{tm.textContent=mmss(audio.currentTime)+' / '+mmss(audio.duration);if(isFinite(audio.duration))sk.max=audio.duration;if(!seeking)sk.value=audio.currentTime};
+  sk.addEventListener('input',()=>{seeking=true;audio.currentTime=+sk.value;tm.textContent=mmss(+sk.value)+' / '+mmss(audio.duration)});sk.addEventListener('change',()=>{seeking=false});
+  ['timeupdate','loadedmetadata','durationchange','seeked'].forEach(e=>audio.addEventListener(e,tick));
+  pp.onclick=()=>{if(audio.paused){if(!audio.ended)audio.currentTime=Math.max(0,audio.currentTime-2);audio.play().catch(()=>{})}else audio.pause()};
+  let dx=0,dy=0,drag=false,sx=0,sy=0,onTime=false;
+  p.addEventListener('pointerdown',e=>{if(e.target.closest('button,input'))return;const r=p.getBoundingClientRect();if(!p.classList.contains('moved')){p.classList.add('moved');p.style.left=r.left+'px';p.style.top=r.top+'px';p.style.bottom='auto'}
+    drag=true;sx=e.clientX;sy=e.clientY;onTime=!!e.target.closest('.tm');p.classList.add('drag');dx=e.clientX-r.left;dy=e.clientY-r.top;p.setPointerCapture(e.pointerId);e.preventDefault()});
+  p.addEventListener('pointermove',e=>{if(!drag)return;const W=document.documentElement.clientWidth,H=innerHeight;p.style.left=Math.min(Math.max(0,e.clientX-dx),W-p.offsetWidth)+'px';p.style.top=Math.min(Math.max(0,e.clientY-dy),H-p.offsetHeight)+'px'});
+  ['pointerup','pointercancel'].forEach(t=>p.addEventListener(t,e=>{if(!drag)return;drag=false;p.classList.remove('drag');if(t==='pointerup'&&onTime&&Math.abs(e.clientX-sx)<6&&Math.abs(e.clientY-sy)<6){p.classList.toggle('big');tick()}}));
+  p.querySelector('.px').onclick=()=>{audio.pause();audio.currentTime=0;p.hidden=true};show();return p}
+document.getElementById('brand').onclick=()=>{if(!SONG)return;const p=player();p.hidden=false;audio.currentTime=audio.ended?0:audio.currentTime;audio.play().catch(()=>{})};
+if(SONG)document.getElementById('brand').title='Ascolta';
+
+refresh();
+
+/* ---------- Solo amministratore (?v=57): click di oggi accanto a ogni locale e riga "Info" con il
+   totale; un tocco su "Info" apre la tabella Rosticceria / Oggi / Mese / Anno / Tutto.
+   I numeri arrivano da Registro_click.gs (?azione=statistiche). L'ultimo risultato è conservato sul
+   dispositivo e mostrato subito, poi aggiornato appena arriva quello nuovo. ---------- */
+if(ADMIN&&DATA.log){const info=document.createElement('button');info.type='button';info.className='infocard';info.innerHTML='<span class="total">–</span><span><b>Info</b><small class="visits">Click e visite</small></span>';document.getElementById('main').insertBefore(info,document.querySelector('.foot'));
+const sd=document.createElement('dialog');sd.id='stats';sd.innerHTML='<div class="modal-head"><h2>Clic per rosticceria</h2><button type="button" class="x" aria-label="Chiudi">✕</button></div><div class="statwrap"><table><thead><tr><th data-k="nome">Rosticceria</th><th data-k="oggi">Oggi</th><th data-k="mese">Mese</th><th data-k="anno">Anno</th><th data-k="tutto">Tutto</th></tr></thead><tbody></tbody><tfoot></tfoot></table><p class="statnote"></p></div>';document.body.append(sd);
+sd.querySelector('.x').onclick=()=>sd.close();
+/* ordine della tabella: alfabetico all'apertura; clic su un titolo = crescente per quella colonna,
+   un altro clic sullo stesso titolo = decrescente; alla chiusura si torna all'ordine alfabetico */
+const SRT={k:null,d:1};sd.querySelectorAll('th[data-k]').forEach(th=>{th.onclick=()=>{if(SRT.k===th.dataset.k&&SRT.d===1)SRT.d=-1;else{SRT.k=th.dataset.k;SRT.d=1}renderStats()}});
+sd.addEventListener('close',()=>{SRT.k=null;SRT.d=1;renderStats()});sd.addEventListener('click',e=>{if(e.target===sd)sd.close()});
+let ST=null,loading=false;try{ST=JSON.parse(localStorage.getItem('menuStats')||'null')}catch(e){}
+const P=['oggi','mese','anno','tutto'],today=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Rome'});
+function rowOf(d,n){const ns=[n].concat((DATA.shops.find(s=>s.nome===n)||{}).nomi_precedenti||[]);const z={};P.forEach(k=>z[k]=0);ns.forEach(x=>{const r=(d.righe||{})[x]||{};P.forEach(k=>z[k]+=r[k]||0)});if(d.data!==today()){z.oggi=0}return z}
+function cell(t,v){const c=document.createElement(t);c.textContent=v;return c}
+renderStats=function(){const m=document.getElementById('main');if(info.parentNode!==m||info.nextSibling!==m.querySelector('.foot'))m.insertBefore(info,m.querySelector('.foot'));if(!ST)return;
+  document.querySelectorAll('.card').forEach(card=>{const b=card.querySelector('.count');b.textContent=rowOf(ST,DATA.shops[+card.dataset.index].nome).oggi;b.hidden=false});
+  const ab=new Intl.Collator('it',{sensitivity:'base'}).compare;const names=DATA.shops.map(s=>s.nome).sort(ab),old=DATA.shops.flatMap(s=>s.nomi_precedenti||[]);Object.keys(ST.righe||{}).forEach(n=>{if(!names.includes(n)&&!old.includes(n))names.push(n)});const tot={oggi:0,mese:0,anno:0,tutto:0};
+  if(SRT.k)names.sort((a,b)=>(SRT.k==='nome'?ab(a,b):(rowOf(ST,a)[SRT.k]-rowOf(ST,b)[SRT.k]))*SRT.d||ab(a,b));
+  sd.querySelectorAll('th[data-k]').forEach(th=>{th.dataset.dir=th.dataset.k===SRT.k?(SRT.d===1?'▲':'▼'):''});
+  const tb=sd.querySelector('tbody');tb.innerHTML='';names.forEach(n=>{const z=rowOf(ST,n);const tr=document.createElement('tr');tr.append(cell('td',n));P.forEach(k=>{tot[k]+=z[k];tr.append(cell('td',z[k]))});tb.append(tr)});
+  const tf=sd.querySelector('tfoot');tf.innerHTML='';const tr=document.createElement('tr');tr.append(cell('td','Totale'));P.forEach(k=>tr.append(cell('td',tot[k])));tf.append(tr);
+  info.querySelector('.total').textContent=tot.oggi;const V=ST.visite&&ST.data===today()?ST.visite:(ST.visite?{oggi:0,mese:ST.visite.mese,anno:ST.visite.anno,tutto:ST.visite.tutto}:null);
+  sd.querySelector('.statnote').textContent=(V?'Visite alla pagina: oggi '+V.oggi+' · mese '+V.mese+' · anno '+V.anno+' · tutto '+V.tutto+'. ':'')+(loading?'Aggiornamento in corso… ':'')+(ST.ora?'Dati delle '+ST.ora:'');
+  info.querySelector('.visits').textContent=(tot.oggi===1?'1 click oggi':tot.oggi+' click oggi')+(V?' · '+V.oggi+(V.oggi===1?' visita':' visite'):'')}
+function loadStats(){if(loading)return;loading=true;renderStats();fetch(DATA.log+'?azione=statistiche&t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(d=>{if(!d||!d.righe)return;d.ora=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});ST=d;try{localStorage.setItem('menuStats',JSON.stringify(d))}catch(e){}}).catch(()=>{}).finally(()=>{loading=false;renderStats()})}
+info.onclick=()=>{renderStats();sd.showModal();loadStats()};
+renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadStats()})}
+</script>
+</body></html>
+'''
+
+
 def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results: list[dict[str, Any]]) -> None:
+    """Scrive la pagina del sito (Menu.html sul PC, index.html e admin.html per GitHub Pages).
+
+    La pagina è costruita nel telefono a partire dai dati (DATA): elenco, Comuni, scheda del menu
+    e numeri dell'amministratore. Qui si preparano solo i dati e le versioni dei file."""
     order = display_order(shops, results)
     shops, results = [shops[i] for i in order], [results[i] for i in order]
-    cards = []
     logos = make_shop_logos(shops)
-    for index, (shop, result) in enumerate(zip(shops, results)):
-        label, css = status_label(date.fromisoformat(result["menu_date"]) if result.get("menu_date") else None, result.get("error", ""))
-        menu_day = date.fromisoformat(result["menu_date"]) if result.get("menu_date") else None
-        day_text = menu_day.strftime("%d/%m/%Y") if menu_day else "nessun menu"
-        note_html = f'\n  <span class="note">{html.escape(result["nota"])}</span>' if result.get("nota") else ""
-        logo = logos.get(shop["id"])
-        logo_html = f'<img class="logo" src="{html.escape(logo)}" alt="" width="64" height="64">\n  ' if logo else ""
-        town = shop_town(shop)
-        town_html = f'\n  <span class="town">{html.escape(town)}</span>' if town else ""
-        cards.append(f'''<button type="button" class="card {'band-ok' if css == 'fresh' else 'band-old'}" data-index="{index}">
-  {logo_html}<span class="info">
-  <h2>{html.escape(shop['nome'])}</h2>
-  <span class="day"><strong>{day_text}</strong></span>{note_html}
-  <span class="status {css}">{label}</span>
-  </span>
-  <span class="count" hidden></span>{town_html}
-</button>''')
     public_shops = [{**{key: shop.get(key, "") for key in ("nome", "telefono", "indirizzo", "url")},
-                     # nomi usati prima di un cambio di nome: i loro click restano sommati al locale
                      # indirizzo da mostrare nella scheda: "Via ... numero - Comune"
                      "indirizzo_breve": short_address(shop),
                      "comune": shop_town(shop),
+                     # miniatura del logo (icone/logo-<id>.jpg?v=...): vuota se il locale non ha logo
+                     "logo": logos.get(shop["id"], ""),
+                     # nomi usati prima di un cambio di nome: i loro click restano sommati al locale
                      "nomi_precedenti": shop.get("nomi_precedenti", [])} for shop in shops]
     # niente orari di controllo nella pagina: se i menu non cambiano la pagina resta identica
     # e la pubblicazione automatica non crea un nuovo invio ogni 15 minuti
@@ -1688,143 +2047,34 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
         if picture and picture.is_file():
             item["v"] = file_hash(picture)[:10]
     version = hashlib.sha1(json.dumps(public_results, sort_keys=True).encode()).hexdigest()[:10]
-    # ora dell'ultimo aggiornamento pubblicato ("Menu - Venerdì 9 ottobre - 09:43"): cambia solo
-    # quando cambia il contenuto, così un giro senza novità non crea una nuova pubblicazione
+    # ora dell'ultimo aggiornamento pubblicato ("aggiornato alle 09:43"): cambia solo quando cambia
+    # il contenuto, così un giro senza novità non crea una nuova pubblicazione
     stamp = read_json(PUBLISHED_AT, {})
     if stamp.get("v") != version or stamp.get("data") != date.today().isoformat() or not stamp.get("ora"):
         stamp = {"v": version, "data": date.today().isoformat(), "ora": datetime.now().strftime("%H:%M")}
         save_json(PUBLISHED_AT, stamp)
-    title_tpl = settings.get("titolo", "Menu - {data}")
-    payload = json.dumps({"shops": public_shops, "results": public_results, "v": version, "titolo": title_tpl,
-                          "ora": stamp["ora"],
+    payload = json.dumps({"shops": public_shops, "results": public_results, "v": version,
+                          "titolo": settings.get("titolo", "Menu - {data}"),
+                          "ora": stamp["ora"], "data": stamp["data"],
                           "log": settings.get("registro_click_url", ""),
                           # visite alla pagina (foglio "Visite"): solo dopo aver aggiornato Registro_click.gs
                           "visite": bool(settings.get("registra_visite", False))}, ensure_ascii=False).replace("</", "<\\/")
     days = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
     today = date.today()
     today_text = f"{days[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}"
-    title = html.escape(settings.get("titolo", "Menu - {data}").replace("{data}", today_text))
     iv = write_manifest()  # versione delle icone: cambia quando cambia il logo
     # versione del logo del titolo (sua impronta): se cambia, browser e telefoni scaricano quello nuovo
     tv = file_hash(ICONS / TITLE_LOGO)[:10] if (ICONS / TITLE_LOGO).exists() else iv
     # musica del logo: la sua impronta nell'indirizzo fa scaricare la nuova quando il file cambia
     song = f"{SONG}?v={file_hash(ROOT / SONG)[:10]}" if (ROOT / SONG).is_file() else ""
-    document = f'''<!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1220"><title>Menu</title>
-<meta property="og:title" content="Menu"><meta property="og:description" content="Menu del giorno delle rosticcerie">
-<meta property="og:type" content="website"><meta property="og:url" content="{WEB_URL}">
-<meta property="og:image" content="{WEB_URL}icone/icona-512.png?v={iv}"><meta property="og:image:width" content="512"><meta property="og:image:height" content="512">
-<script>/* ?v=57 = amministratore: si passa a admin.html (stessa pagina), il cui indirizzo resta anche
-   nell'app aggiunta alla Home; lì il manifest "amministratore" fa riaprire l'app sempre su admin.html */
-(function(){{const adm=location.pathname.endsWith('/admin.html');
-if(!adm&&new URLSearchParams(location.search).get('v')==='57'){{location.replace('admin.html');return}}
-document.write('<link rel="manifest" href="'+(adm?'manifest-admin':'manifest')+'.webmanifest?v={iv}">')}})()</script><link rel="icon" type="image/png" href="icone/favicon.png?v={iv}">
-<link rel="apple-touch-icon" sizes="180x180" href="icone/icona-180.png?v={iv}"><meta name="apple-mobile-web-app-title" content="Menu">
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>
-:root{{--bg:#0b1220;--card:#fff;--ink:#172033;--muted:#64748b;--accent:#16a34a}}
-*{{box-sizing:border-box}}body{{margin:0;background:linear-gradient(150deg,#09111f,#172033);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:white;min-height:100vh}}
-header{{max-width:1500px;margin:auto;padding:max(28px,calc(env(safe-area-inset-top) + 12px)) 20px 18px;display:flex;justify-content:flex-start;align-items:end;gap:20px}}h1{{margin:0;font-size:clamp(28px,4vw,46px);cursor:pointer}}h1 .sub{{font-size:.5em}}h1 .logo{{height:2.4em;width:auto;vertical-align:middle;background:#fff;border-radius:14px;padding:5px 9px;margin-right:4px;box-shadow:0 4px 14px #0006}}h1 .logo.play{{cursor:pointer}}#player{{position:absolute;z-index:50;display:flex;align-items:center;gap:14px;width:min(280px,calc(100vw - 32px));box-sizing:border-box;padding:10px 12px;touch-action:none;user-select:none;-webkit-user-select:none;background:#e0f2fe;border:3px solid #facc15;border-radius:16px;box-shadow:0 10px 28px #0008}}#player[hidden]{{display:none}}#player button{{display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;font:inherit}}#player .pp{{width:52px;height:52px;border:0;border-radius:12px;background:#16a34a;color:#fff;box-shadow:0 2px 8px #0004}}#player .pp svg{{width:26px;height:26px;fill:currentColor}}#player .grip{{flex:1;align-self:stretch;display:flex;align-items:center;justify-content:center;cursor:grab;color:#64748b;font-size:22px;letter-spacing:2px}}#player.drag .grip{{cursor:grabbing}}#player{{flex-wrap:wrap;row-gap:8px}}#player.big{{width:min(420px,calc(100vw - 32px))}}#player .tm{{font-size:14px;letter-spacing:0;color:#334155;font-variant-numeric:tabular-nums;cursor:pointer;padding:6px 8px;border-radius:8px}}#player .tm:hover{{background:#bae6fd}}#player .seek{{display:none;flex-basis:100%}}#player.big .seek{{display:block}}#player .seek input{{width:100%;height:28px;margin:0;accent-color:#16a34a;cursor:pointer;touch-action:auto}}#player .px{{width:38px;height:38px;border:3px solid #172033;border-radius:50%;background:#fff;color:#172033;font-size:20px;font-weight:800;line-height:1}}header p{{margin:5px 0 0;color:#cbd5e1}}.updated{{font-size:13px;color:#94a3b8}}
-main{{max-width:1500px;margin:auto;padding:12px 20px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(max(270px,calc(25% - 14px)),1fr));gap:18px}}
-.card{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;width:100%;background:var(--card);color:var(--ink);border-radius:16px;padding:18px 20px;box-shadow:0 10px 28px #0005;cursor:pointer;transition:.18s transform,.18s box-shadow;font:inherit;position:relative}}
-.card{{flex-direction:row;align-items:center;gap:16px}}.info{{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;flex:1}}.logo{{width:64px;height:64px;flex:none;border-radius:14px;object-fit:cover;background:#fff;box-shadow:0 2px 8px #0003}}
-.count{{position:absolute;right:14px;bottom:12px;min-width:28px;padding:2px 9px;border-radius:999px;background:#1e293b;color:#fff;font-size:14px;font-weight:800;text-align:center}}
-.infocard{{display:flex;flex-direction:row;align-items:center;gap:16px;background:#d1d5db;color:#172033;border:4px solid #facc15;border-radius:16px;padding:18px 20px 18px 26px;box-shadow:0 10px 28px #0005;text-align:left}}
-.infocard h2{{margin:0;font-size:21px}}.infocard .total{{width:64px;height:64px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:14px;background:#fff;box-shadow:0 2px 8px #0003;font-size:32px;font-weight:800;color:#172033}}.infocard small{{color:#475569;font-size:14px}}.infocard{{cursor:pointer}}.infocard:hover,.infocard:focus-visible{{transform:translateY(-3px);outline:3px solid #facc15}}
-#stats{{width:min(460px,96vw);box-sizing:border-box;border:5mm solid #38bdf8}}.modal-head{{background:#3f3f46;border-bottom-color:#52525b}}#stats .x{{background:#52525b;color:white;font-size:18px}}.statwrap{{padding:10px 14px 16px;overflow:auto}}#stats table{{width:100%;border-collapse:collapse;font-size:16px}}#stats th,#stats td{{padding:3px 8px;line-height:1.25;white-space:nowrap;border-bottom:1px solid #1e293b;text-align:right}}#stats th:first-child,#stats td:first-child{{text-align:left}}#stats th{{color:#facc15;font-size:14px;cursor:pointer;user-select:none;white-space:nowrap}}#stats th::after{{content:attr(data-dir);font-size:10px;margin-left:3px}}#stats tfoot td{{font-weight:800;border-top:2px solid #facc15;border-bottom:0}}.statnote{{margin:10px 0 0;color:#94a3b8;font-size:13px}}.card:hover,.card:focus-visible{{transform:translateY(-3px);box-shadow:0 14px 32px #0008;outline:3px solid var(--accent)}}
-.band-ok{{border-left:10px solid #16a34a;background:#dcfce7}}#detail{{width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0;inset:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:hidden}}
-#detail[open]{{display:flex;align-items:center;justify-content:center}}
-#detail .sheet{{box-sizing:border-box;width:min(920px,96vw);max-height:94vh;max-height:94dvh;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b;border:5mm solid #f97316}}
-#detail.ok .sheet{{border-color:#16a34a}}#detail.old .sheet{{border-color:#f97316}}.band-old{{border-left:10px solid #f97316;background:#fef3c7}}
-.card h2{{font-size:21px;margin:0}}.day{{color:var(--muted);font-size:15px}}.day strong{{color:var(--ink)}}.note{{color:#b45309;font-size:14px;font-weight:700}}.card .status,.card .day{{display:none}}#name .mdate{{font-size:.65em}}.sheet{{display:flex;flex-direction:column;height:94vh;height:94dvh;overflow:hidden}}.modal-head,.actions,#nomenu{{flex:none}}.modal-head>div{{min-width:0}}#name,#addr{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}#full{{flex:1 1 0;min-height:0;width:100%;height:auto;max-height:none;object-fit:contain}}#text{{flex:1 1 0;min-height:0;max-height:none}}#text:empty{{display:none}}.actions{{margin-top:auto}}.town{{position:absolute;top:8px;right:14px;font-size:12px;font-weight:400;color:#000;line-height:1}}.status{{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:750}}.fresh{{background:#dcfce7;color:#166534}}.stale{{background:#fef3c7;color:#92400e}}.missing{{background:#fee2e2;color:#991b1b}}
-#text{{max-height:68vh;overflow:auto;padding:0 18px}}#text h3{{margin:18px 0 8px;color:#86efac}}.dish{{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-bottom:1px solid #1e293b}}.dish b{{white-space:nowrap}}.dish small{{grid-column:1/-1;color:#94a3b8}}.dish small:empty{{display:none}}
-#nomenu{{padding:40px 18px;text-align:center;color:#cbd5e1}}
-dialog{{width:min(920px,96vw);max-height:94vh;padding:0;border:0;border-radius:18px;background:#050a12;color:white;box-shadow:0 24px 70px #000b}}dialog::backdrop{{background:#000c}}.modal-head{{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #334155}}.nav{{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:52px;height:52px;padding:0;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:34px;line-height:48px;box-shadow:0 6px 18px #0008;text-shadow:0 1px 4px #000c}}.nav:hover,.nav:focus-visible{{background:rgba(255,255,255,.25)}}#prev{{left:max(6px,calc(50vw - min(460px,48vw) - 66px))}}#next{{right:max(6px,calc(50vw - min(460px,48vw) - 66px))}}
-.modal-head h2{{margin:0}}#addr{{margin:4px 0 0;font-size:15px;font-weight:400;color:#cbd5e1}}button{{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}}#close{{background:#52525b;color:white;font-size:18px}}#full{{display:block;max-width:100%;max-height:68vh;margin:auto;object-fit:contain}}#full[hidden]{{display:none}}.actions{{padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}}.actions a{{color:white;text-decoration:none;background:#166534;padding:10px 14px;border-radius:10px;font-weight:700}}.actions .source{{background:#1d4ed8}}#meta{{color:#cbd5e1;flex-basis:100%;text-align:center}}#meta:empty{{display:none}}footer{{text-align:center;color:#94a3b8;padding:0 20px 28px;font-size:13px}}
-#home{{flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;width:52px;height:52px;border-radius:14px;background:#334155;color:#fff;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 6px 18px #0006}}.towncard{{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 8px;width:100%;text-align:left;font:inherit;background:var(--card);color:var(--ink);border:0;border-left:10px solid #16a34a;border-radius:16px;padding:14px 22px;box-shadow:0 10px 28px #0005;cursor:pointer}}.towncard.all{{border-left-color:#16a34a}}.towncard.none{{border-left-color:#f97316}}.infocard{{padding:3px 20px 3px 26px}}.infocard .total{{width:40px;height:40px;font-size:20px;border-radius:10px}}.towncard{{flex-wrap:nowrap;white-space:nowrap}}.towncard b{{font-size:25px}}.towncard small{{flex:none}}.towncard{{background:#e0f2fe}}.towncard .tok{{color:#ea580c}}.towncard .ttot{{color:#15803d}}.towncard .tok.full{{color:#15803d}}.towncard small{{font-size:15px;color:#334155}}.towncard{{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px}}.towncard .tlist{{display:flex;flex-direction:column;gap:2px;font-size:14px;font-weight:400;color:#000;line-height:1.3}}.towncard .tlist span{{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}.towncard .tlist span::before{{content:'•';margin-right:7px}}.towncard[data-town="Tutti"]{{background:#dcfce7}}.infocard{{background:#e0f2fe}}.card[hidden],.towncard[hidden],.infocard[hidden],#home[hidden]{{display:none!important}}@media(max-width:600px){{header{{align-items:center}}h1{{font-size:clamp(22px,7vw,30px)}}#home{{width:46px;height:46px;font-size:24px}}main{{grid-template-columns:1fr;padding-inline:12px}}}}
-</style></head><body>
-<header><h1>{title}</h1><button id="home" hidden aria-label="Torna alla scelta del Comune" title="Torna alla scelta del Comune">🏠</button></header>
-<main>{''.join(cards)}</main>
-<dialog id="detail"><div class="sheet"><div class="modal-head"><div><h2 id="name"></h2><p id="addr" hidden></p></div><button id="close" aria-label="Chiudi">✕</button></div><img id="full" alt=""><div id="text"></div><p id="nomenu" hidden>Il menu di questa data non è pubblicato (vedi archivio).</p><div class="actions"><span id="meta"></span><a id="phone" hidden></a><a id="map" target="_blank" rel="noopener" hidden>Google Maps</a><a id="source" class="source" target="_blank" rel="noopener" hidden>Fonte</a></div></div><button class="nav" id="prev" aria-label="Rosticceria precedente">‹</button><button class="nav" id="next" aria-label="Rosticceria successiva">›</button></dialog>
-<script>const DATA={payload};
-/* Registro dei click sul foglio Google "Menu" (Apps Script in Registro_click.gs).
-   ?v=57 nell'indirizzo = amministratore: quei click non vengono registrati. Senza ?v=57 si registra
-   sempre, anche sullo stesso dispositivo (non viene ricordato nulla). */
-const Q=new URLSearchParams(location.search);const ADMIN=Q.get('v')==='57'||location.pathname.endsWith('/admin.html');
-try{{localStorage.removeItem('menuAdmin')}}catch(e){{}}
-function deviceLabel(){{const u=navigator.userAgent||'';let o='Altro',b='Altro';
-if(/iPad/.test(u))o='iPad';else if(/iPhone/.test(u))o='iPhone';else if(/Android/.test(u))o='Android';else if(/Macintosh/.test(u))o='Mac';else if(/Windows/.test(u))o='Windows';else if(/Linux/.test(u))o='Linux';
-if(/Edg\\//.test(u))b='Edge';else if(/OPR\\//.test(u))b='Opera';else if(/CriOS\\//.test(u)||/Chrome\\//.test(u))b='Chrome';else if(/FxiOS\\//.test(u)||/Firefox\\//.test(u))b='Firefox';else if(/Safari\\//.test(u))b='Safari';return o+' / '+b}}
-let placeP=null;function approxPlace(){{if(!placeP)placeP=fetch('https://ipwho.is/',{{cache:'no-store'}}).then(r=>r.json()).then(d=>d&&d.success!==false?[d.city,d.region,d.country_code].filter(Boolean).join(', '):'').catch(()=>'');return placeP}}
-if(!ADMIN&&DATA.log&&!navigator.webdriver){{approxPlace();/* visita alla pagina: una per apertura del sito, anche senza aprire schede (foglio "Visite") */if(DATA.visite)Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({{tipo:'visita',pagina:decodeURIComponent(location.hash.slice(1))||'iniziale',dispositivo:deviceLabel(),posizione:p||''}})))}}
-function sendLog(body){{try{{if(navigator.sendBeacon&&navigator.sendBeacon(DATA.log,new Blob([body],{{type:'text/plain'}})))return}}catch(e){{}}try{{fetch(DATA.log,{{method:'POST',mode:'no-cors',keepalive:true,body}})}}catch(e){{}}}}
-function logClick(name){{if(ADMIN||!DATA.log||navigator.webdriver)return;/* navigator.webdriver: pagina aperta da un programma (Panorama, robot): non è una visita vera */Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({{rosticceria:name,dispositivo:deviceLabel(),posizione:p||''}})))}}const dlg=document.querySelector('#detail');let cur=0;function openCard(i,dir){{cur=i;const s=DATA.shops[i],r=DATA.results[i];const go=()=>{{
-/* cornice doppia della scheda: verde se il menu di oggi è pubblicato, arancione se no (stessi colori delle schede) */
-const n0=new Date(),iso0=n0.getFullYear()+'-'+String(n0.getMonth()+1).padStart(2,'0')+'-'+String(n0.getDate()).padStart(2,'0');dlg.classList.toggle('ok',r.menu_date===iso0);dlg.classList.toggle('old',r.menu_date!==iso0);logClick(s.nome);const nm=document.querySelector('#name');nm.textContent=s.nome+(r.menu_date?' - ':'');if(r.menu_date){{const md=document.createElement('span');md.className='mdate';const dn=document.createElement('span');dn.className='dnum';dn.textContent=(+r.menu_date.slice(8,10));nm.append(dn);md.textContent=' '+['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'][+r.menu_date.slice(5,7)-1];nm.append(md)}}const ad=document.querySelector('#addr');ad.textContent=s.indirizzo_breve||s.indirizzo||'';ad.hidden=!(s.indirizzo_breve||s.indirizzo);const img=document.querySelector('#full');img.src=r.image?r.image+'?v='+(r.v||DATA.v):'';img.hidden=!r.image;const tx=document.querySelector('#text');tx.innerHTML='';(r.sections||[]).forEach(sec=>{{const h=document.createElement('h3');h.textContent=sec.titolo;tx.append(h);sec.piatti.forEach(p=>{{const d=document.createElement('div');d.className='dish';d.innerHTML='<span></span><b></b><small></small>';d.children[0].textContent=p.nome;d.children[1].textContent=p.prezzo;d.children[2].textContent=p.descrizione;tx.append(d)}})}});document.querySelector('#nomenu').hidden=!!(r.image||(r.sections||[]).length);document.querySelector('#meta').textContent=r.nota||(r.menu_date?'':'Menu non disponibile');const phone=document.querySelector('#phone');phone.hidden=!s.telefono;phone.textContent=s.telefono||'';phone.href='tel:'+(s.telefono||'').replace(/[^+\\d]/g,'');const map=document.querySelector('#map');map.hidden=!s.indirizzo;map.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\\s*\\(.*\\)/,'')+', '+(s.indirizzo||''));const source=document.querySelector('#source');source.hidden=!s.url;source.href=s.url||'';if(!dlg.open)dlg.showModal();dlg.querySelector('.sheet').scrollTop=0;
-if(dir)['#full','#text','#nomenu'].forEach(q=>{{const e=document.querySelector(q);if(e&&e.animate)e.animate([{{opacity:.4}},{{opacity:1}}],{{duration:180,easing:'ease-out'}})}})}};if(dlg.open&&r.image){{const p=new Image();let done=false;const f=()=>{{if(!done&&cur===i){{done=true;go()}}}};p.onload=p.onerror=f;setTimeout(f,1500);p.src=r.image+'?v='+(r.v||DATA.v)}}else go();}}
-/* scheda precedente / successiva in modo circolare: frecce ai lati, tasti ← → e, sul telefono,
-   scorrimento del dito a destra o a sinistra */
-function step(d){{const order=[...document.querySelectorAll('.card')].filter(c=>!c.hidden).map(c=>+c.dataset.index),n=order.length;openCard(order[(order.indexOf(cur)+d+n)%n],d)}}
-document.querySelector('#prev').onclick=e=>{{e.stopPropagation();step(-1)}};document.querySelector('#next').onclick=e=>{{e.stopPropagation();step(1)}};
-document.addEventListener('keydown',e=>{{if(!dlg.open)return;if(e.key==='ArrowLeft'){{e.preventDefault();step(-1)}}else if(e.key==='ArrowRight'){{e.preventDefault();step(1)}}}});
-let tx=null,ty=0;dlg.addEventListener('touchstart',e=>{{if(e.touches.length!==1){{tx=null;return}}tx=e.touches[0].clientX;ty=e.touches[0].clientY}},{{passive:true}});
-dlg.addEventListener('touchmove',e=>{{if(e.touches.length!==1)tx=null}},{{passive:true}});
-dlg.addEventListener('touchend',e=>{{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
-if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)}});document.querySelectorAll('.card').forEach(c=>{{c.onclick=()=>openCard(+c.dataset.index)}});document.querySelector('#close').onclick=()=>dlg.close();dlg.onclick=e=>{{if(e.target===dlg)dlg.close()}};/* Navigazione per Comune: la pagina iniziale mostra un riquadro per ogni Comune (con quanti locali
-   hanno già il menu di oggi); toccandolo si vedono solo i locali di quel Comune, con la casetta 🏠
-   per tornare indietro. Il Comune scelto resta nell'indirizzo (#Noci): funzionano il tasto
-   "indietro" del telefono, il ricaricamento e i preferiti. "Tutti" mostra tutti i locali. */
-let TOWN=decodeURIComponent(location.hash.slice(1));
-function townList(){{const c={{}};DATA.shops.forEach(s=>{{const k=s.comune||'Altro';c[k]=(c[k]||0)+1}});const col=new Intl.Collator('it',{{sensitivity:'base'}});return Object.keys(c).sort((a,b)=>(c[b]-c[a])||col.compare(a,b)).map(k=>[k,c[k]])}}
-function buildTowns(){{const main=document.querySelector('main'),n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');main.querySelectorAll('.towncard').forEach(e=>e.remove());const first=main.firstChild;
-const add=(name,label,tot,ok,cls,names)=>{{const b=document.createElement('button');b.type='button';b.className='towncard'+(cls?' '+cls:'')+(ok===tot?'':' none');b.dataset.town=name;b.innerHTML='<b></b>';const sp=(c,v)=>{{const e=document.createElement('span');e.className=c;e.textContent=v;return e}};b.children[0].append(label+' - ',sp('tok'+(ok===tot?' full':''),ok),'/',sp('ttot',tot));if(names&&names.length){{const l=document.createElement('span');l.className='tlist';names.forEach(x=>{{const r=document.createElement('span');r.textContent=x;l.append(r)}});b.append(l)}}b.title=ok+' locali su '+tot+' con il menu di oggi';b.onclick=()=>{{location.hash=encodeURIComponent(name)}};main.insertBefore(b,first)}};
-let all=0,allOk=0;townList().forEach(([k,c])=>{{const ok=DATA.shops.filter((s,i)=>(s.comune||'Altro')===k&&DATA.results[i].menu_date===iso).length;all+=c;allOk+=ok;add(k,k,c,ok,'',DATA.shops.filter(s=>(s.comune||'Altro')===k).map(s=>s.nome).sort((x,y)=>x.localeCompare(y,'it')))}});add('Tutti','Tutti i Comuni',all,allOk,'all')}}
-function applyTown(){{const names=townList().map(x=>x[0]);if(TOWN&&TOWN!=='Tutti'&&!names.includes(TOWN))TOWN='';
-document.querySelectorAll('.card').forEach(c=>{{const s=DATA.shops[+c.dataset.index];c.hidden=!TOWN||(TOWN!=='Tutti'&&(s.comune||'Altro')!==TOWN)}});
-document.querySelectorAll('.towncard').forEach(e=>e.hidden=!!TOWN);const info=document.querySelector('.infocard');if(info)info.hidden=!!TOWN;document.querySelector('#home').hidden=!TOWN;const pl=document.getElementById('player');if(pl&&pl.dataset.open)pl.hidden=!!TOWN}}
-window.addEventListener('hashchange',()=>{{TOWN=decodeURIComponent(location.hash.slice(1));if(!TOWN&&location.href.endsWith('#'))history.replaceState(null,'',location.pathname+location.search);if(dlg.open)dlg.close();refresh();window.scrollTo(0,0);if(document.activeElement)document.activeElement.blur()}});
-document.querySelector('#home').onclick=()=>{{location.hash=''}};
-const SONG='{song}';let audio=null;const PLAY='<svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>',PAUSE='<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';function player(){{let p=document.getElementById('player');if(p)return p;p=document.createElement('div');p.id='player';p.hidden=true;p.innerHTML='<button type="button" class="pp" aria-label="Pausa"></button><span class="grip" title="Trascina per spostare"><span class="tm">0:00 / 0:00</span></span><button type="button" class="px" aria-label="Chiudi">✕</button><div class="seek"><input type="range" min="0" max="0" step="0.1" value="0" aria-label="Posizione"></div>';document.body.append(p);p.addEventListener('click',e=>e.stopPropagation());const pp=p.querySelector('.pp');const show=()=>{{const on=audio&&!audio.paused;pp.innerHTML=on?PAUSE:PLAY;pp.setAttribute('aria-label',on?'Pausa':'Riproduci')}};audio=new Audio(SONG);audio.preload='auto';['play','pause','ended'].forEach(e=>audio.addEventListener(e,show));const tm=p.querySelector('.tm'),mmss=x=>{{x=Math.floor(isFinite(x)?x:0);return Math.floor(x/60)+':'+String(x%60).padStart(2,'0')}},sk=p.querySelector('.seek input');let seeking=false;const tick=()=>{{tm.textContent=mmss(audio.currentTime)+' / '+mmss(audio.duration);if(isFinite(audio.duration))sk.max=audio.duration;if(!seeking)sk.value=audio.currentTime}};sk.addEventListener('input',()=>{{seeking=true;audio.currentTime=+sk.value;tm.textContent=mmss(+sk.value)+' / '+mmss(audio.duration)}});sk.addEventListener('change',()=>{{seeking=false}});const toggleBig=()=>{{const c=p.offsetLeft+p.offsetWidth/2;p.classList.toggle('big');tick();const W=document.documentElement.clientWidth;p.style.left=Math.min(Math.max(0,c-p.offsetWidth/2),Math.max(0,W-p.offsetWidth))+'px'}};['timeupdate','loadedmetadata','durationchange','seeked'].forEach(e=>audio.addEventListener(e,tick));pp.onclick=()=>{{if(audio.paused){{if(!audio.ended)audio.currentTime=Math.max(0,audio.currentTime-2);audio.play().catch(()=>{{}})}}else audio.pause()}};let dx=0,dy=0,drag=false,sx=0,sy=0,onTime=false;p.addEventListener('pointerdown',e=>{{if(e.target.closest('button,input'))return;drag=true;sx=e.pageX;sy=e.pageY;onTime=!!e.target.closest('.tm');p.classList.add('drag');dx=e.pageX-p.offsetLeft;dy=e.pageY-p.offsetTop;p.setPointerCapture(e.pointerId);e.preventDefault()}});p.addEventListener('pointermove',e=>{{if(!drag)return;const W=document.documentElement.scrollWidth;p.style.left=Math.min(Math.max(0,e.pageX-dx),W-p.offsetWidth)+'px';p.style.top=Math.max(0,e.pageY-dy)+'px'}});['pointerup','pointercancel'].forEach(t=>p.addEventListener(t,e=>{{if(!drag)return;drag=false;p.classList.remove('drag');if(t==='pointerup'&&onTime&&Math.abs(e.pageX-sx)<6&&Math.abs(e.pageY-sy)<6)toggleBig()}}));p.querySelector('.px').onclick=()=>{{audio.pause();audio.currentTime=0;p.hidden=true;delete p.dataset.open}};show();return p}}function openPlayer(){{const p=player();p.hidden=false;p.dataset.open='1';p.style.left=Math.max(0,(document.documentElement.clientWidth-p.offsetWidth)/2)+'px';p.style.top=Math.max(0,(innerHeight-p.offsetHeight)/2)+'px';audio.currentTime=audio.ended?0:audio.currentTime;audio.play().catch(()=>{{}})}}function refresh(){{const n=new Date(),iso=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');const gg=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'],mm=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];const dd=gg[n.getDay()]+' '+n.getDate()+' '+mm[n.getMonth()],lab=TOWN&&TOWN!=='Tutti'?TOWN:'';const t=lab?lab+' - '+dd:DATA.titolo.replace('{{data}}',dd);let h1=document.querySelector('h1'),cut=lab?lab.length:t.startsWith('Menu')?4:0,rest=t.slice(cut),dm=rest.match(/\\d+/);h1.textContent=t.slice(0,cut);if(!lab&&t.startsWith('Menu')){{h1.textContent='';const lg=document.createElement('img');lg.className='logo';lg.src='icone/{TITLE_LOGO}?v={tv}';lg.alt='Menu';if(SONG){{lg.classList.add('play');lg.title='Ascolta';lg.onclick=e=>{{e.stopPropagation();openPlayer()}}}}h1.append(lg);rest=rest.replace(/^\\s*-\\s*/,' ');dm=rest.match(/\\d+/)}}const part=(x,c)=>{{if(!x)return;const e=document.createElement('span');if(c)e.className=c;e.textContent=x;h1.append(e)}};if(dm){{part(rest.slice(0,dm.index),'sub');part(dm[0],'');part(rest.slice(dm.index+dm[0].length),'sub')}}else part(rest,'sub');if(DATA.ora)part(' - '+DATA.ora,'sub');document.querySelectorAll('.card').forEach(c=>{{const i=+c.dataset.index,r=DATA.results[i],ok=r.menu_date===iso,st=c.querySelector('.status');c.classList.toggle('band-ok',ok);c.classList.toggle('band-old',!ok);st.className='status '+(ok?'fresh':r.menu_date?'stale':'missing');st.textContent=ok?'Oggi':r.menu_date?'Non di oggi':(r.error?'Errore':'Non disponibile')}});
-/* ordine: prima le rosticcerie "Oggi" (fascia verde: menu, avviso di chiusura o riposo di oggi),
-   poi le altre; in ciascun gruppo in ordine alfabetico. Rifatto anche quando cambia il giorno. */
-const main=document.querySelector('main'),col=new Intl.Collator('it',{{sensitivity:'base'}}),has=i=>DATA.results[i].menu_date===iso;
-[...document.querySelectorAll('.card')].sort((a,b)=>{{const x=+a.dataset.index,y=+b.dataset.index;return (has(y)-has(x))||col.compare(DATA.shops[x].nome,DATA.shops[y].nome)}}).forEach(c=>main.insertBefore(c,main.querySelector('.infocard')));buildTowns();applyTown()}}refresh();
-/* clic sul titolo: ricarica la pagina dal server, senza cache (indirizzo con un numero sempre nuovo) */
-document.querySelector('h1').addEventListener('click',()=>{{const u=new URL(location.href);u.searchParams.set('r',Date.now());location.replace(u.href)}});
-let loaded=Date.now();document.addEventListener('visibilitychange',()=>{{if(document.visibilityState!=='visible')return;refresh();if(Date.now()-loaded>300000)location.reload()}})
-/* Solo con ?v=57 nell'indirizzo: click di oggi in basso a destra di ogni scheda, totale nella scheda "Info";
-   un tocco su "Info" apre la tabella Rosticceria / Oggi / Mese / Anno / Tutto con i totali.
-   I numeri arrivano da Registro_click.gs (?azione=statistiche). Per non far aspettare, l'ultimo
-   risultato è conservato sul dispositivo e mostrato subito, poi aggiornato appena arriva quello nuovo. */
-if(ADMIN&&DATA.log){{const info=document.createElement('div');info.className='infocard';info.tabIndex=0;info.setAttribute('role','button');info.innerHTML='<div class="total">–</div><div><h2>Info</h2><small class="visits"></small></div>';document.querySelector('main').append(info);info.hidden=!!TOWN;
-const sd=document.createElement('dialog');sd.id='stats';sd.innerHTML='<div class="modal-head"><h2>Clic per rosticceria</h2><button class="x" aria-label="Chiudi">✕</button></div><div class="statwrap"><table><thead><tr><th data-k="nome">Rosticceria</th><th data-k="oggi">Oggi</th><th data-k="mese">Mese</th><th data-k="anno">Anno</th><th data-k="tutto">Tutto</th></tr></thead><tbody></tbody><tfoot></tfoot></table><p class="statnote"></p></div>';document.body.append(sd);
-sd.querySelector('.x').onclick=()=>sd.close();
-/* ordine della tabella: alfabetico all'apertura; clic su un titolo = crescente per quella colonna,
-   un altro clic sullo stesso titolo = decrescente; alla chiusura si torna all'ordine alfabetico */
-const SRT={{k:null,d:1}};sd.querySelectorAll('th[data-k]').forEach(th=>{{th.onclick=()=>{{if(SRT.k===th.dataset.k&&SRT.d===1)SRT.d=-1;else{{SRT.k=th.dataset.k;SRT.d=1}}render()}}}});
-sd.addEventListener('close',()=>{{SRT.k=null;SRT.d=1;render()}});sd.addEventListener('click',e=>{{if(e.target===sd)sd.close()}});
-let ST=null,loading=false;try{{ST=JSON.parse(localStorage.getItem('menuStats')||'null')}}catch(e){{}}
-const P=['oggi','mese','anno','tutto'],today=()=>new Date().toLocaleDateString('sv-SE',{{timeZone:'Europe/Rome'}});
-function rowOf(d,n){{const ns=[n].concat((DATA.shops.find(s=>s.nome===n)||{{}}).nomi_precedenti||[]);const z={{}};P.forEach(k=>z[k]=0);ns.forEach(x=>{{const r=(d.righe||{{}})[x]||{{}};P.forEach(k=>z[k]+=r[k]||0)}});if(d.data!==today()){{z.oggi=0}}return z}}
-function cell(t,v){{const c=document.createElement(t);c.textContent=v;return c}}
-function render(){{if(!ST)return;document.querySelectorAll('.card').forEach(card=>{{const b=card.querySelector('.count');b.textContent=rowOf(ST,DATA.shops[+card.dataset.index].nome).oggi;b.hidden=false}});
-const names=DATA.shops.map(s=>s.nome).sort(new Intl.Collator('it',{{sensitivity:'base'}}).compare),old=DATA.shops.flatMap(s=>s.nomi_precedenti||[]);Object.keys(ST.righe||{{}}).forEach(n=>{{if(!names.includes(n)&&!old.includes(n))names.push(n)}});const tot={{oggi:0,mese:0,anno:0,tutto:0}};
-const ab=new Intl.Collator('it',{{sensitivity:'base'}}).compare;if(SRT.k)names.sort((a,b)=>(SRT.k==='nome'?ab(a,b):(rowOf(ST,a)[SRT.k]-rowOf(ST,b)[SRT.k]))*SRT.d||ab(a,b));
-sd.querySelectorAll('th[data-k]').forEach(th=>{{th.dataset.dir=th.dataset.k===SRT.k?(SRT.d===1?'▲':'▼'):''}});
-const tb=sd.querySelector('tbody');tb.innerHTML='';names.forEach(n=>{{const z=rowOf(ST,n);const tr=document.createElement('tr');tr.append(cell('td',n));P.forEach(k=>{{tot[k]+=z[k];tr.append(cell('td',z[k]))}});tb.append(tr)}});
-const tf=sd.querySelector('tfoot');tf.innerHTML='';const tr=document.createElement('tr');tr.append(cell('td','Totale'));P.forEach(k=>tr.append(cell('td',tot[k])));tf.append(tr);
-info.querySelector('.total').textContent=tot.oggi;const V=ST.visite&&ST.data===today()?ST.visite:(ST.visite?{{oggi:0,mese:ST.visite.mese,anno:ST.visite.anno,tutto:ST.visite.tutto}}:null);sd.querySelector('.statnote').textContent=(V?'Visite alla pagina: oggi '+V.oggi+' · mese '+V.mese+' · anno '+V.anno+' · tutto '+V.tutto+'. ':'')+(loading?'Aggiornamento in corso… ':'')+(ST.ora?'Dati delle '+ST.ora:'');const iv=info.querySelector('.visits');if(iv)iv.textContent=V?V.oggi+(V.oggi===1?' visita oggi':' visite oggi'):''}}
-function loadStats(){{if(loading)return;loading=true;render();fetch(DATA.log+'?azione=statistiche&t='+Date.now(),{{cache:'no-store'}}).then(r=>r.json()).then(d=>{{if(!d||!d.righe)return;d.ora=new Date().toLocaleTimeString('it-IT',{{hour:'2-digit',minute:'2-digit'}});ST=d;try{{localStorage.setItem('menuStats',JSON.stringify(d))}}catch(e){{}}}}).catch(()=>{{}}).finally(()=>{{loading=false;render()}})}}
-function openStats(){{render();sd.showModal();loadStats()}}info.addEventListener('click',openStats);info.addEventListener('keydown',e=>{{if(e.key==='Enter'||e.key===' '){{e.preventDefault();openStats()}}}});
-render();loadStats();setInterval(loadStats,60000);document.addEventListener('visibilitychange',()=>{{if(document.visibilityState==='visible')loadStats()}})}}</script>
-</body></html>'''
+    document = PAGE_TEMPLATE
+    # @@PAYLOAD@@ per ultimo: i dati (nomi, menu) non vengono mai toccati dalle altre sostituzioni
+    for key, value in (("@@WEB_URL@@", WEB_URL), ("@@IV@@", iv), ("@@TV@@", tv), ("@@TITLE_LOGO@@", TITLE_LOGO),
+                       ("@@SONG@@", song), ("@@TITLE@@", html.escape(today_text)), ("@@PAYLOAD@@", payload)):
+        document = document.replace(key, value)
     OUTPUT.write_text(document, encoding="utf-8")
     WEB_PAGE.write_text(document, encoding="utf-8")
     ADMIN_PAGE.write_text(document, encoding="utf-8")
-
-
 
 
 def make_icons(force: bool = False) -> bool:
