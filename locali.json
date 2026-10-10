@@ -16,6 +16,7 @@
       "comune": "Putignano",
       "url": "https://www.facebook.com/RosticceriaFantasia",
       "logo": "fantasia.jpg",
+      "testo": {"attivo": false},
       "fonti": [
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/RosticceriaFantasia", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
@@ -29,6 +30,7 @@
       "comune": "Putignano",
       "url": "https://www.facebook.com/cibaria.asporto",
       "logo": "cibaria.jpg",
+      "testo": {"inizia_da": "PRIMI PIATTI"},
       "fonti": [
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/cibaria.asporto", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
@@ -42,6 +44,7 @@
       "comune": "Putignano",
       "url": "https://www.facebook.com/profile.php?id=61560452176728",
       "logo": "impastamo.jpg",
+      "testo": {"inizia_da": "Antipasti", "finisce_prima_di": "Putignano"},
       "fonti": [
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=61560452176728", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
@@ -55,6 +58,7 @@
       "comune": "Putignano",
       "url": "https://www.facebook.com/profile.php?id=100045208848338",
       "logo": "michela.jpg",
+      "testo": {"attivo": false},
       "fonti": [
         {"tipo": "storia_facebook", "nome": "Storia Facebook", "url": "https://www.facebook.com/profile.php?id=100045208848338", "profilo": "%LOCALAPPDATA%\\StatoFacebook\\chrome", "canale": "chrome", "fuori_schermo": true, "attiva": true},
         {"tipo": "cartella", "attiva": true}
@@ -69,6 +73,7 @@
       "comune": "Putignano",
       "url": "https://www.instagram.com/aufergastronomia/",
       "logo": "aufer.jpg",
+      "testo": {"inizia_da": "PRIMI", "finisce_con": "contorni"},
       "fonti": [
         {
           "tipo": "browser",
@@ -94,6 +99,7 @@
       "comune": "Castellana",
       "url": "https://www.facebook.com/santorogastronomia",
       "logo": "santoro.jpg",
+      "testo": {"inizia_da": "PRIMI"},
       "fonti": [
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/santorogastronomia", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
@@ -133,6 +139,7 @@
       "comune": "Putignano",
       "url": "https://www.facebook.com/profile.php?id=100046588767257",
       "logo": "santantonio.jpg",
+      "testo": {"attivo": false},
       "fonti": [
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=100046588767257", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "oggi trovate", "oggi abbiamo", "oggi vi proponiamo"], "attiva": true},
         {"tipo": "cartella", "attiva": true}
@@ -146,6 +153,7 @@
       "comune": "Noci",
       "url": "https://www.facebook.com/abraciami",
       "logo": "abraciami.jpg",
+      "testo": {"inizia_da": "PRIMI", "finisce_con": "contorni vari"},
       "fonti": [
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/abraciami", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
@@ -159,6 +167,7 @@
       "comune": "Turi",
       "url": "https://www.facebook.com/impasta.bistrot",
       "logo": "impasta.jpg",
+      "testo": {"inizia_dopo": "re:^(lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\\b", "finisce_con": "Macedonia di frutta"},
       "fonti": [
         {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/impasta.bistrot", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
         {"tipo": "cartella", "attiva": true}
@@ -173,6 +182,7 @@
       "comune": "Noci",
       "url": "https://www.instagram.com/lecletticobistrot_noci/",
       "logo": "eclettico.jpg",
+      "testo": {"inizia_dopo": "re:(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)", "finisce_prima_di": "Ordina qui", "sostituisci": [["{", "€"]]},
       "fonti": [
         {
           "tipo": "browser",
@@ -197,6 +207,7 @@
       "comune": "Conversano",
       "url": "https://www.instagram.com/sfizi22/",
       "logo": "sfizi.jpg",
+      "testo": {"inizia_dopo": "Ecco il menu del giorno", "finisce_prima_di": "Attenzione"},
       "fonti": [
         {
           "tipo": "browser",

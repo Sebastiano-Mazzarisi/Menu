@@ -1946,14 +1946,19 @@ function refresh(){TODAY=isoToday();drawHead();drawTowns();drawList()}
 
 /* ---------- pulizia dei menu scritti: "●LASAGNA AL FORNO 5,0" diventa "Lasagna al forno  € 5,00",
    le righe "PRIMI PIATTI" diventano titoli, "MENÙ DI SABATO" sparisce ---------- */
+/* riga-titolo di sezione: "PRIMI PIATTI", "Secondi", "Contorni del giorno"... */
+function isHead(n){return !/\d/.test(n)&&n.split(/\s+/).length<=4&&((n===n.toUpperCase()&&/PIATT|PRIM|SECOND|CONTORN|ANTIPAST|DOLC|FRITT|PIZZ/i.test(n))||/^(i |gli |le )?(primi|secondi|contorni|antipasti|dolci|fritti|pizze|panini|insalate|non possono mancare)( piatti| del giorno)?:?$/i.test(n))}
 function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).toUpperCase()+t.slice(1).toLowerCase();
   (secs||[]).forEach(sec=>{cur={titolo:sec.titolo,piatti:[]};out.push(cur);
     (sec.piatti||[]).forEach(p=>{const raw=p.nome||'';let n=raw.replace(/^[●•·\-\s]+/,'').trim(),pr=(p.prezzo||'').trim();if(!n)return;
       if(/^MEN[UÙ] (DI|DEL) /i.test(n))return;
-      if(!pr&&!/^[●•]/.test(raw)&&!/\d/.test(n)&&n.split(/\s+/).length<=4&&((n===n.toUpperCase()&&/PIATT|PRIM|SECOND|CONTORN|ANTIPAST|DOLC|FRITT|PIZZ/i.test(n))||/^(i |gli |le )?(primi|secondi|contorni|antipasti|dolci|fritti|pizze|panini|insalate)( piatti| del giorno)?:?$/i.test(n))){cur={titolo:cap(n.replace(/:$/,'')),piatti:[]};out.push(cur);return}
-      const m=n.match(/\s(\d{1,2}[,.]\d{1,2})\s*€?$/);if(m&&!pr){pr=m[1];n=n.slice(0,m.index).trim()}
+      if(!pr&&!/^[●•]/.test(raw)&&isHead(n)){cur={titolo:cap(n.replace(/:$/,'')),piatti:[]};out.push(cur);return}
+      const m=n.match(/\s(?:€\s*)?(\d{1,3}[,.]\d{1,2})\s*€?$/);if(m&&!pr){pr=m[1];n=n.slice(0,m.index).trim()}
       if(pr){pr=pr.replace('€','').trim().replace('.',',');if(/^\d+,\d$/.test(pr))pr+='0';if(/^\d+(,\d+)?$/.test(pr))pr='€ '+pr}
-      if(n===n.toUpperCase()&&/[A-Z]/.test(n))n=cap(n);
+      /* righe (quasi) tutte maiuscole -> normali; l'OCR scambia la I con la l ("Dl", "Al" = DI, AI) */
+      const up=(n.match(/\p{Lu}/gu)||[]).length,lo=(n.match(/\p{Ll}/gu)||[]).length;
+      if(up>=3&&up>=lo*4)n=cap(n.replace(/\bDl\b/g,'DI').replace(/\bAl\b/g,'AI'));
+      n=n.charAt(0).toUpperCase()+n.slice(1);
       cur.piatti.push({nome:n,prezzo:pr,descrizione:p.descrizione||''})})});
   return out.filter(s=>s.piatti.length)}
 
@@ -1979,13 +1984,15 @@ function openCard(i,dir){cur=i;const s=DATA.shops[i],r=DATA.results[i];logClick(
   const ph=document.getElementById('phone');ph.hidden=!s.telefono;ph.title=s.telefono||'';ph.href='tel:'+(s.telefono||'').replace(/[^+\d]/g,'');
   const mp=document.getElementById('map');mp.hidden=!s.indirizzo;mp.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.nome.replace(/\s*\(.*\)/,'')+', '+(s.indirizzo||''));
   const so=document.getElementById('source');so.hidden=!s.url;so.href=s.url||'';
+  /* "Testo" solo dove serve: c'è un menu e il locale non ha "testo": {"attivo": false} (scritti a mano) */
+  const nt=document.getElementById('notes');nt.hidden=(s.testo||{}).attivo===false||!(r.image||(r.sections||[]).length);
   document.getElementById('sourceL').textContent=/instagram\./.test(s.url||'')?'Instagram':/facebook\./.test(s.url||'')?'Facebook':'Sito';
   const k=ORDER.indexOf(i);document.getElementById('pos').textContent=k>=0?(k+1)+' di '+ORDER.length:'';
   if(!dlg.open)dlg.showModal();
   if(dir&&stage.animate)stage.animate([{opacity:.3,transform:'translateX('+(dir*24)+'px)'},{opacity:1,transform:'none'}],{duration:200,easing:'ease-out'});
   /* le foto vicine si scaricano in anticipo: passando alla successiva compaiono subito */
   [-1,1].forEach(d=>{if(k<0)return;const j=ORDER[(k+d+ORDER.length)%ORDER.length],n=DATA.results[j];if(n&&n.image){const p=new Image();p.src=imgUrl(n)}});
-  if(tdlg&&!tdlg.hidden)openText()}
+  if(tdlg&&!tdlg.hidden){if(document.getElementById('notes').hidden)closeText();else openText()}}
 /* scheda precedente / successiva in modo circolare: frecce in basso, tasti ← → e, sul telefono,
    scorrimento del dito a destra o a sinistra (non con la foto ingrandita) */
 function step(d){const n=ORDER.length;if(!n)return;const k=ORDER.indexOf(cur);openCard(ORDER[((k<0?0:k)+d+n)%n],d)}
@@ -2003,7 +2010,31 @@ stage.addEventListener('touchend',e=>{if(tx===null)return;const t=e.changedTouch
    Windows (campo "testo" dei dati); se il PC non l'ha letto, il telefono prova da sé con
    Tesseract.js (scaricato solo la prima volta che serve, ~3 MB). La lettura può avere errori. ---------- */
 var tdlg=document.getElementById('textdlg'),tbody=document.getElementById('tbody');let TXT='',tjob=0;
-function linesToSections(text){return cleanSections([{titolo:'',piatti:text.split(/\n+/).map(l=>l.trim()).filter(l=>l&&/[\p{L}\d]/u.test(l)).map(l=>({nome:l}))}])}
+/* Regole del locale (locali.json > "testo"): da quale riga partire e dove fermarsi, sostituzioni.
+   Una regola è l'inizio della riga (senza badare a maiuscole e accenti) oppure, con "re:", un'espressione
+   regolare. Se la riga di partenza o di arrivo non c'è, si tiene tutto (meglio troppo che niente). */
+const NORM=x=>(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+function lineMatch(line,pat){if(!pat)return false;if(/^re:/i.test(pat)){try{return new RegExp(pat.slice(3),'i').test(NORM(line))}catch(e){return false}}return NORM(line).startsWith(NORM(pat))}
+function applyRules(text,R){R=R||{};let L=(text||'').split(/\n+/);
+  (R.sostituisci||[]).forEach(p=>{if(p&&p.length===2)L=L.map(l=>l.split(p[0]).join(p[1]))});
+  let a=0;const p=R.inizia_da||R.inizia_dopo;if(p){const i=L.findIndex(l=>lineMatch(l,p));if(i>=0)a=R.inizia_da?i:i+1}
+  let b=L.length;const q=R.finisce_con||R.finisce_prima_di;if(q){const j=L.findIndex((l,k)=>k>=a&&lineMatch(l,q));if(j>=0)b=R.finisce_con?j+1:j}
+  return L.slice(a,b).join('\n')}
+/* Ricompone le righe lette dalla foto: un prezzo da solo su una riga va al piatto di sopra
+   ("{8,00", "€1200" -> "€ 12,00"); un piatto spezzato su due righe viene riunito quando la riga
+   finisce con una virgola o con "e, con, al, alla, di..." oppure la successiva comincia con
+   "e, ed, con, al, di..." in minuscolo. "{" vicino a un numero è sempre "€". */
+const PRICE_ONLY=/^(?:€\s*)?(\d{1,4}(?:[,.]\d{1,2})?)\s*€?$/,HAS_PRICE=/\d[,.]\d{1,2}\s*€?$/;
+const JOIN_END=/(,|\b(e|ed|con|al|alla|alle|allo|ai|agli|di|del|della|dei|delle|in|a|da|su|per|il|la|le|lo|gli|un|una))$/i,JOIN_START=/^(e|ed|con|al|alla|alle|allo|ai|agli|di|del|della|dei|delle|in)\b/;
+function linesToSections(text){
+  const L=(text||'').replace(/(\d)\s*\{/g,'$1€').replace(/\{\s*(?=\d)/g,'€').split(/\n+/)
+    .map(l=>l.replace(/^[\s●•·_\-–,.;:]+/,'').trim()).filter(l=>l&&/[\p{L}\d]/u.test(l));
+  const out=[];
+  L.forEach(l=>{const m=l.match(PRICE_ONLY),prev=out[out.length-1];
+    if(m&&prev&&(l.includes('€')||/[,.]/.test(m[1]))&&!HAS_PRICE.test(prev)&&!isHead(prev)){let v=m[1].replace('.',',');if(!v.includes(',')&&v.length>=3)v=v.slice(0,-2)+','+v.slice(-2);out[out.length-1]=prev+' '+v+'€';return}
+    if(prev&&!HAS_PRICE.test(prev)&&!isHead(prev)&&!isHead(l)&&(JOIN_END.test(prev)||JOIN_START.test(l))){out[out.length-1]=prev+' '+l;return}
+    out.push(l)});
+  return cleanSections([{titolo:'',piatti:out.map(l=>({nome:l}))}])}
 function showText(secs,note){tbody.innerHTML='';const out=[];
   secs.forEach(sec=>{if(sec.titolo){const h=document.createElement('h4');h.textContent=sec.titolo;tbody.append(h);out.push('','== '+sec.titolo+' ==')}
     sec.piatti.forEach(p=>{const d=document.createElement('div');d.className='tl';d.innerHTML='<span></span><b></b>';d.children[0].textContent=p.nome+(p.descrizione?' ('+p.descrizione+')':'');d.children[1].textContent=p.prezzo;tbody.append(d);out.push(p.nome+(p.descrizione?' ('+p.descrizione+')':'')+(p.prezzo?'  '+p.prezzo:''))})});
@@ -2015,11 +2046,11 @@ function openText(){const i=cur,s=DATA.shops[i],r=DATA.results[i],job=++tjob;tdl
   TXT='';document.getElementById('tcopy').hidden=true;if(tdlg.hidden){tdlg.hidden=false;tpPlace()}tbody.scrollTop=0;
   if(!r.image&&(r.sections||[]).length){showText(cleanSections(r.sections),'Testo pubblicato dal locale.');return}
   if(!r.image){showText([],'');tbody.innerHTML='<div class="wait">Per questo locale non c\'è ancora un menu da leggere.</div>';return}
-  if(r.testo){showText(linesToSections(r.testo),'Testo letto automaticamente dalla foto: può contenere errori.');return}
+  if(r.testo){showText(linesToSections(applyRules(r.testo,s.testo)),'Testo letto automaticamente dalla foto: può contenere errori.');return}
   tbody.innerHTML='<div class="wait">Sto leggendo la foto del menu…<progress max="1" value="0"></progress></div>';document.getElementById('tnote').textContent='La prima volta può volerci qualche secondo.';
   const bar=tbody.querySelector('progress');
   tesseract().then(T=>T.recognize(new URL(imgUrl(r),location.href).href,'ita',{logger:m=>{if(job===tjob&&bar&&m.status==='recognizing text')bar.value=m.progress}}))
-    .then(res=>{if(job!==tjob)return;const t=(res&&res.data&&res.data.text)||'';r.testo=t;showText(linesToSections(t),'Testo letto automaticamente dalla foto: può contenere errori.')})
+    .then(res=>{if(job!==tjob)return;const t=(res&&res.data&&res.data.text)||'';r.testo=t;showText(linesToSections(applyRules(t,s.testo)),'Testo letto automaticamente dalla foto: può contenere errori.')})
     .catch(()=>{if(job!==tjob)return;tbody.innerHTML='<div class="wait">Non sono riuscito a leggere la foto (serve la connessione a internet). Riprova più tardi.</div>';document.getElementById('tnote').textContent=''})}
 /* la finestra del testo resta sopra la foto e si può SPOSTARE (trascinando la testata) e
    RIDIMENSIONARE (angolo in basso a destra), per confrontare testo e originale; la foto sotto si
@@ -2127,6 +2158,8 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
                      "comune": shop_town(shop),
                      # miniatura del logo (icone/logo-<id>.jpg?v=...): vuota se il locale non ha logo
                      "logo": logos.get(shop["id"], ""),
+                     # regole per il pulsante "Testo" (vedi LEGGIMI.txt > Regole del testo)
+                     "testo": shop.get("testo", {}),
                      # nomi usati prima di un cambio di nome: i loro click restano sommati al locale
                      "nomi_precedenti": shop.get("nomi_precedenti", [])} for shop in shops]
     # niente orari di controllo nella pagina: se i menu non cambiano la pagina resta identica
@@ -2135,13 +2168,15 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
     # versione di ogni foto = impronta del suo contenuto: se il menu cambia ma il file ha lo stesso
     # nome (es. menu/eclettico.jpg riscaricato più pulito), l'indirizzo cambia e browser e
     # telefoni non mostrano la copia vecchia rimasta in memoria
-    for item in public_results:
+    for shop, item in zip(shops, public_results):
         picture = ROOT / item["image"] if item.get("image") else None
         if picture and picture.is_file():
             item["v"] = file_hash(picture)[:10]
             # testo letto nella foto (OCR di Windows, già in memoria in dati/ocr.json): lo mostra il
-            # pulsante "Testo" (taccuino) della scheda. Se manca, il telefono prova a leggerlo da sé.
-            text = ocr_lines(picture)
+            # pulsante "Testo" (taccuino) della scheda, tagliato secondo le regole "testo" del locale
+            # in locali.json. Se manca, il telefono prova a leggerlo da sé. Con "attivo": false
+            # (menu scritti a mano) il pulsante non c'è e la foto non viene letta.
+            text = ocr_lines(picture) if shop.get("testo", {}).get("attivo", True) else ""
             if text:
                 item["testo"] = text
     version = hashlib.sha1(json.dumps(public_results, sort_keys=True).encode()).hexdigest()[:10]

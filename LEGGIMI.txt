@@ -109,6 +109,46 @@ su ogni dispositivo).
 In fondo alla finestra è scritto da dove viene il testo; quello letto da una
 foto può contenere errori (scritte decorative, foto storte o sfocate).
 Per provare l'OCR di Windows su una foto: python Menu.py --ocr menu\fantasia.jpg
+
+Regole del testo (una per locale, in locali.json, campo "testo")
+Il testo letto da una foto contiene anche righe inutili (logo, data, orari,
+telefono, saluti). Per ogni locale si dice da dove partire e dove fermarsi:
+    "testo": {"inizia_da": "PRIMI", "finisce_con": "contorni vari"},
+- "inizia_da": parte dalla riga che comincia così (compresa);
+- "inizia_dopo": parte dalla riga DOPO quella che comincia così;
+- "finisce_con": si ferma alla riga che comincia così (compresa);
+- "finisce_prima_di": si ferma alla riga prima di quella che comincia così;
+- "sostituisci": coppie [da, a] sostituite in tutto il testo, es.
+  [["{", "€"]] (L'Eclettico: l'OCR legge il simbolo dell'euro come "{");
+- "attivo": false = niente pulsante "Testo" per quel locale (menu scritti
+  a mano, che l'OCR non sa leggere) e la foto non viene letta.
+Non contano maiuscole e accenti ("menu" trova anche "Menù"). Con "re:"
+davanti la regola è un'espressione regolare, es. il giorno della settimana:
+    "inizia_dopo": "re:^(lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\\b"
+Se la riga indicata non c'è (il locale ha cambiato impaginazione) il testo
+resta intero: si vede tutto invece di niente. Le regole valgono anche per la
+lettura fatta dal telefono. Dopo averle cambiate: "Pubblica" nel Monitor.
+Regole attuali:
+  A Braciami         da PRIMI fino a "contorni vari" compreso
+  Aufer Gastronomia  da PRIMI fino a "Contorni..." compreso
+  Cibària            da PRIMI PIATTI
+  Impasta            dalla riga dopo il giorno della settimana fino a
+                     "Macedonia di frutta" compresa
+  Impastamò          da Antipasti fino alla riga prima di "Putignano..."
+  L'Eclettico Bistrot dalla riga dopo il mese fino alla riga prima di
+                     "Ordina qui"; "{" diventa "€"
+  Santoro            da PRIMI
+  Sfizi              dalla riga dopo "Ecco il menù del giorno" fino alla
+                     riga prima di "Attenzione!!"
+  Fantasia, Forno Sant'Antonio, Le delizie di Michela: pulsante disattivato
+  Bollenti piatti, Pane & Co: menu già scritti, nessuna regola
+Sistemazioni automatiche, uguali per tutti: un prezzo da solo su una riga
+va al piatto di sopra ("{8,00" e "€1200" diventano "€ 8,00" e "€ 12,00");
+un piatto spezzato su due righe viene riunito se la prima finisce con una
+virgola o con "e, con, al, alla, di..." o la seconda comincia con "e, ed,
+con, al, di..."; le righe tutte maiuscole vengono scritte normali (con
+"Dl"/"Al" letti male corretti in "di"/"ai"); trattini, pallini e "_"
+all'inizio della riga vengono tolti.
 Si passa al locale precedente o successivo in modo circolare con ‹ ›, con i
 tasti ← → o facendo scorrere il dito sul menu (a sinistra = successivo; non
 mentre la foto è ingrandita). L'ordine è quello dell'elenco e del Comune
