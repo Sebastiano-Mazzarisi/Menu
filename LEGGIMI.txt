@@ -170,8 +170,8 @@ Formato del testo copiato con "Copia testo" (uguale per tutti i locali):
     Contorni vari (€ 3,00)
 cioè: sezioni (Primi, Secondi, Contorni...) tra "==" e staccate da una riga
 vuota; ogni piatto su una riga, uno spazio e il prezzo tra parentesi; le
-eventuali note del piatto dopo un trattino ("Sfoglia di mozzarella - Al
-pezzo (€ 1,70)"). Una riga "Contorni vari 3,00" diventa la sezione
+eventuali note del piatto tra parentesi prima del prezzo ("Penne
+all'arrabbiata (Salsa di pomodoro, olio e peperoncino) (€ 6,50)"). Una riga "Contorni vari 3,00" diventa la sezione
 Contorni.
 Menu a prezzo fisso (un solo prezzo in fondo per tutto il menu, nessuna
 sezione, es. "Il pranzo dei Santi Medici" dell'Eclettico): le portate sono
