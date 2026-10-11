@@ -351,9 +351,15 @@ class Monitor(tk.Tk):
                   ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
                   ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2),
                   ("Panorama", self.overview, 2, 0), ("Pubblica", self.publish, 2, 1))
+        # pulsanti che avviano un giro di Menu.py: spenti (grigi, non cliccabili) mentre un controllo
+        # è in corso, perché un secondo giro dovrebbe solo aspettare che finisca il primo
+        self.run_buttons: list[tk.Button] = []
         for text, action, row, column in layout:
             button = tk.Button(buttons, text=text, command=action, font=("Segoe UI", 9), bg="#1e293b", fg=FG,
-                               activebackground="#334155", activeforeground=FG, relief="flat", width=11)
+                               activebackground="#334155", activeforeground=FG, relief="flat", width=11,
+                               disabledforeground="#475569")
+            if action in (self.check, self.recheck, self.overview, self.publish):
+                self.run_buttons.append(button)
             button.grid(row=row, column=column, padx=3, pady=3, sticky="we")
             if action == self.toggle_task:
                 # il pulsante che cambia scritta ("Pianifica" / "Disabilita"); prima era "l'ultimo
@@ -398,7 +404,13 @@ class Monitor(tk.Tk):
         active = self.is_active()
         self.toggle_button.config(text="Disabilita" if active else "Pianifica")
 
-        if check_running():
+        running = check_running()
+        for button in self.run_buttons:
+            state = "disabled" if running else "normal"
+            if button.cget("state") != state:
+                button.config(state=state, bg="#111827" if running else "#1e293b",
+                              cursor="arrow" if running else "hand2")
+        if running:
             self.countdown.config(text="Controllo in corso…", fg=BLUE)
             self.subtitle.config(text="sto leggendo Facebook, Instagram e i siti")
         elif self.next_run is None:

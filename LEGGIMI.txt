@@ -159,6 +159,10 @@ Regole attuali:
   Fantasia, Forno Sant'Antonio, Le delizie di Michela: pulsante disattivato
   Bollenti piatti, Pane & Co: menu già scritti, nessuna regola
 Formato del testo copiato con "Copia testo" (uguale per tutti i locali):
+    L'Eclettico Bistrot
+    Menu di domenica 11 ottobre
+    ==============================
+
     == Primi ==
     Paccheri con salmone, crema di zucca e stracciatella (€ 8,00)
     Cannelloni ripieni di carne (€ 6,00)
@@ -168,7 +172,8 @@ Formato del testo copiato con "Copia testo" (uguale per tutti i locali):
 
     == Contorni ==
     Contorni vari (€ 3,00)
-cioè: sezioni (Primi, Secondi, Contorni...) tra "==" e staccate da una riga
+cioè: in testa il nome del locale, "Menu di" con la data del menu e una riga
+di 30 "=", poi una riga vuota; sezioni (Primi, Secondi, Contorni...) tra "==" e staccate da una riga
 vuota; ogni piatto su una riga, uno spazio e il prezzo tra parentesi; le
 eventuali note del piatto tra parentesi prima del prezzo ("Penne
 all'arrabbiata (Salsa di pomodoro, olio e peperoncino) (€ 6,50)"). Una riga "Contorni vari 3,00" diventa la sezione
@@ -323,6 +328,9 @@ rosticcerie che hanno già il menu di oggi non vengono ricontrollate online
 (Menu.py --pubblica --salta-aggiornati).
 "Ricontrolla": ricontrolla online tutte le rosticcerie, anche quelle già
 aggiornate (come Avvia.bat: Menu.py --pubblica).
+Mentre un controllo è in corso (automatico o manuale) i pulsanti
+"Controlla", "Ricontrolla", "Pubblica" e "Panorama" sono spenti (grigi, non
+si possono premere): si riaccendono da soli appena il controllo finisce.
 Entrambi aprono una finestra DOS intitolata "Menu - controllo manuale", che
 mostra solo una riga per rosticceria (es. "Fantasia: 2026-10-05 (cartella)")
 e l'esito della pubblicazione; i dettagli (testo letto, avvisi) vanno solo

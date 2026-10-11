@@ -2128,7 +2128,10 @@ document.getElementById('tclose').onclick=closeText;
 dlg.addEventListener('close',closeText);
 dlg.addEventListener('cancel',e=>{if(!tdlg.hidden){e.preventDefault();closeText()}});  /* ESC: prima chiude il testo */
 document.getElementById('tcopy').onclick=()=>{const b=document.getElementById('tcopy'),done=()=>{b.textContent='Copiato';setTimeout(()=>{b.textContent='Copia testo'},1500)};
-  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(TXT).then(done).catch(()=>selectAll());else selectAll();
+  /* in testa al testo copiato: nome del locale, "Menu di domenica 11 ottobre" e una riga di "=" */
+  const sub=document.getElementById('tsub').textContent.trim(),head=[document.getElementById('tname').textContent.trim()].concat(sub?[sub]:[]).concat(['='.repeat(30)]).join('\n');
+  const full=head+'\n\n'+TXT;
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(full).then(done).catch(()=>selectAll());else selectAll();
   function selectAll(){const rg=document.createRange();rg.selectNodeContents(tbody);const sl=getSelection();sl.removeAllRanges();sl.addRange(rg)}};
 
 window.addEventListener('hashchange',()=>{TOWN=decodeURIComponent(location.hash.slice(1))||'Tutti';if(location.href.endsWith('#'))history.replaceState(null,'',location.pathname+location.search);if(dlg.open)dlg.close();refresh();window.scrollTo(0,0)});
