@@ -1824,6 +1824,15 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 #stats th::after{content:attr(data-dir);font-size:10px;margin-left:3px}
 #stats tfoot td{font-weight:800;border-top:2px solid #f2b134;border-bottom:0}
 .statnote{margin:10px 0 0;color:var(--sheet-muted);font-size:13px}
+/* grafici sotto la tabella Info (come nel vecchio sito Rosticcerie): visite per giorno e per ora */
+.chart{margin:22px auto 0;max-width:420px}
+.chart h3{margin:0 0 10px;text-align:center;font-family:var(--f-display);font-size:16px;color:#fff}
+.chart .row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.chart .lab{flex:0 0 44px;text-align:right;font-size:14px;color:#fff;font-variant-numeric:tabular-nums}
+.chart .track{flex:1 1 auto;height:18px;border-radius:4px;background:#fef3c7;overflow:hidden}
+.chart .fill{height:100%;border-radius:4px;background:#49a95c}
+.chart .pct{flex:0 0 40px;font-size:13px;color:#fff;font-variant-numeric:tabular-nums}
+.charts .wait{margin-top:18px;text-align:center;color:var(--sheet-muted);font-size:13px}
 
 /* ---------- musica (tocco sul logo) ---------- */
 #player{position:fixed;z-index:50;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:12px;row-gap:8px;width:min(340px,calc(100vw - 32px));padding:10px 12px;border-radius:18px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 14px 40px #0005;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -2168,7 +2177,7 @@ refresh();
    I numeri arrivano da Registro_click.gs (?azione=statistiche). L'ultimo risultato è conservato sul
    dispositivo e mostrato subito, poi aggiornato appena arriva quello nuovo. ---------- */
 if(ADMIN&&DATA.log){const info=document.createElement('button');info.type='button';info.className='infocard';info.innerHTML='<span class="total">–</span><span><b>Info</b><small class="visits">Click e visite</small></span>';document.getElementById('main').insertBefore(info,document.querySelector('.foot'));
-const sd=document.createElement('dialog');sd.id='stats';sd.innerHTML='<div class="modal-head"><h2>Clic per rosticceria</h2><button type="button" class="x" aria-label="Chiudi">✕</button></div><div class="statwrap"><table><thead><tr><th data-k="nome">Rosticceria</th><th data-k="oggi">Oggi</th><th data-k="mese">Mese</th><th data-k="anno">Anno</th><th data-k="tutto">Tutto</th></tr></thead><tbody></tbody><tfoot></tfoot></table><p class="statnote"></p></div>';document.body.append(sd);
+const sd=document.createElement('dialog');sd.id='stats';sd.innerHTML='<div class="modal-head"><h2>Clic per rosticceria</h2><button type="button" class="x" aria-label="Chiudi">✕</button></div><div class="statwrap"><table><thead><tr><th data-k="nome">Rosticceria</th><th data-k="oggi">Oggi</th><th data-k="mese">Mese</th><th data-k="anno">Anno</th><th data-k="tutto">Tutto</th></tr></thead><tbody></tbody><tfoot></tfoot></table><p class="statnote"></p><div class="charts"></div></div>';document.body.append(sd);
 sd.querySelector('.x').onclick=()=>sd.close();
 /* ordine della tabella: alfabetico all'apertura; clic su un titolo = crescente per quella colonna,
    un altro clic sullo stesso titolo = decrescente; alla chiusura si torna all'ordine alfabetico */
@@ -2187,7 +2196,22 @@ renderStats=function(){const m=document.getElementById('main');if(info.parentNod
   const tf=sd.querySelector('tfoot');tf.innerHTML='';const tr=document.createElement('tr');tr.append(cell('td','Totale'));P.forEach(k=>tr.append(cell('td',tot[k])));tf.append(tr);
   info.querySelector('.total').textContent=tot.oggi;const V=ST.visite&&ST.data===today()?ST.visite:(ST.visite?{oggi:0,mese:ST.visite.mese,anno:ST.visite.anno,tutto:ST.visite.tutto}:null);
   sd.querySelector('.statnote').textContent=(V?'Visite alla pagina: oggi '+V.oggi+' · mese '+V.mese+' · anno '+V.anno+' · tutto '+V.tutto+'. ':'')+(loading?'Aggiornamento in corso… ':'')+(ST.ora?'Dati delle '+ST.ora:'');
+  drawCharts();
   info.querySelector('.visits').textContent=(tot.oggi===1?'1 click oggi':tot.oggi+' click oggi')+(V?' · '+V.oggi+(V.oggi===1?' visita':' visite'):'')}
+/* Istogrammi orizzontali "Distribuzione settimanale" (Lun-Dom) e "Distribuzione oraria" (ore 01-24:
+   l'ora "24" è la fascia 00:00-00:59) delle visite alla pagina, in percentuale sul totale. Barra piena
+   = 50% (giorni) o 30% (ore), come nel vecchio sito Rosticcerie. Dati da Registro_click.gs. */
+function drawCharts(){const box=sd.querySelector('.charts');if(!box)return;
+  if(!ST||!Array.isArray(ST.settimana)||!Array.isArray(ST.ore)){box.innerHTML='<p class="wait">Per i grafici per giorno e per ora va aggiornato Registro_click.gs (vedi LEGGIMI.txt).</p>';return}
+  const chart=(title,labels,values,full)=>{const tot=values.reduce((a,b)=>a+(b||0),0)||1;const c=document.createElement('div');c.className='chart';
+    const h=document.createElement('h3');h.textContent=title;c.append(h);
+    labels.forEach((l,i)=>{const pct=Math.round((values[i]||0)/tot*100);const r=document.createElement('div');r.className='row';r.title=(values[i]||0)+' visite';
+      r.innerHTML='<span class="lab"></span><div class="track"><div class="fill"></div></div><span class="pct"></span>';
+      r.children[0].textContent=l;r.querySelector('.fill').style.width=Math.min(pct/full*100,100)+'%';r.children[2].textContent=pct+'%';c.append(r)});
+    return c};
+  const w=ST.settimana,o=ST.ore;box.innerHTML='';
+  box.append(chart('Distribuzione settimanale',['Lun.','Mar.','Mer.','Gio.','Ven.','Sab.','Dom.'],[1,2,3,4,5,6,0].map(i=>w[i]),50));
+  box.append(chart('Distribuzione oraria',Array.from({length:24},(_,k)=>String(k+1).padStart(2,'0')),Array.from({length:24},(_,k)=>o[(k+1)%24]),30))}
 function loadStats(){if(loading)return;loading=true;renderStats();fetch(DATA.log+'?azione=statistiche&t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(d=>{if(!d||!d.righe)return;d.ora=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});ST=d;try{localStorage.setItem('menuStats',JSON.stringify(d))}catch(e){}}).catch(()=>{}).finally(()=>{loading=false;renderStats()})}
 info.onclick=()=>{renderStats();sd.showModal();loadStats()};
 renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadStats()})}

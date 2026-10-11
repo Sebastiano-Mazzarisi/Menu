@@ -351,7 +351,9 @@ dati/automatico.lock, ma la finestra di controllo si accorge che il programma
 non c'è più, cancella il file e torna al conto alla rovescia (lo stesso fa
 Menu.py al giro successivo).
 "Registro" (apre
-dati/automatico.log), "Sito" (apre la pagina su GitHub Pages),
+dati/automatico.log), "Sito" (se il sito è già aperto in Chrome/Edge, in
+una scheda intitolata "Menu" o come app "Menu", lo porta in primo piano e lo
+aggiorna; altrimenti apre la pagina su GitHub Pages con ?v=57),
 "Pianifica"/"Disabilita": se l'attività è attiva la disabilita (chiede
 conferma); se manca, è disabilitata o ha orari diversi da quelli di
 locali.json, la (ri)crea con quegli orari (Menu.py --pianifica). L'ultimo giro con novità è scritto in verde.
@@ -405,6 +407,18 @@ Toccando "Info" si apre la tabella Rosticceria | Oggi | Mese | Anno | Tutto
 con la riga "Totale" in fondo (Esc o ✕ per chiudere); i nomi lunghi vanno a
 capo così la tabella sta sempre nello schermo del telefono. Nella pagina si
 scrive "clic".
+Sotto la tabella ci sono due istogrammi orizzontali (come nel vecchio sito
+Rosticcerie), calcolati su tutte le visite alla pagina (foglio "Visite"):
+- "Distribuzione settimanale": percentuale di visite per giorno, da Lun. a
+  Dom.; la barra piena vale 50%;
+- "Distribuzione oraria": percentuale per ora, da 01 a 24 (24 = dalle 00:00
+  alle 00:59); la barra piena vale 30%.
+Passando il mouse su una barra si vede il numero di visite. I dati li manda
+Registro_click.gs (?azione=statistiche, campi "settimana" e "ore"): dopo
+averlo cambiato va incollato di nuovo nell'Apps Script del foglio "Menu" e
+ridistribuito (Esegui il deployment > Gestisci deployment > matita >
+Versione: Nuova versione > Esegui il deployment; l'indirizzo non cambia).
+Finché non è aggiornato, al posto dei grafici compare un avviso.
 All'apertura le righe sono in ordine alfabetico. Un clic su un titolo giallo
 (Rosticceria, Oggi, Mese, Anno, Tutto) ordina in modo crescente per quella
 colonna; un altro clic sullo stesso titolo inverte (decrescente). Una

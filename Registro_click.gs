@@ -50,7 +50,8 @@ function doPost(e) {
 /**
  * GET senza parametri: "Registro click Menu attivo" (controllo che il deployment funzioni).
  * GET ?azione=statistiche: click per rosticceria di oggi, del mese, dell'anno e di sempre
- *   (contatori e finestra "Info" della pagina con ?v=57).
+ *   (contatori e finestra "Info" della pagina con ?v=57), più la distribuzione delle visite
+ *   per giorno della settimana e per ora del giorno (i due grafici sotto la tabella di Info).
  * GET ?azione=oggi: solo i click di oggi (compatibilità con le pagine vecchie).
  * GET ?azione=ricalcola: ricalcola i conteggi rileggendo tutto il foglio.
  * GET ?azione=ultima: indirizzo del foglio e numero dell'ultima riga, usati dal pulsante
@@ -61,6 +62,9 @@ function doGet(e) {
   if (azione === 'statistiche' || azione === 'ricalcola') {
     var s = statistiche(azione === 'ricalcola');
     s.visite = statisticheVisite();
+    var d = distribuzioneVisite();
+    s.settimana = d.settimana;
+    s.ore = d.ore;
     return json(s);
   }
   if (azione === 'oggi') {
@@ -212,4 +216,39 @@ function statisticheVisite() {
     v.tutto++;
   }
   return v;
+}
+
+/**
+ * Visite alla pagina distribuite per giorno della settimana e per ora del giorno, da tutto il
+ * foglio "Visite" (se non c'è ancora, dai click del primo foglio):
+ *   settimana: [dom, lun, mar, mer, gio, ven, sab]   ore: [0, 1, ..., 23]
+ * La pagina le mostra come due istogrammi orizzontali sotto la tabella di "Info".
+ */
+function distribuzioneVisite() {
+  var file = SpreadsheetApp.getActiveSpreadsheet();
+  var tz = file.getSpreadsheetTimeZone();
+  var foglio = file.getSheetByName('Visite');
+  if (!foglio || foglio.getLastRow() < 2) foglio = file.getSheets()[0];
+  var settimana = [0, 0, 0, 0, 0, 0, 0], ore = [];
+  for (var h = 0; h < 24; h++) ore.push(0);
+  if (foglio.getLastRow() < 2) return { settimana: settimana, ore: ore };
+  var righe = foglio.getRange(2, 1, foglio.getLastRow() - 1, 2).getValues();
+  for (var i = 0; i < righe.length; i++) {
+    var giorno = giornoDi(righe[i][0], tz);
+    var m = giorno.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) continue;
+    settimana[new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getDay()]++;
+    var ora = oraDi(righe[i][1], tz);
+    if (ora >= 0 && ora < 24) ore[ora]++;
+  }
+  return { settimana: settimana, ore: ore };
+}
+
+/** Ora (0-23) di una cella "Ora": testo "07:45:18" oppure un orario vero del foglio. -1 se illeggibile. */
+function oraDi(valore, tz) {
+  if (valore && typeof valore.getFullYear === 'function') {
+    return Number(Utilities.formatDate(valore, tz || 'Europe/Rome', 'H'));
+  }
+  var m = String(valore || '').match(/^\s*(\d{1,2})[:.]/);
+  return m ? Number(m[1]) : -1;
 }

@@ -39,6 +39,48 @@ BG, FG, MUTED = "#0b1220", "#e2e8f0", "#94a3b8"
 GREEN, ORANGE, RED, BLUE = "#22c55e", "#f97316", "#ef4444", "#60a5fa"
 
 
+# Script PowerShell del pulsante "Sito": cerca con UI Automation di Windows (nessuna installazione)
+# una finestra di Chrome/Edge con una scheda intitolata "Menu" (il titolo del sito) oppure la
+# finestra dell'app "Menu" aggiunta dal browser; la porta in primo piano, seleziona la scheda e
+# preme F5 (aggiorna). Scrive "scheda", "app" o "no" (allora il Monitor apre il sito come prima).
+SITE_SCRIPT = r"""
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms
+Add-Type @'
+using System; using System.Runtime.InteropServices;
+public class MenuWin {
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte k, byte s, int f, int e);
+}
+'@
+$A = [System.Windows.Automation.AutomationElement]
+function Davanti($h) {
+  if ([MenuWin]::IsIconic($h)) { [MenuWin]::ShowWindow($h, 9) | Out-Null }
+  [MenuWin]::keybd_event(0x12, 0, 0, 0); [MenuWin]::keybd_event(0x12, 0, 2, 0)  # ALT: Windows lascia cambiare finestra
+  [MenuWin]::SetForegroundWindow($h) | Out-Null
+}
+function Aggiorna { Start-Sleep -Milliseconds 400; [System.Windows.Forms.SendKeys]::SendWait('{F5}') }
+$win = New-Object System.Windows.Automation.PropertyCondition($A::ClassNameProperty, 'Chrome_WidgetWin_1')
+$tab = New-Object System.Windows.Automation.PropertyCondition($A::ControlTypeProperty, [System.Windows.Automation.ControlType]::TabItem)
+foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $win)) {
+  $h = [IntPtr]$w.Current.NativeWindowHandle
+  if ($w.Current.Name -eq 'Menu') { Davanti $h; Aggiorna; 'app'; exit }
+}
+foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $win)) {
+  $h = [IntPtr]$w.Current.NativeWindowHandle
+  foreach ($t in $w.FindAll([System.Windows.Automation.TreeScope]::Descendants, $tab)) {
+    if ($t.Current.Name -match '^Menu(\s|$|-)') {
+      Davanti $h
+      try { $t.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select() } catch {}
+      Aggiorna; 'scheda'; exit
+    }
+  }
+}
+'no'
+"""
+
+
 def read_json(path: Path, default):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -690,7 +732,28 @@ class Monitor(tk.Tk):
         self.run_now("--solo-html")
 
     def open_site(self) -> None:
-        webbrowser.open(WEB_URL + "?v=57")  # amministratore: i click non vengono registrati
+        """Sito: se il sito è già aperto (scheda "Menu" di Chrome/Edge, o l'app "Menu") lo porta in
+        primo piano e lo aggiorna; altrimenti lo apre (con ?v=57: amministratore, i click non
+        vengono registrati). La ricerca gira in un thread: la finestra non si blocca."""
+        threading.Thread(target=self._open_site, daemon=True).start()
+
+    def _open_site(self) -> None:
+        found = ""
+        if sys.platform == "win32":
+            try:
+                script = ROOT / "dati" / "sito.ps1"
+                script.parent.mkdir(exist_ok=True)
+                if not script.exists() or script.read_text(encoding="utf-8-sig") != SITE_SCRIPT:
+                    script.write_text(SITE_SCRIPT, encoding="utf-8-sig")  # con BOM: PowerShell legge bene gli accenti
+                done = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+                                      capture_output=True, text=True, timeout=20, creationflags=NO_WINDOW)
+                found = done.stdout.strip().splitlines()[-1] if done.stdout.strip() else ""
+            except Exception as exc:
+                log_error(f"Sito: ricerca della scheda non riuscita: {exc!r}")
+        if found in ("scheda", "app"):
+            self.say("Sito già aperto: aggiornato")
+        else:
+            webbrowser.open(WEB_URL + "?v=57")  # amministratore: i click non vengono registrati
 
     def close(self) -> None:
         try:
