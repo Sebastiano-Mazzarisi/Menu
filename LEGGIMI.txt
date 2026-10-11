@@ -63,7 +63,10 @@ se manca viene ricavato dall'indirizzo (la parola dopo il CAP, o quella dopo
 
 Scheda del menu (tocco su un locale)
 - Occupa tutto lo schermo sul telefono (su PC è una finestra grande al
-  centro). In alto: logo, nome, timbro verde "Oggi" (arancione "Domani ·
+  centro). Su PC la finestra si SPOSTA trascinando la testata (logo e
+  nome del locale) e si RIDIMENSIONA trascinando l'angolo in basso a destra
+  (le righine); doppio clic sulla testata = torna alla misura e al posto
+  normali. Posizione e misure restano quelle scelte (ricordate su quel PC). In alto: logo, nome, timbro verde "Oggi" (arancione "Domani ·
   domenica 11 ottobre", "Ieri · ...", ecc.) e l'indirizzo "Via e numero -
   Comune"; ✕ per chiudere (anche ESC o clic fuori su PC).
 - Sotto la testata, se c'è, la nota del locale su fondo arancione scuro.

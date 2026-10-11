@@ -1752,7 +1752,11 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 /* ---------- scheda del menu ---------- */
 #detail{padding:0;border:0;margin:0;width:100vw;max-width:100vw;height:100vh;height:100dvh;max-height:100dvh;background:var(--sheet);color:var(--sheet-ink);overflow:hidden}
 #detail::backdrop{background:#000b}
-@media(min-width:900px){#detail{width:min(860px,94vw);height:92dvh;margin:auto;border-radius:20px;box-shadow:0 30px 80px #000a}}
+@media(min-width:900px){#detail{width:min(860px,94vw);height:92dvh;margin:auto;border-radius:20px;box-shadow:0 30px 80px #000a}
+  #detail .sh-head{cursor:move;user-select:none;-webkit-user-select:none;touch-action:none}
+  #detail .dgrip{display:block}}
+/* PC: angolo per ridimensionare la scheda (sul telefono la scheda è a tutto schermo) */
+.dgrip{display:none;position:absolute;right:0;bottom:0;z-index:6;width:22px;height:22px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 50%,#8f9c94 50%,#8f9c94 58%,transparent 58%,transparent 70%,#8f9c94 70%,#8f9c94 78%,transparent 78%)}
 #detail .sheet{height:100%;display:flex;flex-direction:column;outline:none}
 .sh-head{flex:none;display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px}
 .sh-head .lg{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#fff}
@@ -1867,6 +1871,7 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
     <button class="nav" id="next" aria-label="Rosticceria successiva"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
   </div>
 </div>
+<span class="dgrip" title="Trascina per ridimensionare (doppio clic sulla testata: misura normale)" aria-hidden="true"></span>
 <div id="textdlg" role="dialog" aria-label="Testo del menu" hidden>
   <div class="th" title="Trascina per spostare"><span class="drag" aria-hidden="true"><i></i><i></i><i></i></span><div class="sh-title"><h3 id="tname"></h3><p id="tsub"></p></div>
     <button type="button" class="x" id="tclose" aria-label="Chiudi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -1990,7 +1995,7 @@ function openCard(i,dir){cur=i;const s=DATA.shops[i],r=DATA.results[i];logClick(
   const nt=document.getElementById('notes');nt.hidden=!(ADMIN||DATA.testo_per_tutti)||(s.testo||{}).attivo===false||!(r.image||(r.sections||[]).length);
   document.getElementById('sourceL').textContent=/instagram\./.test(s.url||'')?'Instagram':/facebook\./.test(s.url||'')?'Facebook':'Sito';
   const k=ORDER.indexOf(i);document.getElementById('pos').textContent=k>=0?(k+1)+' di '+ORDER.length:'';
-  if(!dlg.open)dlg.showModal();
+  if(!dlg.open){dpPlace();dlg.showModal()}
   if(dir&&stage.animate)stage.animate([{opacity:.3,transform:'translateX('+(dir*24)+'px)'},{opacity:1,transform:'none'}],{duration:200,easing:'ease-out'});
   /* le foto vicine si scaricano in anticipo: passando alla successiva compaiono subito */
   [-1,1].forEach(d=>{if(k<0)return;const j=ORDER[(k+d+ORDER.length)%ORDER.length],n=DATA.results[j];if(n&&n.image){const p=new Image();p.src=imgUrl(n)}});
@@ -2006,6 +2011,27 @@ let tx=null,ty=0;stage.addEventListener('touchstart',e=>{if(e.touches.length!==1
 stage.addEventListener('touchmove',e=>{if(e.touches.length!==1)tx=null},{passive:true});
 stage.addEventListener('touchend',e=>{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
   if(Math.abs(dx)>50&&Math.abs(dx)>1.5*Math.abs(dy)&&!(window.visualViewport&&visualViewport.scale>1.05))step(dx<0?1:-1)});
+
+/* ---------- PC: la scheda si SPOSTA trascinando la testata (nome del locale) e si
+   RIDIMENSIONA dall'angolo in basso a destra; doppio clic sulla testata = misura e posizione
+   normali. Posizione e misure sono ricordate su questo dispositivo. Sul telefono resta a tutto
+   schermo. ---------- */
+const DP={};try{Object.assign(DP,JSON.parse(localStorage.getItem('menuScheda')||'{}'))}catch(e){}
+const isWide=()=>document.documentElement.clientWidth>=900;
+function dpClear(){['inset','left','top','width','height','margin','maxWidth','maxHeight'].forEach(k=>{dlg.style[k]=''})}
+function dpSet(x,y,w,h){const W=document.documentElement.clientWidth,H=innerHeight;w=Math.max(420,Math.min(w,W));h=Math.max(320,Math.min(h,H));
+  x=Math.max(0,Math.min(x,W-w));y=Math.max(0,Math.min(y,H-h));
+  Object.assign(dlg.style,{inset:'auto',margin:'0',left:x+'px',top:y+'px',width:w+'px',height:h+'px',maxWidth:'none',maxHeight:'none'})}
+function dpPlace(){if(!isWide()||DP.w==null){dpClear();return}dpSet(DP.x,DP.y,DP.w,DP.h)}
+function dpSave(){const r=dlg.getBoundingClientRect();Object.assign(DP,{x:Math.round(r.left),y:Math.round(r.top),w:Math.round(r.width),h:Math.round(r.height)});try{localStorage.setItem('menuScheda',JSON.stringify(DP))}catch(e){}}
+function dpDrag(handle,move){let sx=0,sy=0,r0=null;
+  handle.addEventListener('pointerdown',e=>{if(!isWide()||e.button>0||e.target.closest('button,a'))return;sx=e.clientX;sy=e.clientY;r0=dlg.getBoundingClientRect();handle.setPointerCapture(e.pointerId);e.preventDefault()});
+  handle.addEventListener('pointermove',e=>{if(r0)move(r0,e.clientX-sx,e.clientY-sy)});
+  ['pointerup','pointercancel'].forEach(t=>handle.addEventListener(t,()=>{if(!r0)return;r0=null;dpSave()}))}
+dpDrag(dlg.querySelector('.sh-head'),(r,dx,dy)=>dpSet(r.left+dx,r.top+dy,r.width,r.height));
+dpDrag(dlg.querySelector('.dgrip'),(r,dx,dy)=>dpSet(r.left,r.top,r.width+dx,r.height+dy));
+dlg.querySelector('.sh-head').addEventListener('dblclick',e=>{if(e.target.closest('button'))return;Object.keys(DP).forEach(k=>delete DP[k]);try{localStorage.removeItem('menuScheda')}catch(x){}dpClear()});
+window.addEventListener('resize',()=>{if(dlg.open)dpPlace()});
 
 /* ---------- "Testo" (taccuino): il menu trasformato in testo in una finestra.
    Menu scritto (Pane & Co...) = il suo testo; menu in foto = testo letto dal PC con l'OCR di
