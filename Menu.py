@@ -1958,7 +1958,7 @@ function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).
     (sec.piatti||[]).forEach(p=>{const raw=p.nome||'';let n=raw.replace(/^[●•·\-\s]+/,'').trim(),pr=(p.prezzo||'').trim();if(!n)return;
       if(/^MEN[UÙ] (DI|DEL) /i.test(n))return;
       if(!pr&&!/^[●•]/.test(raw)&&isHead(n)){cur={titolo:cap(n.replace(/:$/,'')),piatti:[]};out.push(cur);return}
-      const m=n.match(/\s(?:€\s*)?(\d{1,3}[,.]\d{1,2})\s*€?$/);if(m&&!pr){pr=m[1];n=n.slice(0,m.index).trim()}
+      const m=n.match(/\s(?:€\s*(\d{1,3}(?:[,.]\d{1,2})?)|(\d{1,3}[,.]\d{1,2})\s*€?|(\d{1,3})\s*€)$/);if(m&&!pr){pr=m[1]||m[2]||m[3];n=n.slice(0,m.index).trim()}
       if(pr){pr=pr.replace('€','').trim().replace('.',',');if(/^\d+,\d$/.test(pr))pr+='0';if(/^\d+(,\d+)?$/.test(pr))pr='€ '+pr}
       /* righe (quasi) tutte maiuscole -> normali; l'OCR scambia la I con la l ("Dl", "Al" = DI, AI) */
       const up=(n.match(/\p{Lu}/gu)||[]).length,lo=(n.match(/\p{Ll}/gu)||[]).length;
@@ -1969,7 +1969,9 @@ function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).
       /* "Contorni vari 3,00" = sezione Contorni, scritta come Primi e Secondi */
       if(/^contorni\b/i.test(n)&&!/^contorni/i.test(cur.titolo||'')){cur={titolo:'Contorni',piatti:[]};out.push(cur)}
       cur.piatti.push({nome:n,prezzo:pr,descrizione:p.descrizione||''})})});
-  return out.filter(s=>s.piatti.length)}
+  /* una sezione senza piatti resta se ha un titolo (es. "Antipasti del giorno", "Contorni del giorno":
+     il locale li ha ma non li elenca) */
+  return out.filter(s=>s.piatti.length||s.titolo)}
 
 /* ---------- scheda del menu (Panorama usa openCard(i), #detail .sheet e #name) ---------- */
 const dlg=document.getElementById('detail'),stage=document.getElementById('stage');let cur=0;
@@ -2048,7 +2050,12 @@ var tdlg=document.getElementById('textdlg'),tbody=document.getElementById('tbody
 const NORM=x=>(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
 function lineMatch(line,pat){if(!pat)return false;if(/^re:/i.test(pat)){try{return new RegExp(pat.slice(3),'i').test(NORM(line))}catch(e){return false}}return NORM(line).startsWith(NORM(pat))}
 function applyRules(text,R){R=R||{};let L=(text||'').split(/\n+/);
-  (R.sostituisci||[]).forEach(p=>{if(p&&p.length===2)L=L.map(l=>l.split(p[0]).join(p[1]))});
+  /* "correzioni_ocr" (locali.json > impostazioni, per tutti i locali) e poi "sostituisci" del locale */
+  (DATA.correzioni_ocr||[]).concat(R.sostituisci||[]).forEach(p=>{if(p&&p.length===2)L=L.map(l=>l.split(p[0]).join(p[1]))});
+  /* "togli": pezzi di testo da togliere dalle righe (es. il pulsante "PRENOTA ORA" dentro la foto);
+     con loro se ne vanno anche simboli e "e" rimasti appesi in fondo alla riga */
+  (R.togli||[]).forEach(t=>{if(!t)return;const re=new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+    L=L.map(l=>re.test(l)?l.replace(re,' ').replace(/[\s&+|·•\-–—]+$/,'').replace(/\s+(e|ed)$/i,'').trim():l)});
   let a=0;const p=R.inizia_da||R.inizia_dopo;if(p){const i=L.findIndex(l=>lineMatch(l,p));if(i>=0)a=R.inizia_da?i:i+1}
   let b=L.length;const q=R.finisce_con||R.finisce_prima_di;if(q){const j=L.findIndex((l,k)=>k>=a&&lineMatch(l,q));if(j>=0)b=R.finisce_con?j+1:j}
   return L.slice(a,b).join('\n')}
@@ -2056,21 +2063,29 @@ function applyRules(text,R){R=R||{};let L=(text||'').split(/\n+/);
    ("{8,00", "€1200" -> "€ 12,00"); un piatto spezzato su due righe viene riunito quando la riga
    finisce con una virgola o con "e, con, al, alla, di..." oppure la successiva comincia con
    "e, ed, con, al, di..." in minuscolo. "{" vicino a un numero è sempre "€". */
-const PRICE_ONLY=/^(?:€\s*)?(\d{1,4}(?:[,.]\d{1,2})?)\s*€?$/,HAS_PRICE=/\d[,.]\d{1,2}\s*€?$/;
+const PRICE_ONLY=/^(?:€\s*)?(\d{1,4}(?:[,.]\d{1,2})?)\s*€?$/,HAS_PRICE=/(\d[,.]\d{1,2}\s*€?|\d\s*€)$/;
 const JOIN_END=/(,|\b(e|ed|con|al|alla|alle|allo|ai|agli|di|del|della|dei|delle|in|a|da|su|per|il|la|le|lo|gli|un|una))$/i,JOIN_START=/^(e|ed|con|al|alla|alle|allo|ai|agli|di|del|della|dei|delle|in)\b/;
 function linesToSections(text){
   const L=(text||'').replace(/(\d)\s*\{/g,'$1€').replace(/\{\s*(?=\d)/g,'€').split(/\n+/)
-    .map(l=>l.replace(/^[\s●•·_\-–,.;:]+/,'').trim()).filter(l=>l&&/[\p{L}\d]/u.test(l));
+    .map(l=>l.replace(/^[\s●•·_\-–,.;:]+/,'').trim()).filter(l=>l&&/[\p{L}\d]/u.test(l))
+    /* prezzo all'inizio della riga ("35€ — Vino...", letto anche "35C Vino..."): va in fondo, se lì non c'è già */
+    .map(l=>{const m=l.match(/^(\d{1,3}(?:[,.]\d{1,2})?)\s*[€C]\s*[—–\-]?\s+(?=\p{L})/u);if(!m)return l;const rest=l.slice(m[0].length);return HAS_PRICE.test(rest)?rest:rest+' '+m[1]+'€'});
   const out=[];
   L.forEach(l=>{const m=l.match(PRICE_ONLY),prev=out[out.length-1];
+    /* prezzo ripetuto (scritto sia prima sia dopo, "35€ — Vino ... 35€"): si tiene una volta sola */
+    if(m&&prev&&HAS_PRICE.test(prev)&&(prev.match(/(\d{1,4}(?:[,.]\d{1,2})?)\s*€?$/)||[])[1]===m[1])return;
     if(m&&prev&&(l.includes('€')||/[,.]/.test(m[1]))&&!HAS_PRICE.test(prev)&&!isHead(prev)){let v=m[1].replace('.',',');if(!v.includes(',')&&v.length>=3)v=v.slice(0,-2)+','+v.slice(-2);out[out.length-1]=prev+' '+v+'€';return}
     if(prev&&!HAS_PRICE.test(prev)&&!isHead(prev)&&!isHead(l)&&(JOIN_END.test(prev)||JOIN_START.test(l))){out[out.length-1]=prev+' '+l;return}
     out.push(l)});
   return cleanSections([{titolo:'',piatti:out.map(l=>({nome:l}))}])}
 function showText(secs,note){tbody.innerHTML='';const out=[];
+  /* menu a prezzo fisso (es. "Il pranzo dei Santi Medici"): nessuna sezione, un solo prezzo in fondo
+     per tutto il menu -> nel testo copiato le portate sono staccate da una riga vuota */
+  const all=secs.flatMap(x=>x.piatti),fixed=secs.length===1&&!secs[0].titolo&&all.length>=3&&all.filter(x=>x.prezzo).length===1&&!!all[all.length-1].prezzo;
   secs.forEach(sec=>{if(sec.titolo){const h=document.createElement('h4');h.textContent=sec.titolo;tbody.append(h);out.push('','== '+sec.titolo+' ==')}
     sec.piatti.forEach(p=>{const d=document.createElement('div');d.className='tl';d.innerHTML='<span></span><b></b>';d.children[0].textContent=p.nome+(p.descrizione?' - '+p.descrizione:'');d.children[1].textContent=p.prezzo;tbody.append(d);
       /* testo copiato: "Piatto (€ 6,00)"; le sezioni staccate da una riga vuota e tra == (es. "== Primi ==") */
+      if(fixed&&out.length)out.push('');
       out.push(p.nome+(p.descrizione?' - '+p.descrizione:'')+(p.prezzo?' ('+p.prezzo+')':''))})});
   if(!secs.length){tbody.innerHTML='<div class="wait">Nella foto non ho trovato testo leggibile.</div>'}
   TXT=out.join('\n').trim();document.getElementById('tnote').textContent=note;document.getElementById('tcopy').hidden=!TXT}
@@ -2225,6 +2240,8 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
                           "ora": stamp["ora"], "data": stamp["data"],
                           # pulsante "Testo" (taccuino): false = solo amministratore (in prova)
                           "testo_per_tutti": bool(settings.get("testo_per_tutti", False)),
+                          # correzioni di parole lette male dall'OCR, valide per tutti i locali
+                          "correzioni_ocr": settings.get("correzioni_ocr", []),
                           "log": settings.get("registro_click_url", ""),
                           # visite alla pagina (foglio "Visite"): solo dopo aver aggiornato Registro_click.gs
                           "visite": bool(settings.get("registra_visite", False))}, ensure_ascii=False).replace("</", "<\\/")

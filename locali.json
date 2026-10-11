@@ -6,7 +6,8 @@
     "avvisi_ogni_minuti": 60,
     "registro_click_url": "https://script.google.com/macros/s/AKfycbx8m-b5xkenUmdR8cbIFTVbCJGMIAQOgDWjY3xTY-FFgCowQd5hdB1qeDsEANf6w7wa/exec",
     "registra_visite": true,
-    "testo_per_tutti": false
+    "testo_per_tutti": false,
+    "correzioni_ocr": [["fimghi", "funghi"], ["DolcedelloChef", "Dolce dello chef"]]
   },
   "locali": [
     {
@@ -74,7 +75,7 @@
       "comune": "Putignano",
       "url": "https://www.instagram.com/aufergastronomia/",
       "logo": "aufer.jpg",
-      "testo": {"inizia_da": "PRIMI", "finisce_con": "contorni"},
+      "testo": {"inizia_da": "Antipasti", "finisce_con": "contorni"},
       "fonti": [
         {
           "tipo": "browser",
@@ -183,7 +184,7 @@
       "comune": "Noci",
       "url": "https://www.instagram.com/lecletticobistrot_noci/",
       "logo": "eclettico.jpg",
-      "testo": {"inizia_dopo": "re:(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)", "finisce_prima_di": "Ordina qui", "sostituisci": [["{", "€"]]},
+      "testo": {"inizia_dopo": "re:(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)", "finisce_prima_di": "Ordina qui", "togli": ["PRENOTA ORA", "Ordina qui"], "sostituisci": [["{", "€"]]},
       "fonti": [
         {
           "tipo": "browser",

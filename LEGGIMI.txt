@@ -128,8 +128,14 @@ telefono, saluti). Per ogni locale si dice da dove partire e dove fermarsi:
 - "finisce_prima_di": si ferma alla riga prima di quella che comincia così;
 - "sostituisci": coppie [da, a] sostituite in tutto il testo, es.
   [["{", "€"]] (L'Eclettico: l'OCR legge il simbolo dell'euro come "{");
+- "togli": pezzi di testo da togliere dalle righe, es. ["PRENOTA ORA"]
+  (il pulsante disegnato nella foto dell'Eclettico); se ne vanno anche "&"
+  ed "e" rimasti appesi in fondo alla riga;
 - "attivo": false = niente pulsante "Testo" per quel locale (menu scritti
   a mano, che l'OCR non sa leggere) e la foto non viene letta.
+Parole lette male, uguali per tutti i locali: in locali.json > impostazioni
+    "correzioni_ocr": [["fimghi", "funghi"], ["DolcedelloChef", "Dolce dello chef"]]
+(coppie [letto male, giusto]; se ne aggiungono quante servono).
 Non contano maiuscole e accenti ("menu" trova anche "Menù"). Con "re:"
 davanti la regola è un'espressione regolare, es. il giorno della settimana:
     "inizia_dopo": "re:^(lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\\b"
@@ -138,13 +144,15 @@ resta intero: si vede tutto invece di niente. Le regole valgono anche per la
 lettura fatta dal telefono. Dopo averle cambiate: "Pubblica" nel Monitor.
 Regole attuali:
   A Braciami         da PRIMI fino a "contorni vari" compreso
-  Aufer Gastronomia  da PRIMI fino a "Contorni..." compreso
+  Aufer Gastronomia  da "Antipasti del giorno" fino a "Contorni del giorno"
+                     compresi (sezioni senza piatti: il locale non li elenca)
   Cibària            da PRIMI PIATTI
   Impasta            dalla riga dopo il giorno della settimana fino a
                      "Macedonia di frutta" compresa
   Impastamò          da Antipasti fino alla riga prima di "Putignano..."
   L'Eclettico Bistrot dalla riga dopo il mese fino alla riga prima di
-                     "Ordina qui"; "{" diventa "€"
+                     "Ordina qui"; "{" diventa "€"; tolti "PRENOTA ORA"
+                     e "Ordina qui"
   Santoro            da PRIMI
   Sfizi              dalla riga dopo "Ecco il menù del giorno" fino alla
                      riga prima di "Attenzione!!"
@@ -164,7 +172,22 @@ cioè: sezioni (Primi, Secondi, Contorni...) tra "==" e staccate da una riga
 vuota; ogni piatto su una riga, uno spazio e il prezzo tra parentesi; le
 eventuali note del piatto dopo un trattino ("Sfoglia di mozzarella - Al
 pezzo (€ 1,70)"). Una riga "Contorni vari 3,00" diventa la sezione
-Contorni. Le virgole vengono corrette: niente spazio prima, uno dopo
+Contorni.
+Menu a prezzo fisso (un solo prezzo in fondo per tutto il menu, nessuna
+sezione, es. "Il pranzo dei Santi Medici" dell'Eclettico): le portate sono
+staccate da una riga vuota:
+    Percorso gastronomico di antipasti Eclettici
+
+    Risotto Acquerello con carpaccio di ombrina, mantecato alla stracciatella e pistacchi
+
+    Cuore d'Angus ai funghi al profumo di tartufo
+
+    Dolce dello chef
+
+    Vino della casa e coperto inclusi (€ 35)
+Prezzi senza centesimi ("35€") restano così ("€ 35"); un prezzo scritto
+all'inizio della riga ("35€ — Vino...", anche letto "35C") va in fondo; se
+lo stesso prezzo è ripetuto alla riga dopo, compare una volta sola. Le virgole vengono corrette: niente spazio prima, uno dopo
 ("salmone,crema" -> "salmone, crema").
 Sistemazioni automatiche, uguali per tutti: un prezzo da solo su una riga
 va al piatto di sopra ("{8,00" e "€1200" diventano "€ 8,00" e "€ 12,00");
