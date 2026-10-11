@@ -1964,6 +1964,10 @@ function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).
       const up=(n.match(/\p{Lu}/gu)||[]).length,lo=(n.match(/\p{Ll}/gu)||[]).length;
       if(up>=3&&up>=lo*4)n=cap(n.replace(/\bDl\b/g,'DI').replace(/\bAl\b/g,'AI'));
       n=n.charAt(0).toUpperCase()+n.slice(1);
+      /* virgole scritte bene: niente spazio prima, uno spazio dopo ("salmone,crema" -> "salmone, crema") */
+      n=n.replace(/\s+,/g,',').replace(/,(?=\p{L})/gu,', ');
+      /* "Contorni vari 3,00" = sezione Contorni, scritta come Primi e Secondi */
+      if(/^contorni\b/i.test(n)&&!/^contorni/i.test(cur.titolo||'')){cur={titolo:'Contorni',piatti:[]};out.push(cur)}
       cur.piatti.push({nome:n,prezzo:pr,descrizione:p.descrizione||''})})});
   return out.filter(s=>s.piatti.length)}
 
@@ -2065,7 +2069,9 @@ function linesToSections(text){
   return cleanSections([{titolo:'',piatti:out.map(l=>({nome:l}))}])}
 function showText(secs,note){tbody.innerHTML='';const out=[];
   secs.forEach(sec=>{if(sec.titolo){const h=document.createElement('h4');h.textContent=sec.titolo;tbody.append(h);out.push('','== '+sec.titolo+' ==')}
-    sec.piatti.forEach(p=>{const d=document.createElement('div');d.className='tl';d.innerHTML='<span></span><b></b>';d.children[0].textContent=p.nome+(p.descrizione?' ('+p.descrizione+')':'');d.children[1].textContent=p.prezzo;tbody.append(d);out.push(p.nome+(p.descrizione?' ('+p.descrizione+')':'')+(p.prezzo?'  '+p.prezzo:''))})});
+    sec.piatti.forEach(p=>{const d=document.createElement('div');d.className='tl';d.innerHTML='<span></span><b></b>';d.children[0].textContent=p.nome+(p.descrizione?' - '+p.descrizione:'');d.children[1].textContent=p.prezzo;tbody.append(d);
+      /* testo copiato: "Piatto (€ 6,00)"; le sezioni staccate da una riga vuota e tra == (es. "== Primi ==") */
+      out.push(p.nome+(p.descrizione?' - '+p.descrizione:'')+(p.prezzo?' ('+p.prezzo+')':''))})});
   if(!secs.length){tbody.innerHTML='<div class="wait">Nella foto non ho trovato testo leggibile.</div>'}
   TXT=out.join('\n').trim();document.getElementById('tnote').textContent=note;document.getElementById('tcopy').hidden=!TXT}
 let tessP=null;function tesseract(){if(!tessP)tessP=new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';sc.onload=()=>ok(window.Tesseract);sc.onerror=()=>{tessP=null;ko(new Error('rete'))};document.head.append(sc)});return tessP}

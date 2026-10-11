@@ -150,6 +150,22 @@ Regole attuali:
                      riga prima di "Attenzione!!"
   Fantasia, Forno Sant'Antonio, Le delizie di Michela: pulsante disattivato
   Bollenti piatti, Pane & Co: menu già scritti, nessuna regola
+Formato del testo copiato con "Copia testo" (uguale per tutti i locali):
+    == Primi ==
+    Paccheri con salmone, crema di zucca e stracciatella (€ 8,00)
+    Cannelloni ripieni di carne (€ 6,00)
+
+    == Secondi ==
+    Teglia di carne mista con patate (€ 8,00)
+
+    == Contorni ==
+    Contorni vari (€ 3,00)
+cioè: sezioni (Primi, Secondi, Contorni...) tra "==" e staccate da una riga
+vuota; ogni piatto su una riga, uno spazio e il prezzo tra parentesi; le
+eventuali note del piatto dopo un trattino ("Sfoglia di mozzarella - Al
+pezzo (€ 1,70)"). Una riga "Contorni vari 3,00" diventa la sezione
+Contorni. Le virgole vengono corrette: niente spazio prima, uno dopo
+("salmone,crema" -> "salmone, crema").
 Sistemazioni automatiche, uguali per tutti: un prezzo da solo su una riga
 va al piatto di sopra ("{8,00" e "€1200" diventano "€ 8,00" e "€ 12,00");
 un piatto spezzato su due righe viene riunito se la prima finisce con una
