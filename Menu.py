@@ -979,7 +979,7 @@ def ocr_lines(path: Path) -> str:
     if sys.platform != "win32" or not OCR_SCRIPT.exists() or not path.exists():
         return ""
     import subprocess
-    key = "v3:" + file_hash(path)  # v3: foto ingrandita prima dell'OCR, righe tenute separate
+    key = "v4:" + file_hash(path)  # v4: foto ingrandita, righe separate, righe vuote tra i gruppi
     cache = read_json(OCR_CACHE, {})
     if key in cache:
         return cache[key]
@@ -1004,7 +1004,13 @@ def ocr_lines(path: Path) -> str:
     if done.returncode != 0:
         print(f"  OCR non riuscito: {(done.stderr or '').strip()[:200]}")
         return ""
-    text = "\n".join(" ".join(line.split()) for line in done.stdout.splitlines() if line.strip())
+    # una riga vuota (al massimo una di fila) dove ocr.ps1 ha visto uno spazio grande tra due righe
+    kept: list[str] = []
+    for line in done.stdout.splitlines():
+        clean = " ".join(line.split())
+        if clean or (kept and kept[-1]):
+            kept.append(clean)
+    text = "\n".join(kept).strip()
     cache = read_json(OCR_CACHE, {})  # riletta: intanto può averla aggiornata un'altra foto
     cache[key] = text
     save_json(OCR_CACHE, dict(list(cache.items())[-200:]))  # tiene solo le ultime 200 foto
@@ -1803,6 +1809,7 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 #tbody h4{margin:18px 0 4px;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
 #tbody .tl{display:grid;grid-template-columns:1fr auto;column-gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:15px}
 #tbody .tl b{font-variant-numeric:tabular-nums;white-space:nowrap}
+#tbody .tl.gap{margin-top:14px;border-top:1px solid var(--line)}
 #tbody .wait{padding:50px 10px;text-align:center;color:var(--muted)}
 #tbody progress{display:block;width:70%;margin:14px auto 0;accent-color:var(--accent)}
 .tbar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 30px 8px 14px;border-top:1px solid var(--line)}
@@ -1964,9 +1971,10 @@ function refresh(){TODAY=isoToday();drawHead();drawTowns();drawList()}
 function isHead(n){return !/\d/.test(n)&&n.split(/\s+/).length<=4&&((n===n.toUpperCase()&&/PIATT|PRIM|SECOND|CONTORN|ANTIPAST|DOLC|FRITT|PIZZ/i.test(n))||/^(i |gli |le )?(primi|secondi|contorni|antipasti|dolci|fritti|pizze|panini|insalate|non possono mancare)( piatti| del giorno)?:?$/i.test(n))}
 function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).toUpperCase()+t.slice(1).toLowerCase();
   (secs||[]).forEach(sec=>{cur={titolo:sec.titolo,piatti:[]};out.push(cur);
-    (sec.piatti||[]).forEach(p=>{const raw=p.nome||'';let n=raw.replace(/^[●•·\-\s]+/,'').trim(),pr=(p.prezzo||'').trim();if(!n)return;
+    let gap=false;
+    (sec.piatti||[]).forEach(p=>{const raw=p.nome||'';let n=raw.replace(/^[●•·\-\s]+/,'').trim(),pr=(p.prezzo||'').trim();if(!n){gap=true;return}
       if(/^MEN[UÙ] (DI|DEL) /i.test(n))return;
-      if(!pr&&!/^[●•]/.test(raw)&&isHead(n)){cur={titolo:cap(n.replace(/:$/,'')),piatti:[]};out.push(cur);return}
+      if(!pr&&!/^[●•]/.test(raw)&&isHead(n)){cur={titolo:cap(n.replace(/:$/,'')),piatti:[]};out.push(cur);gap=false;return}
       const m=n.match(/\s(?:€\s*(\d{1,3}(?:[,.]\d{1,2})?)|(\d{1,3}[,.]\d{1,2})\s*€?|(\d{1,3})\s*€)$/);if(m&&!pr){pr=m[1]||m[2]||m[3];n=n.slice(0,m.index).trim()}
       if(pr){pr=pr.replace('€','').trim().replace('.',',');if(/^\d+,\d$/.test(pr))pr+='0';if(/^\d+(,\d+)?$/.test(pr))pr='€ '+pr}
       /* righe (quasi) tutte maiuscole -> normali; l'OCR scambia la I con la l ("Dl", "Al" = DI, AI) */
@@ -1977,7 +1985,7 @@ function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).
       n=n.replace(/\s+,/g,',').replace(/,(?=\p{L})/gu,', ');
       /* "Contorni vari 3,00" = sezione Contorni, scritta come Primi e Secondi */
       if(/^contorni\b/i.test(n)&&!/^contorni/i.test(cur.titolo||'')){cur={titolo:'Contorni',piatti:[]};out.push(cur)}
-      cur.piatti.push({nome:n,prezzo:pr,descrizione:p.descrizione||''})})});
+      cur.piatti.push({nome:n,prezzo:pr,descrizione:p.descrizione||'',gap:gap&&cur.piatti.length>0});gap=false})});
   /* una sezione senza piatti resta se ha un titolo (es. "Antipasti del giorno", "Contorni del giorno":
      il locale li ha ma non li elenca) */
   return out.filter(s=>s.piatti.length||s.titolo)}
@@ -2058,7 +2066,7 @@ var tdlg=document.getElementById('textdlg'),tbody=document.getElementById('tbody
    regolare. Se la riga di partenza o di arrivo non c'è, si tiene tutto (meglio troppo che niente). */
 const NORM=x=>(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
 function lineMatch(line,pat){if(!pat)return false;if(/^re:/i.test(pat)){try{return new RegExp(pat.slice(3),'i').test(NORM(line))}catch(e){return false}}return NORM(line).startsWith(NORM(pat))}
-function applyRules(text,R){R=R||{};let L=(text||'').split(/\n+/);
+function applyRules(text,R){R=R||{};let L=(text||'').split('\n');
   /* "correzioni_ocr" (locali.json > impostazioni, per tutti i locali) e poi "sostituisci" del locale */
   (DATA.correzioni_ocr||[]).concat(R.sostituisci||[]).forEach(p=>{if(p&&p.length===2)L=L.map(l=>l.split(p[0]).join(p[1]))});
   /* "togli": pezzi di testo da togliere dalle righe (es. il pulsante "PRENOTA ORA" dentro la foto);
@@ -2075,17 +2083,20 @@ function applyRules(text,R){R=R||{};let L=(text||'').split(/\n+/);
 const PRICE_ONLY=/^(?:€\s*)?(\d{1,4}(?:[,.]\d{1,2})?)\s*€?$/,HAS_PRICE=/(\d[,.]\d{1,2}\s*€?|\d\s*€)$/;
 const JOIN_END=/(,|\b(e|ed|con|al|alla|alle|allo|ai|agli|di|del|della|dei|delle|in|a|da|su|per|il|la|le|lo|gli|un|una))$/i,JOIN_START=/^(e|ed|con|al|alla|alle|allo|ai|agli|di|del|della|dei|delle|in)\b/;
 function linesToSections(text){
-  const L=(text||'').replace(/(\d)\s*\{/g,'$1€').replace(/\{\s*(?=\d)/g,'€').split(/\n+/)
-    .map(l=>l.replace(/^[\s●•·_\-–,.;:]+/,'').trim()).filter(l=>l&&/[\p{L}\d]/u.test(l))
+  /* le righe vuote (spazio grande tra gruppi di pietanze nella foto) restano: diventano un rigo vuoto */
+  const L=(text||'').replace(/(\d)\s*\{/g,'$1€').replace(/\{\s*(?=\d)/g,'€').split('\n')
+    .map(l=>l.replace(/^[\s●•·_\-–,.;:]+/,'').trim()).filter(l=>!l||/[\p{L}\d]/u.test(l))
     /* prezzo all'inizio della riga ("35€ — Vino...", letto anche "35C Vino..."): va in fondo, se lì non c'è già */
-    .map(l=>{const m=l.match(/^(\d{1,3}(?:[,.]\d{1,2})?)\s*[€C]\s*[—–\-]?\s+(?=\p{L})/u);if(!m)return l;const rest=l.slice(m[0].length);return HAS_PRICE.test(rest)?rest:rest+' '+m[1]+'€'});
+    .map(l=>{if(!l)return l;const m=l.match(/^(\d{1,3}(?:[,.]\d{1,2})?)\s*[€C]\s*[—–\-]?\s+(?=\p{L})/u);if(!m)return l;const rest=l.slice(m[0].length);return HAS_PRICE.test(rest)?rest:rest+' '+m[1]+'€'});
   const out=[];
-  L.forEach(l=>{const m=l.match(PRICE_ONLY),prev=out[out.length-1];
+  L.forEach(l=>{if(!l){if(out.length&&out[out.length-1])out.push('');return}
+    const m=l.match(PRICE_ONLY),prev=out[out.length-1];
     /* prezzo ripetuto (scritto sia prima sia dopo, "35€ — Vino ... 35€"): si tiene una volta sola */
     if(m&&prev&&HAS_PRICE.test(prev)&&(prev.match(/(\d{1,4}(?:[,.]\d{1,2})?)\s*€?$/)||[])[1]===m[1])return;
     if(m&&prev&&(l.includes('€')||/[,.]/.test(m[1]))&&!HAS_PRICE.test(prev)&&!isHead(prev)){let v=m[1].replace('.',',');if(!v.includes(',')&&v.length>=3)v=v.slice(0,-2)+','+v.slice(-2);out[out.length-1]=prev+' '+v+'€';return}
     if(prev&&!HAS_PRICE.test(prev)&&!isHead(prev)&&!isHead(l)&&(JOIN_END.test(prev)||JOIN_START.test(l))){out[out.length-1]=prev+' '+l;return}
     out.push(l)});
+  while(out.length&&!out[out.length-1])out.pop();
   return cleanSections([{titolo:'',piatti:out.map(l=>({nome:l}))}])}
 function showText(secs,note){tbody.innerHTML='';const out=[];
   /* menu a prezzo fisso (es. "Il pranzo dei Santi Medici"): nessuna sezione, un solo prezzo in fondo
@@ -2094,7 +2105,8 @@ function showText(secs,note){tbody.innerHTML='';const out=[];
   secs.forEach(sec=>{if(sec.titolo){const h=document.createElement('h4');h.textContent=sec.titolo;tbody.append(h);out.push('','== '+sec.titolo+' ==')}
     sec.piatti.forEach(p=>{const d=document.createElement('div');d.className='tl';d.innerHTML='<span></span><b></b>';d.children[0].textContent=p.nome+(p.descrizione?' ('+p.descrizione+')':'');d.children[1].textContent=p.prezzo;tbody.append(d);
       /* testo copiato: "Piatto (€ 6,00)"; le sezioni staccate da una riga vuota e tra == (es. "== Primi ==") */
-      if(fixed&&out.length)out.push('');
+      if(p.gap)d.classList.add('gap');
+      if((fixed||p.gap)&&out.length&&out[out.length-1]!=='')out.push('');
       out.push(p.nome+(p.descrizione?' ('+p.descrizione+')':'')+(p.prezzo?' ('+p.prezzo+')':''))})});
   if(!secs.length){tbody.innerHTML='<div class="wait">Nella foto non ho trovato testo leggibile.</div>'}
   TXT=out.join('\n').trim();document.getElementById('tnote').textContent=note;document.getElementById('tcopy').hidden=!TXT}
@@ -2136,10 +2148,20 @@ document.getElementById('notes').onclick=()=>{if(!tdlg.hidden&&tdlg.dataset.i==S
 document.getElementById('tclose').onclick=closeText;
 dlg.addEventListener('close',closeText);
 dlg.addEventListener('cancel',e=>{if(!tdlg.hidden){e.preventDefault();closeText()}});  /* ESC: prima chiude il testo */
+/* righi lunghi del testo copiato: a capo tra le parole entro "testo_larghezza" caratteri (locali.json >
+   impostazioni, predefinito 50), preferendo dopo una virgola nella seconda metà del rigo; il prezzo
+   "(€ 8,00)" e i titoli "== Primi ==" non vengono mai spezzati */
+function wrapLine(line){const W=Math.max(20,DATA.testo_larghezza||50);if(line.length<=W||/^==/.test(line))return line;
+  let rest=line.replace(/\((€)\s/g,'($1\u00a0'),out=[];
+  while(rest.length>W){let cut=rest.lastIndexOf(', ',W-1);cut=cut>=W/2?cut+1:rest.lastIndexOf(' ',W);if(cut<=0)cut=rest.indexOf(' ',W);if(cut<=0)break;
+    out.push(rest.slice(0,cut).trim());rest=rest.slice(cut).trim()}
+  /* il prezzo non resta mai da solo sull'ultimo rigo: va a capo con l'ultima parola */
+  if(out.length&&/^\(€\u00a0[\d.,]+\)$/.test(rest)){const prev=out.pop(),i=prev.lastIndexOf(' ');if(i>0){out.push(prev.slice(0,i));rest=prev.slice(i+1)+' '+rest}else rest=prev+' '+rest}
+  out.push(rest);return out.join('\n').replace(/\u00a0/g,' ')}
 document.getElementById('tcopy').onclick=()=>{const b=document.getElementById('tcopy'),done=()=>{b.textContent='Copiato';setTimeout(()=>{b.textContent='Copia testo'},1500)};
   /* in testa al testo copiato: nome del locale, "Menu di domenica 11 ottobre" e una riga di "=" */
   const sub=document.getElementById('tsub').textContent.trim(),head=[document.getElementById('tname').textContent.trim()].concat(sub?[sub]:[]).concat(['='.repeat(30)]).join('\n');
-  const full=head+'\n\n'+TXT;
+  const full=head+'\n\n'+TXT.split('\n').map(wrapLine).join('\n');
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(full).then(done).catch(()=>selectAll());else selectAll();
   function selectAll(){const rg=document.createRange();rg.selectNodeContents(tbody);const sl=getSelection();sl.removeAllRanges();sl.addRange(rg)}};
 
@@ -2269,6 +2291,8 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
                           "testo_per_tutti": bool(settings.get("testo_per_tutti", False)),
                           # correzioni di parole lette male dall'OCR, valide per tutti i locali
                           "correzioni_ocr": settings.get("correzioni_ocr", []),
+                          # testo copiato: righi più lunghi di così vanno a capo (predefinito 50)
+                          "testo_larghezza": settings.get("testo_larghezza", 50),
                           "log": settings.get("registro_click_url", ""),
                           # visite alla pagina (foglio "Visite"): solo dopo aver aggiornato Registro_click.gs
                           "visite": bool(settings.get("registra_visite", False))}, ensure_ascii=False).replace("</", "<\\/")

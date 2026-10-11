@@ -1,6 +1,8 @@
 ﻿# ocr.ps1 - legge il testo scritto dentro un'immagine con l'OCR integrato di Windows 10/11.
 # Uso:  powershell -NoProfile -ExecutionPolicy Bypass -File ocr.ps1 "C:\percorso\immagine.jpg"
-# Stampa il testo riconosciuto (UTF-8). Usato da Menu.py per leggere gli avvisi nelle foto
+# Stampa il testo riconosciuto (UTF-8), una riga per riga della foto; dove nella foto c'è uno
+# spazio verticale più grande del normale tra due righe (interlinea maggiorata tra gruppi di
+# pietanze) stampa una riga vuota. Usato da Menu.py per leggere gli avvisi nelle foto
 # (es. "Siamo chiusi da domenica 4/10 a mercoledì 7/10"). Non serve installare nulla.
 param([Parameter(Mandatory = $true)][string]$Path)
 $ErrorActionPreference = 'Stop'
@@ -32,4 +34,19 @@ if ($null -eq $engine) { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromU
 if ($null -eq $engine) { throw 'OCR di Windows non disponibile (manca la lingua per il riconoscimento del testo)' }
 
 $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
-$result.Lines | ForEach-Object { $_.Text }
+$lines = @($result.Lines)
+try {
+    # altezza tipica di una riga (mediana): uno spazio tra due righe più alto di 0,9 righe = rigo vuoto
+    $alte = @($lines | ForEach-Object { ($_.Words | ForEach-Object { $_.BoundingRect.Height } | Measure-Object -Maximum).Maximum } | Sort-Object)
+    $tipica = if ($alte.Count) { $alte[[int][math]::Floor($alte.Count / 2)] } else { 0 }
+    $sottoPrima = $null
+    foreach ($l in $lines) {
+        $sopra = ($l.Words | ForEach-Object { $_.BoundingRect.Y } | Measure-Object -Minimum).Minimum
+        $sotto = ($l.Words | ForEach-Object { $_.BoundingRect.Y + $_.BoundingRect.Height } | Measure-Object -Maximum).Maximum
+        if ($null -ne $sottoPrima -and $tipica -gt 0 -and ($sopra - $sottoPrima) -gt 0.9 * $tipica) { '' }
+        $l.Text
+        $sottoPrima = $sotto
+    }
+} catch {
+    $lines | ForEach-Object { $_.Text }   # se qualcosa va storto: solo le righe, come prima
+}

@@ -194,6 +194,21 @@ Prezzi senza centesimi ("35€") restano così ("€ 35"); un prezzo scritto
 all'inizio della riga ("35€ — Vino...", anche letto "35C") va in fondo; se
 lo stesso prezzo è ripetuto alla riga dopo, compare una volta sola. Le virgole vengono corrette: niente spazio prima, uno dopo
 ("salmone,crema" -> "salmone, crema").
+Righi lunghi: nel testo copiato un rigo più lungo di 50 caratteri va a capo
+tra le parole (di preferenza dopo una virgola), es.
+    Risotto Acquerello con carpaccio di ombrina,
+    mantecato alla stracciatella e pistacchi
+Il prezzo "(€ 8,00)" e i titoli "== ... ==" non vengono spezzati. La
+larghezza si cambia in locali.json > impostazioni: "testo_larghezza": 50.
+Nella finestra "Testo" i righi vanno a capo da soli secondo la larghezza
+della finestra.
+Gruppi di pietanze: dove nella foto c'è un'interlinea più grande del normale
+tra due righe (es. Impasta: antipasti / primi / secondi / dolce senza titoli)
+l'OCR (ocr.ps1) mette un rigo vuoto; nel testo copiato i gruppi restano
+staccati da un rigo vuoto e nella finestra da uno spazio con una linea.
+Regola: spazio tra due righe più alto di 0,9 volte l'altezza tipica di una
+riga (la soglia è in ocr.ps1). Se ocr.ps1 non riesce a misurare le righe,
+le scrive senza righi vuoti, come prima.
 Sistemazioni automatiche, uguali per tutti: un prezzo da solo su una riga
 va al piatto di sopra ("{8,00" e "€1200" diventano "€ 8,00" e "€ 12,00");
 un piatto spezzato su due righe viene riunito se la prima finisce con una
