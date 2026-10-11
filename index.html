@@ -38,9 +38,10 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 /* ---------- testata ---------- */
 .top{position:sticky;top:0;z-index:10;padding-top:env(safe-area-inset-top,0px);background:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .top-in{max-width:1180px;margin:auto;padding:12px 16px 0;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
-/* logo di Menu: stessa misura e stessi angoli dei loghi dei locali (56 px), allineato a loro
+/* logo di Menu: riquadro bianco con la stessa misura e gli stessi angoli dei loghi dei locali (56 px),
+   con 6 px di margine bianco intorno al logo intero, allineato a loro
    (10 px = il margine interno delle schede) */
-.brand{width:56px;height:56px;border-radius:11px;background:#fff;padding:0;margin-left:10px;overflow:hidden;box-shadow:var(--shadow)}
+.brand{box-sizing:border-box;width:56px;height:56px;border-radius:11px;background:#fff;padding:6px;margin-left:10px;overflow:hidden;box-shadow:var(--shadow)}
 .brand img{width:100%;height:100%;object-fit:contain;display:block}
 .day{min-width:0;cursor:pointer}
 h1{margin:0;font-family:var(--f-display);font-weight:800;font-size:clamp(22px,5.4vw,30px);line-height:1.05;letter-spacing:-.01em}
