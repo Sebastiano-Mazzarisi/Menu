@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-12",
+  "data": "2026-10-13",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -66,29 +66,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Penne all'arrabbiata",
+          "nome": "Pasta e patate con provola alla napoletana",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
-        },
-        {
-          "nome": "Orecchiette con datterino giallo, speck e asparagi",
-          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con funghi porcini e zafferano",
+          "nome": "Risotto con zucca e noci",
+          "prezzo": "€7.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Rigatoni con cavolfiore e pancetta",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Tagliolino con pesto di zucchina e cernia",
+          "nome": "Cavatelli con ragù di baccalà, ceci e pomodorini",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Minestrone di verdure",
+          "nome": "Zuppa di lenticchie",
           "prezzo": "€6.00",
-          "descrizione": "Fagiolini, piselli, patate, carote, zucchina, cavolfiore, melanzane e cipolla. Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -96,14 +96,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di merluzzo gratinato con zucchina",
+          "nome": "Filetto di cernia con carciofi",
           "prezzo": "€8.50",
-          "descrizione": "Con pomodorino"
+          "descrizione": ""
         },
         {
-          "nome": "Bombette di capocollo con ciliegino giallo e rughetta",
+          "nome": "Scaloppe di lonza con funghi misti",
           "prezzo": "€7.50",
-          "descrizione": "5 pezzi"
+          "descrizione": "2 pezzi"
         }
       ]
     }

@@ -1,12 +1,12 @@
 {
-  "data": "2026-10-12",
-  "testo": "MENÙ DI LUNEDÌ\nPRIMI PIATTI\n●TIMBALLINO DI CICORIA CON PATATE, SPECK CROCCANTE E MOZZARELLA 5,0\n●CICORIA ALL'OLIO 5,0\n●LASAGNA AL FORNO 5,0\n●CANNELLONI ALLA CARNE 5,5\n●ORECCHIETTE CON POLPETTINE 5,5\n●CASERECCIA CON TONNO, MELANZANA VIOLETTA IN SALSA DI DATTERINO GIALLO 5,5\n●CAVATELLI CON CECI 5,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●SCALOPPA DI VITELLO AI FUNGHI\n●SPIEDINO DI BOCCONCINO DI POLLO ALLE VERDURE CON CONTORNO DI VERDURINE\n●PANZEROTTO DI POLLO CROCCANTE CON PROSCIUTTO E GALBANINO AL FORNO\n●SFORMATO DI VERDURE AL FORNO\n●MELANZANE RIPIENE\n●QUADRATO DI ZUCCHINA AL SALMONE\n●OLIVE FRITTE\n▪︎INSALATA DI FAGIOLINI\n●INSALATA DI PATATE ALLO YOGURT E MAIONESE",
+  "data": "2026-10-13",
+  "testo": "MENÙ DI MARTEDÌ\nPRIMI PIATTI\n●MINESTRONE DI VERDURE FRESCHE 5,0\n●PASTA E MINESTRONE 5,0\n●RIGATONI CON BROCCOLI, SPECK, CILIEGINO E CACIORICOTTA 5,5\n●PENNETTE AL SUGO DI BOLOGNESE 5,5\n●RISOTTO AI FRUTTI DI MARE 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●COTOLETTA DI COSTATA DI SUINO AL FORNO\n●FUSI DI POLLO AL FORNO CON PATATE\n●ALETTE DI POLLO SPEZIATE ALLA PAPRIKA\n●ZUCCHINE RIPIENE\n●TRANCIO DI MERLUZZO CON IMPANATURA DI PATATE E SALSA ROSA\n●OLIVE FRITTE",
   "sezioni": [
     {
       "titolo": "Menu del giorno",
       "piatti": [
         {
-          "nome": "MENÙ DI LUNEDÌ",
+          "nome": "MENÙ DI MARTEDÌ",
           "prezzo": "",
           "descrizione": ""
         },
@@ -16,37 +16,27 @@
           "descrizione": ""
         },
         {
-          "nome": "●TIMBALLINO DI CICORIA CON PATATE, SPECK CROCCANTE E MOZZARELLA 5,0",
+          "nome": "●MINESTRONE DI VERDURE FRESCHE 5,0",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●CICORIA ALL'OLIO 5,0",
+          "nome": "●PASTA E MINESTRONE 5,0",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●LASAGNA AL FORNO 5,0",
+          "nome": "●RIGATONI CON BROCCOLI, SPECK, CILIEGINO E CACIORICOTTA 5,5",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●CANNELLONI ALLA CARNE 5,5",
+          "nome": "●PENNETTE AL SUGO DI BOLOGNESE 5,5",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●ORECCHIETTE CON POLPETTINE 5,5",
-          "prezzo": "",
-          "descrizione": ""
-        },
-        {
-          "nome": "●CASERECCIA CON TONNO, MELANZANA VIOLETTA IN SALSA DI DATTERINO GIALLO 5,5",
-          "prezzo": "",
-          "descrizione": ""
-        },
-        {
-          "nome": "●CAVATELLI CON CECI 5,0",
+          "nome": "●RISOTTO AI FRUTTI DI MARE 6,0",
           "prezzo": "",
           "descrizione": ""
         },
@@ -61,47 +51,32 @@
           "descrizione": ""
         },
         {
-          "nome": "●SCALOPPA DI VITELLO AI FUNGHI",
+          "nome": "●COTOLETTA DI COSTATA DI SUINO AL FORNO",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●SPIEDINO DI BOCCONCINO DI POLLO ALLE VERDURE CON CONTORNO DI VERDURINE",
+          "nome": "●FUSI DI POLLO AL FORNO CON PATATE",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●PANZEROTTO DI POLLO CROCCANTE CON PROSCIUTTO E GALBANINO AL FORNO",
+          "nome": "●ALETTE DI POLLO SPEZIATE ALLA PAPRIKA",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●SFORMATO DI VERDURE AL FORNO",
+          "nome": "●ZUCCHINE RIPIENE",
           "prezzo": "",
           "descrizione": ""
         },
         {
-          "nome": "●MELANZANE RIPIENE",
-          "prezzo": "",
-          "descrizione": ""
-        },
-        {
-          "nome": "●QUADRATO DI ZUCCHINA AL SALMONE",
+          "nome": "●TRANCIO DI MERLUZZO CON IMPANATURA DI PATATE E SALSA ROSA",
           "prezzo": "",
           "descrizione": ""
         },
         {
           "nome": "●OLIVE FRITTE",
-          "prezzo": "",
-          "descrizione": ""
-        },
-        {
-          "nome": "▪︎INSALATA DI FAGIOLINI",
-          "prezzo": "",
-          "descrizione": ""
-        },
-        {
-          "nome": "●INSALATA DI PATATE ALLO YOGURT E MAIONESE",
           "prezzo": "",
           "descrizione": ""
         }
