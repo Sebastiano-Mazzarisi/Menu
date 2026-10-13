@@ -27,6 +27,8 @@ ROOT = Path(__file__).resolve().parent
 CONFIG = ROOT / "locali.json"
 STATE = ROOT / "dati" / "stato.json"
 LOG = ROOT / "dati" / "automatico.log"
+ORDER_FILE = ROOT / "dati" / "ordine_monitor.json"  # ordine delle righe, letto da Menu.py all'avvio del giro
+IN_PROGRESS = ROOT / "dati" / "in_corso.json"  # locale che Menu.py sta controllando adesso
 LOCK = ROOT / "dati" / "automatico.lock"
 POSITION = ROOT / "dati" / "monitor.json"
 TASK = "Menu"
@@ -37,6 +39,7 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 BG, FG, MUTED = "#0b1220", "#e2e8f0", "#94a3b8"
 GREEN, ORANGE, RED, BLUE = "#22c55e", "#f97316", "#ef4444", "#60a5fa"
+YELLOW = "#ffe600"  # pallina del locale in controllo (lampeggia)
 
 
 # Script PowerShell del pulsante "Sito": cerca con UI Automation di Windows (nessuna installazione)
@@ -418,7 +421,12 @@ class Monitor(tk.Tk):
         self.clicks: dict[str, int] | None = None
         self.clicks_at = datetime.min
         self.clicks_busy = False
+        self.order_ids: list[str] = []  # ordine delle righe come appaiono adesso
+        self.frozen_order: list[str] | None = None  # durante un giro: l'ordine con cui è partito
+        self.dots: dict[str, tuple[tk.Label, str]] = {}  # pallina e suo colore normale, per locale
+        self.blink_on = False
         self.tick()
+        self.blink()
 
     # --- aggiornamento --------------------------------------------------------------------------
     def tick(self) -> None:
@@ -479,6 +487,22 @@ class Monitor(tk.Tk):
         self.outcome.config(text=text, fg=colour)
         self.after(1000, self.tick)
 
+    def blink(self) -> None:
+        """Durante un controllo la pallina del locale in esame lampeggia giallo brillante;
+        le altre restano verdi/arancioni/rosse."""
+        current = ""
+        if IN_PROGRESS.exists() and check_running():
+            current = read_json(IN_PROGRESS, {}).get("id", "")
+        self.blink_on = not self.blink_on
+        for shop_id, (label, colour) in self.dots.items():
+            wanted = (YELLOW if self.blink_on else BG) if shop_id == current else colour
+            try:
+                if label.cget("fg") != wanted:
+                    label.config(fg=wanted)
+            except tk.TclError:
+                pass  # riga appena ridisegnata
+        self.after(400, self.blink)
+
     def query_clicks(self, log_url: str) -> None:
         """Click di oggi per ogni rosticceria, letti dal registro Google (?azione=statistiche)."""
         import urllib.request
@@ -497,7 +521,7 @@ class Monitor(tk.Tk):
         results = {item.get("id"): item for item in read_json(STATE, {}).get("results", [])}
         today = date.today().isoformat()
         signature = (today, json.dumps(config.get("locali", [])), json.dumps(results, sort_keys=True),
-                     json.dumps(self.clicks, sort_keys=True))
+                     json.dumps(self.clicks, sort_keys=True), check_running())
         if signature == getattr(self, "_signature", None):
             return  # niente di nuovo: non ridisegno (evita lo sfarfallio)
         self._signature = signature
@@ -517,7 +541,26 @@ class Monitor(tk.Tk):
         head.pack(fill="x")
         for text, width, anchor in (("", 2, "w"), ("Rosticceria", 20, "w"), ("Menu", 7, "w"), ("Visite", 6, "e")):
             tk.Label(head, text=text, fg=MUTED, bg=BG, font=("Segoe UI", 8), width=width, anchor=anchor).pack(side="left")
-        for shop in sorted(shops, key=order):
+        ordered = sorted(shops, key=order)
+        if check_running():
+            # giro in corso: le righe restano nell'ordine con cui il giro è partito (è quello che
+            # Menu.py sta seguendo), anche se nel frattempo un locale diventa verde
+            if self.frozen_order is None:
+                # ordine scritto da un pulsante del Monitor appena premuto; per i giri automatici
+                # (file vecchio) vale l'ordine attuale, che è quello che segue Menu.py
+                try:
+                    fresh = time.time() - ORDER_FILE.stat().st_mtime < 300
+                except OSError:
+                    fresh = False
+                saved = read_json(ORDER_FILE, {}).get("ordine") if fresh else None
+                self.frozen_order = saved or [item.get("id") for item in ordered]
+            place = {key: index for index, key in enumerate(self.frozen_order)}
+            ordered = sorted(ordered, key=lambda item: place.get(item.get("id"), len(place)))
+        else:
+            self.frozen_order = None
+        self.order_ids = [item.get("id", "") for item in ordered]
+        self.dots = {}
+        for shop in ordered:
             result = results.get(shop.get("id"), {})
             day = result.get("menu_date", "")
             if day == today:
@@ -529,7 +572,9 @@ class Monitor(tk.Tk):
                 mark, colour, info = "●", RED, "nessuno"
             row = tk.Frame(self.rows, bg=BG, cursor="hand2")
             row.pack(fill="x")
-            tk.Label(row, text=mark, fg=colour, bg=BG, font=("Segoe UI", 11)).pack(side="left")
+            dot = tk.Label(row, text=mark, fg=colour, bg=BG, font=("Segoe UI", 11))
+            dot.pack(side="left")
+            self.dots[shop.get("id", "")] = (dot, colour)
             tk.Label(row, text=shop.get("nome", "?"), fg=FG, bg=BG, font=("Segoe UI", 10), width=20,
                      anchor="w").pack(side="left")
             tk.Label(row, text=info, fg=colour, bg=BG, font=("Segoe UI", 10), width=7, anchor="w").pack(side="left")
@@ -638,6 +683,12 @@ class Monitor(tk.Tk):
         if check_running():
             self.say("Un controllo è già in corso: attendi che finisca")
             return
+        # Menu.py controlla i locali nello stesso ordine delle righe visibili qui
+        try:
+            ORDER_FILE.write_text(json.dumps({"ordine": self.order_ids}, ensure_ascii=False), encoding="utf-8")
+            self.frozen_order = list(self.order_ids)
+        except OSError:
+            pass
         subprocess.run(["taskkill", "/F", "/T", "/FI", f"WINDOWTITLE eq {CONSOLE_TITLE}*"],
                        capture_output=True, creationflags=NO_WINDOW)
         python = Path(sys.executable).with_name("python.exe")  # Monitor gira con pythonw

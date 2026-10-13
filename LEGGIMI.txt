@@ -346,6 +346,16 @@ aggiornate (come Avvia.bat: Menu.py --pubblica).
 Mentre un controllo è in corso (automatico o manuale) i pulsanti
 "Controlla", "Ricontrolla", "Pubblica" e "Panorama" sono spenti (grigi, non
 si possono premere): si riaccendono da soli appena il controllo finisce.
+Ordine del controllo: i locali vengono controllati esattamente nell'ordine
+delle righe visibili nel Monitor quando si preme il pulsante (il Monitor lo
+scrive in dati/ordine_monitor.json e Menu.py lo segue). Durante il giro le
+righe restano ferme in quell'ordine anche se un locale diventa verde; a
+giro finito tornano nell'ordine solito (prima i verdi, poi gli altri).
+Durante il controllo, la pallina del locale che si sta controllando
+lampeggia giallo brillante (Menu.py scrive il locale in esame in
+dati/in_corso.json e lo cancella a fine giro); le altre restano
+verdi/arancioni/rosse. Vale anche per il clic sul nome di un locale
+(segnalazione) e per i giri automatici.
 Entrambi aprono una finestra DOS intitolata "Menu - controllo manuale", che
 mostra solo una riga per rosticceria (es. "Fantasia: 2026-10-05 (cartella)")
 e l'esito della pubblicazione; i dettagli (testo letto, avvisi) vanno solo

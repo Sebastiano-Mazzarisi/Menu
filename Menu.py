@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import sys
+import time
 import unicodedata
 import urllib.request
 from dataclasses import dataclass
@@ -26,6 +27,8 @@ PROFILE = ROOT / "profilo"
 ERRORS = ROOT / "errori"
 DATA = ROOT / "dati"
 STATE = DATA / "stato.json"
+MONITOR_ORDER = DATA / "ordine_monitor.json"  # ordine delle righe del Monitor quando vi si preme un pulsante
+IN_PROGRESS = DATA / "in_corso.json"  # locale che si sta controllando adesso (pallina gialla nel Monitor)
 OUTPUT = ROOT / "Menu.html"
 WEB_PAGE = ROOT / "index.html"  # pagina pubblicata su GitHub Pages (cellulare)
 # stessa pagina per l'amministratore: aperta con ?v=57 la pagina passa qui, così "+Home" salva
@@ -2966,6 +2969,15 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     previous_days = {item.get("id"): item.get("menu_date", "") for item in read_json(STATE, {}).get("results", [])}
     shops = sorted(shops, key=lambda item: (previous_days.get(item["id"]) != date.today().isoformat(),
                                             sort_key_name(item.get("nome", ""))))
+    # giro lanciato dal Monitor: si segue esattamente l'ordine delle righe visibili nel Monitor
+    # (scritto dal Monitor un attimo prima di lanciare il giro, quindi recente)
+    try:
+        wanted = read_json(MONITOR_ORDER, {})
+        if wanted.get("ordine") and time.time() - MONITOR_ORDER.stat().st_mtime < 300:
+            place = {key: index for index, key in enumerate(wanted["ordine"])}
+            shops = sorted(shops, key=lambda item: place.get(item["id"], len(place)))
+    except OSError:
+        pass
     previous_records = {item.get("id"): item for item in read_json(STATE, {}).get("results", [])}
     try:
         for shop in shops:
@@ -2973,6 +2985,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
                 results.append(previous_records[shop["id"]])  # --solo: le altre restano come all'ultimo giro
                 continue
             previous = previous_sources.get(shop["id"]) or "già acquisito oggi"
+            save_json(IN_PROGRESS, {"id": shop["id"], "nome": shop.get("nome", "")})  # per il Monitor
             result = acquire(shop, browser, online=not args.solo_html,
                              skip_if_today=previous if args.automatico or args.salta_aggiornati else None)
             show_old = bool(settings.get("mostra_menu_vecchi", False))
@@ -2994,6 +3007,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
             print(f"{shop['nome']}: {record['menu_date'] or 'nessun menu'} ({result.source})")
     finally:
         browser.stop()
+        IN_PROGRESS.unlink(missing_ok=True)
     old_state = read_json(STATE, {})
     prints = menu_fingerprints(results)
     names = {shop["id"]: shop["nome"] for shop in shops}
