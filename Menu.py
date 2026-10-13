@@ -1903,16 +1903,16 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 /* Registro dei click sul foglio Google "Menu" (Apps Script in Registro_click.gs).
    ?v=57 nell'indirizzo = amministratore: quei click non vengono registrati. Senza ?v=57 si registra
    sempre, anche sullo stesso dispositivo (non viene ricordato nulla). */
-const Q=new URLSearchParams(location.search);const ADMIN=Q.get('v')==='57'||location.pathname.endsWith('/admin.html');
+const Q=new URLSearchParams(location.search);const ADMIN=Q.get('v')==='57'||/\/admin(\.html)?$/.test(location.pathname);/* dispositivo dell'amministratore: basta averci aperto una volta la versione amministratore (?v=57 o admin.html) perché da quel browser visite e click non vengano più contati, anche aprendo il sito normale; ?v=0 lo toglie */const MINE=(()=>{try{if(ADMIN)localStorage.setItem('menu_admin','1');if(Q.get('v')==='0')localStorage.removeItem('menu_admin');return localStorage.getItem('menu_admin')==='1'}catch(e){return ADMIN}})(),NOCOUNT=ADMIN||MINE||!!navigator.webdriver;
 try{localStorage.removeItem('menuAdmin')}catch(e){}
 function deviceLabel(){const u=navigator.userAgent||'';let o='Altro',b='Altro';
 if(/iPad/.test(u))o='iPad';else if(/iPhone/.test(u))o='iPhone';else if(/Android/.test(u))o='Android';else if(/Macintosh/.test(u))o='Mac';else if(/Windows/.test(u))o='Windows';else if(/Linux/.test(u))o='Linux';
 if(/Edg\//.test(u))b='Edge';else if(/OPR\//.test(u))b='Opera';else if(/CriOS\//.test(u)||/Chrome\//.test(u))b='Chrome';else if(/FxiOS\//.test(u)||/Firefox\//.test(u))b='Firefox';else if(/Safari\//.test(u))b='Safari';return o+' / '+b}
 let placeP=null;function approxPlace(){if(!placeP)placeP=fetch('https://ipwho.is/',{cache:'no-store'}).then(r=>r.json()).then(d=>d&&d.success!==false?[d.city,d.region,d.country_code].filter(Boolean).join(', '):'').catch(()=>'');return placeP}
-function sendLog(body){try{if(navigator.sendBeacon&&navigator.sendBeacon(DATA.log,new Blob([body],{type:'text/plain'})))return}catch(e){}try{fetch(DATA.log,{method:'POST',mode:'no-cors',keepalive:true,body})}catch(e){}}
+function sendLog(body){if(NOCOUNT)return;try{if(navigator.sendBeacon&&navigator.sendBeacon(DATA.log,new Blob([body],{type:'text/plain'})))return}catch(e){}try{fetch(DATA.log,{method:'POST',mode:'no-cors',keepalive:true,body})}catch(e){}}
 /* navigator.webdriver: pagina aperta da un programma (Panorama, robot): non è una visita vera */
-if(!ADMIN&&DATA.log&&!navigator.webdriver){approxPlace();/* visita alla pagina: una per apertura del sito (foglio "Visite") */if(DATA.visite)Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({tipo:'visita',pagina:decodeURIComponent(location.hash.slice(1))||'iniziale',dispositivo:deviceLabel(),posizione:p||''})))}
-function logClick(name){if(ADMIN||!DATA.log||navigator.webdriver)return;Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({rosticceria:name,dispositivo:deviceLabel(),posizione:p||''})))}
+if(!NOCOUNT&&DATA.log){approxPlace();/* visita alla pagina: una per apertura del sito (foglio "Visite") */if(DATA.visite)Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({tipo:'visita',pagina:decodeURIComponent(location.hash.slice(1))||'iniziale',dispositivo:deviceLabel(),posizione:p||''})))}
+function logClick(name){if(NOCOUNT||!DATA.log)return;Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({rosticceria:name,dispositivo:deviceLabel(),posizione:p||''})))}
 
 /* ---------- date ---------- */
 const GG=['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'],MM=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];

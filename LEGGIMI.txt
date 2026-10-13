@@ -450,7 +450,8 @@ aggiornano anche ogni minuto; "oggi" riparte da 0 a mezzanotte, "mese" e
 ricalcolati da capo automaticamente alla richiesta successiva: basta
 riaprire o aggiornare la pagina. Per forzarlo comunque:
     <indirizzo /exec>?azione=ricalcola
-I click dell'amministratore non vengono registrati e quindi non contano.
+I click dell'amministratore non vengono registrati e quindi non contano
+(nemmeno dal sito normale aperto su un suo dispositivo: vedi sotto, visite).
 Il pulsante "Accessi" apre il foglio "Menu" posizionato sull'ultima riga:
 chiede al registro (Registro_click.gs, ?azione=ultima) l'indirizzo del foglio
 e il numero dell'ultima riga. Dopo aver modificato Registro_click.gs nell'editor
@@ -825,7 +826,14 @@ Dispositivo | Posizione approssimativa. Così si vede quante persone entrano e
 quante poi aprono un locale. I contatori dei locali non cambiano.
 Nella versione amministratore la scheda Info mostra "N visite oggi" e la
 tabella Info riporta in basso le visite di oggi, del mese, dell'anno e di sempre.
-Non contano: la versione amministratore (?v=57), la Panorama e i robot.
+Non contano: la versione amministratore (?v=57 o admin.html), la Panorama e
+i robot. Inoltre un browser in cui si è aperta almeno una volta la versione
+amministratore resta "dispositivo dell'amministratore": da lì visite e click
+non contano più nemmeno aprendo il sito normale (senza ?v=57). Per tornare a
+contare quel browser si apre una volta il sito con ?v=0.
+Attenzione su iPhone: Safari e ogni icona aggiunta alla Home hanno memorie
+separate; un'icona del sito normale aggiunta prima conta ancora finché non
+si apre una volta come amministratore (meglio usare l'icona di admin.html).
 Attivazione (una volta):
 1. Foglio "Menu" > Estensioni > Apps Script: incollare al posto del codice il
    nuovo Registro_click.gs e salvare.
