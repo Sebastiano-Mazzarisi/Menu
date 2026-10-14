@@ -1,0 +1,106 @@
+{
+  "data": "2026-10-14",
+  "testo": "MENÙ DI MERCOLEDI\nPRIMI PIATTI\n●MINESTRA DI RISO CON VERZA, PANCETTA E CAROTE 5,0\n●LASAGNA AL FORNO 5,0\n●LASAGNETTA CON PESTO DI PISTACCHIO, MORTADELLA E MOZZARELLA 5,5\n●PENNETTE ALL'ARRABBIATA 4,5\n●RIGATONI CON BROCCOLI, CILIEGINO, SPECK E CACIORICOTTA 5,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●ALETTE DI POLLO AL FORNO ALLA PAPRIKA\n●POLPETTONE DI VITELLO CON CONTORNO DI PISELLI\n●FEGATO ALLA VENEZIANA\n●TRIANGOLO DI MERLUZZO IMPANATO CON CONTORNO DI PATATE AL FORNO\n●FILETTO DI ORATA ALLA MEDITERRANEA\n●ZUCCHINE RIPIENE\n●FUNGHI PLEOS GRATINATI AL FORNO\n●OLIVE FRITTE\n●VERDURE GRATINATE\n●RUSTICO COPPA E GALBANINO",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI MERCOLEDI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MINESTRA DI RISO CON VERZA, PANCETTA E CAROTE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNETTA CON PESTO DI PISTACCHIO, MORTADELLA E MOZZARELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PENNETTE ALL'ARRABBIATA 4,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RIGATONI CON BROCCOLI, CILIEGINO, SPECK E CACIORICOTTA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ALETTE DI POLLO AL FORNO ALLA PAPRIKA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTONE DI VITELLO CON CONTORNO DI PISELLI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FEGATO ALLA VENEZIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRIANGOLO DI MERLUZZO IMPANATO CON CONTORNO DI PATATE AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FILETTO DI ORATA ALLA MEDITERRANEA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ZUCCHINE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FUNGHI PLEOS GRATINATI AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●OLIVE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●VERDURE GRATINATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RUSTICO COPPA E GALBANINO",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
