@@ -353,6 +353,18 @@ class BrowserCollector:
                         continue
                 if not opened:
                     raise RuntimeError("nessuna Storia pubblicata in questo momento (o non si è aperta)")
+                part = int(source.get("parte_storia", 0))
+                if part:
+                    # parte 2, 3...: la storia può avere più fotografie (es. prima una pubblicità,
+                    # poi il menu). Si avanza con la freccia destra restando nella storia del locale
+                    owner_url = page.url.split("?")[0].rstrip("/").rsplit("/", 1)[0]
+                    for _ in range(part):
+                        page.keyboard.press("ArrowRight")
+                        page.wait_for_timeout(2500)
+                    user = source.get("utente", "")
+                    if "/stories/" not in page.url or (user and f"/stories/{user}/" not in page.url) \
+                            or not page.url.startswith(owner_url):
+                        raise RuntimeError(f"nessun'altra parte della storia (parte {part + 1})")
                 if source.get("richiede_recente"):
                     visible_text = page.locator("body").inner_text(timeout=5000)
                     # età scritta accanto al nome del profilo ("7 h", "15 min"): si cerca dopo il nome
@@ -1129,10 +1141,31 @@ MENU_WORDS = ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "pi
 # "il menù è ricco e goloso, menu su Whatsapp" accompagna una foto pubblicitaria)
 MENU_PHRASES = re.compile(
     r"men[uù]\s+(?:del\s+giorno|di\s+oggi|giornaliero|d['’]asporto|di\s+(?:luned|marted|mercoled|gioved|venerd|sabato|domenica))"
-    r"|piatti\s+del\s+giorno|proposte\s+del\s+giorno|oggi\s+(?:trovate|abbiamo|vi\s+proponiamo)"
+    r"|piatti\s+del\s+giorno|proposte\s+del\s+giorno|oggi\s+(?:trovate|abbiamo|vi\s+proponiamo|propon\w*)"
+    # "L'Eclettico oggi propone... CAVATELLI COZZE E VONGOLE..." (il nome del locale sta in mezzo)
+    r"|\bpropone\s*(?:\.{2,}|…|:)|\bla\s+proposta\s+di\s+oggi"
     # "Menù del / giorno GIOVEDÌ" (Impasta): l'OCR spesso perde "Menù del" scritto grande
     r"|\bgiorno\s+(?:luned|marted|mercoled|gioved|venerd|sabato|domenica)", re.IGNORECASE)
 MENU_SECTIONS = re.compile(r"\b(?:antipasti|primi|secondi|contorni|dolci|frutta)\b", re.IGNORECASE)
+# nomi di piatti e ingredienti: un elenco di piatti è un menu anche senza la parola "menu"
+# (es. L'Eclettico: "oggi propone... CAVATELLI COZZE E VONGOLE, ORECCHIETTE CON POLPETTINE,
+# PESCE SPADA ALLA PIASTRA, PAILLARD AI FERRI, CAROTE VICHY")
+DISH_WORDS = re.compile(
+    r"\b(?:spaghett\w*|pennett\w*|penne|cavatell\w*|orecchiett\w*|troccol\w*|fusill\w*|rigatoni|paccheri|"
+    r"lasagn\w*|tagliatell\w*|fettuccin\w*|gnocch\w*|ravioli|risott\w*|minestr\w*|zupp\w*|vellutat\w*|"
+    r"pasta|riso|ragù|ragu|sugo|arrabbiata|carbonara|amatriciana|parmigiana|polpett\w*|polpettin\w*|"
+    r"braciol\w*|salsicc\w*|bombett\w*|arrosto|arrost\w*|rosticin\w*|maiale|manzo|vitello|pollo|tacchino|"
+    r"agnello|cotolett\w*|scaloppin\w*|paillard|bistecc\w*|tagliata|spezzatino|stinco|pesce|spada|"
+    r"salmone|tonno|merluzzo|baccal\w*|orata|branzino|calamar\w*|seppi\w*|gamber\w*|cozze|vongole|"
+    r"frittur\w*|fritt\w*|grigliat\w*|griglia|piastra|ferri|forno|verdur\w*|insalat\w*|patat\w*|"
+    r"carot\w*|zucchin\w*|melanzan\w*|peperon\w*|funghi|ceci|fave|lenticchie|fagioli|legumi|cime|"
+    r"rape|friarielli|caponata|frittat\w*|mozzarell\w*|burrata|focacc\w*|panzerott\w*|tiella)\b",
+    re.IGNORECASE)
+
+
+def looks_like_dishes(text: str) -> bool:
+    """Il testo elenca dei piatti? Almeno tre nomi di piatti/ingredienti diversi."""
+    return len({plain(word) for word in DISH_WORDS.findall(text or "")}) >= 3
 POST_MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
                "settembre", "ottobre", "novembre", "dicembre"]
 
@@ -1142,6 +1175,8 @@ def text_is_menu(text: str, source: dict[str, Any]) -> bool:
     almeno due sezioni (primi, secondi, contorni...), una data, o una frase scelta per quel
     locale in "parole_menu" diversa dalle parole generiche (es. "oggi trovate")."""
     if MENU_PHRASES.search(text) or len(set(m.lower() for m in MENU_SECTIONS.findall(text))) >= 2:
+        return True
+    if looks_like_dishes(text):
         return True
     own = [word for word in source.get("parole_menu", []) if word not in MENU_WORDS]
     if any(word in text.lower() for word in own):
@@ -1154,6 +1189,8 @@ def text_lists_menu(text: str, source: dict[str, Any]) -> bool:
     almeno due sezioni (primi, secondi, contorni...), una data o un giorno della settimana
     del menu, o una frase scelta per quel locale in "parole_menu"."""
     if len(set(m.lower() for m in MENU_SECTIONS.findall(text or ""))) >= 2 or plausible_menu_date(text or ""):
+        return True
+    if looks_like_dishes(text):
         return True
     own = [word for word in source.get("parole_menu", []) if word not in MENU_WORDS]
     return any(word in (text or "").lower() for word in own)
@@ -1280,7 +1317,11 @@ def place_capture(folder: Path, image: Path) -> Path:
 
 def post_variants(source: dict[str, Any]) -> list[dict[str, Any]]:
     """La fonte per il 1°, 2°, 3°... post della pagina ("post_da_controllare", 5 se non indicato):
-    nei selettori [aria-posinset='1'] diventa '2', '3'..."""
+    nei selettori [aria-posinset='1'] diventa '2', '3'...
+    Per una storia Instagram ("apri_storia"): la 1ª, 2ª, 3ª... parte della storia ("parti_storia", 3)."""
+    if source.get("apri_storia") and not source.get("selettore"):
+        parts = int(source.get("parti_storia", 3))
+        return [{**source, "parte_storia": number} for number in range(parts)]
     count = int(source.get("post_da_controllare", 5))
     if "posinset='1'" not in source.get("selettore", ""):
         return [source]
@@ -1349,9 +1390,19 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
             return Result(save_closure(folder, closed, image), date.today(), source.get("nome", "browser"), checked)
         return Result(save_closure(folder, closed, None, browser.last_text), date.today(),
                       source.get("nome", "browser"), checked)
+    # controllo approfondito (clic sul locale nel Monitor), secondo passaggio: si parte dall'idea
+    # che il programma abbia sbagliato a scartare. Una storia/post DI OGGI con delle scritte viene
+    # accettata anche se i controlli normali dicono "non sembra un menu"
+    fresh = browser.last_posted == date.today()  # storia o post pubblicato oggi (età letta sulla pagina)
+    if source.get("_tollerante") and fresh and photo_has_writing(photo_text, browser.last_alt):
+        print(f"  {shop['nome']} - CONTROLLO APPROFONDITO: accetto questa {'storia' if source.get('apri_storia') else 'pubblicazione'} "
+              f"di oggi come menu (i controlli normali l'avevano scartata)")
+        return Result(place_capture(folder, image), date.today(), source.get("nome", "browser"), checked)
     # l'ultimo post è davvero un menu? (non una pubblicità, una foto di un piatto, ecc.)
     words = source.get("parole_menu", MENU_WORDS)
-    if words and not any(word in f"{browser.last_text} {photo_text}".lower() for word in words):
+    seen_all = f"{browser.last_text} {photo_text}"
+    if words and not any(word in seen_all.lower() for word in words) and not looks_like_dishes(seen_all) \
+            and not MENU_PHRASES.search(seen_all):
         discard_wrong_menu(shop, folder, image)
         raise NotAMenu("il post non sembra un menu")
     if not photo_has_writing(photo_text, browser.last_alt) and not text_lists_menu(browser.last_text, source):
@@ -1545,8 +1596,9 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
         if skipped and kind != "cartella" and source.get("nome", kind) in skipped:
             continue
         if shop["id"] in SUSPECT and kind == "browser":
-            # controllo approfondito: si guardano più post del solito
-            source = {**source, "post_da_controllare": max(10, int(source.get("post_da_controllare", 5)))}
+            # controllo approfondito: si guardano più post e più parti della storia del solito
+            source = {**source, "post_da_controllare": max(10, int(source.get("post_da_controllare", 5))),
+                      "parti_storia": max(6, int(source.get("parti_storia", 3)))}
         try:
             if kind == "cartella":
                 image = newest_image(folder)
@@ -1599,22 +1651,39 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                 # e anche se un post non si riesce a leggere (video, reel, post senza testo né foto,
                 # post caricato in ritardo): un post illeggibile non deve fermare la ricerca
                 tries = post_variants(source)
-                for number, variant in enumerate(tries, 1):
+                what = "parte della storia" if source.get("apri_storia") and not source.get("selettore") else "post"
+                # controllo approfondito: se nessun post/parte supera i controlli normali, secondo
+                # passaggio "tollerante" (si presume che lo scarto sia un errore del programma)
+                passes = [False, True] if shop["id"] in SUSPECT else [False]
+                for lenient in passes:
+                    if lenient:
+                        print(f"  {shop['nome']} - CONTROLLO APPROFONDITO: nessun menu riconosciuto, "
+                              f"ricontrollo presumendo che lo scarto sia un errore")
                     try:
-                        return browser_result(shop, variant, folder, browser, checked)
-                    except NotAMenu:
-                        if number == len(tries):
+                        for number, variant in enumerate(tries, 1):
+                            variant = {**variant, "_tollerante": lenient}
+                            try:
+                                return browser_result(shop, variant, folder, browser, checked)
+                            except NotAMenu as exc:
+                                print(f"  {shop['nome']} - {what} {number}: scartato ({exc})")
+                                if number == len(tries):
+                                    raise
+                            except Exception as exc:
+                                stop = number >= 2 and ("nessun elemento" in str(exc) or "nessun'altra parte" in str(exc))
+                                print(f"  {shop['nome']} - {what} {number} non leggibile ({str(exc).splitlines()[0][:90]})")
+                                if number == len(tries) or stop:
+                                    raise  # finiti i post (o la pagina non ne carica altri)
+                    except Exception:
+                        if lenient or len(passes) == 1:
                             raise
-                        print(f"  {shop['nome']} - post {number} non è un menu: guardo il successivo")
-                    except Exception as exc:
-                        if number == len(tries) or number >= 2 and "nessun elemento" in str(exc):
-                            raise  # finiti i post (o la pagina non ne carica altri)
-                        print(f"  {shop['nome']} - post {number} non leggibile ({str(exc)[:70]}): guardo il successivo")
             else:
                 raise RuntimeError(f"tipo fonte sconosciuto: {kind}")
             return Result(image, date.today(), source.get("nome", kind), checked)
         except Exception as exc:
             errors.append(f"{kind}: {exc}")
+            if kind != "cartella":
+                # perché la fonte online non ha dato il menu: va nel registro (prima restava nascosto)
+                print(f"  {shop['nome']} - {source.get('nome', kind)}: non usata ({str(exc).splitlines()[0][:120]})")
     old = newest_image(folder)
     return Result(old, image_date(old) if old else None, "ultimo disponibile" if old else "nessuna", checked, "; ".join(errors))
 

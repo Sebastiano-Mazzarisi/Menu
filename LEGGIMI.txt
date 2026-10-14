@@ -651,6 +651,20 @@ giorno", "menù di oggi", "menù d'asporto", "menù di giovedì", almeno due
 sezioni (primi, secondi, contorni...), una data, oppure una frase scelta
 per quel locale in "parole_menu" (es. "oggi trovate"). Non basta la parola
 "menù" in frasi come "il menù è ricco e goloso, menu su Whatsapp".
+Elenco di piatti (dal 14/10/2026): vale come menu anche un testo senza la
+parola "menu" che elenca almeno tre piatti o ingredienti diversi (spaghetti,
+cavatelli, orecchiette, polpette, pesce spada, verdure grigliate, paillard...)
+oppure dice "oggi propone..." / "la proposta di oggi". Caso che l'ha reso
+necessario: L'Eclettico scrive nella storia "oggi propone... CAVATELLI COZZE
+E VONGOLE, ORECCHIETTE CON POLPETTINE, PESCE SPADA ALLA PIASTRA..." e prima
+veniva scartata come "il post non sembra un menu". L'elenco dei piatti
+riconosciuti è DISH_WORDS in Menu.py (si possono aggiungere parole).
+Storie Instagram con più parti: se la prima parte non è un menu (es. una
+pubblicità) si guardano anche la 2ª e la 3ª ("parti_storia" nella fonte per
+cambiarne il numero), restando sempre nella storia del locale.
+Registro: quando una fonte online non viene usata, ora il motivo è scritto
+in dati/automatico.log (es. "Storia Instagram: non usata (il post non sembra
+un menu)", "parte della storia 2: scartato (...)").
 Giorno di pubblicazione: il programma legge accanto al nome del post quando
 è stato pubblicato ("20 minuti fa", "6 ore fa", "ieri alle 18:30", "2
 giorni fa", "7 ottobre"). Un post senza data scritta pubblicato ieri vale
@@ -773,8 +787,17 @@ come sono):
   nome; solo se non si trova si tolgono le foto/testi di oggi;
 - la sua impronta viene ricordata in dati/segnalati.json: quella stessa foto
   non verrà più usata per quel locale, nemmeno nei giri automatici;
-- il locale viene ricontrollato online a fondo (anche 10 post invece di 5);
-  se non si trova un menu valido diverso, il locale torna all'ultimo menu
+- il locale viene ricontrollato online a fondo (anche 10 post invece di 5,
+  6 parti della storia Instagram invece di 3);
+- CONTROLLO APPROFONDITO (dal 14/10/2026): se nessun post o parte della
+  storia supera i controlli normali, il programma presume che lo scarto sia
+  un errore suo e ricontrolla tutto una seconda volta in modo tollerante:
+  la prima storia o il primo post PUBBLICATO OGGI che contiene delle scritte
+  viene accettato come menu di oggi (nel registro: "CONTROLLO APPROFONDITO:
+  accetto questa storia di oggi come menu"). Restano esclusi: le foto già
+  segnalate come sbagliate, il menu di un altro locale, le storie o i post
+  di ieri, le foto senza scritte;
+- se non si trova un menu valido diverso, il locale torna all'ultimo menu
   buono (arancione).
 Se per errore si segnala un menu giusto, basta togliere la riga del locale da
 dati/segnalati.json e rimettere la foto da dati/scartati in ingresso.
