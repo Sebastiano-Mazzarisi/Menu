@@ -802,6 +802,17 @@ come sono):
 Se per errore si segnala un menu giusto, basta togliere la riga del locale da
 dati/segnalati.json e rimettere la foto da dati/scartati in ingresso.
 
+Data sbagliata dal locale (giorno della settimana e numero non vanno
+d'accordo): es. Aufer scrive "Giovedì 16 ottobre" ma il 16 è venerdì (voleva
+scrivere giovedì 15). Quando prima di una data c'è un giorno della settimana
+che non corrisponde, il programma considera le due possibilità: la data
+scritta (16) e il giorno della settimana più vicino a quella data (giovedì
+15, al massimo 3 giorni prima o dopo), e sceglie quella più vicina a oggi
+(a parità vince il giorno della settimana). Nel registro compare una riga
+"data incoerente: ... uso giovedì 15/10". Se in ingresso era rimasta la
+stessa foto salvata con la data sbagliata (2026-10-16_online.jpg), viene
+spostata in dati/scartati, così il giorno dopo non diventa il "menu di oggi".
+
 Menu con data futura: se un locale pubblica oggi il menu di domani (es.
 L'Eclettico, "Domenica 11 ottobre"), oggi resta il menu di oggi; quello di
 domani compare da domani. Il menu futuro si usa solo se manca quello di oggi.

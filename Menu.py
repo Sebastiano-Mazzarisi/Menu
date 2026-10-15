@@ -822,20 +822,52 @@ def date_in_text(text: str) -> date | None:
     return None
 
 
+# giorno della settimana scritto subito prima di una data: "Giovedì 16 ottobre", "gio. 16/10"
+WEEKDAY_BEFORE = re.compile(r"\b(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica|"
+                            r"lun|mar|mer|gio|ven|sab|dom)\.?,?\s*$")
+WRONG_DATES_SEEN: set[tuple[date, date]] = set()  # correzioni già scritte nel registro in questo giro
+
+
+def fix_weekday_date(day: date, before: str) -> date:
+    """Data e giorno della settimana che non vanno d'accordo, es. "Giovedì 16 ottobre" quando il
+    16 è venerdì (errore del locale: volevano scrivere giovedì 15). Una delle due cose è sbagliata:
+    si prende, tra la data scritta e il giorno della settimana più vicino a quella data (al massimo
+    3 giorni prima o dopo), quella più vicina a oggi; a parità vale il giorno della settimana."""
+    match = WEEKDAY_BEFORE.search(before)
+    if not match:
+        return day
+    wanted = WEEKDAYS[match.group(1)[:3]]
+    if day.weekday() == wanted:
+        return day
+    shift = (wanted - day.weekday()) % 7
+    other = day + timedelta(days=shift if shift <= 3 else shift - 7)
+    today = date.today()
+    chosen = other if abs((other - today).days) <= abs((day - today).days) else day
+    if (day, chosen) not in WRONG_DATES_SEEN:
+        WRONG_DATES_SEEN.add((day, chosen))
+        print(f"  data incoerente: \"{match.group(1)} {day.day}\" ma il {day:%d/%m} è "
+              f"{DAY_NAMES[day.weekday()]}: uso {DAY_NAMES[chosen.weekday()]} {chosen:%d/%m}")
+    return chosen
+
+
 def dates_in_text(text: str) -> list[date]:
-    """Tutte le date nel testo, nell'ordine: '4 ottobre', '4/10', '4.10' ..."""
+    """Tutte le date nel testo, nell'ordine: '4 ottobre', '4/10', '4.10' ...
+    Se prima della data c'è un giorno della settimana che non corrisponde, la data viene
+    corretta (vedi fix_weekday_date)."""
     found: list[tuple[int, date]] = []
     lowered = (text or "").lower()
     for match in re.finditer(r"(\d{1,2})\s+([a-zà]+)", lowered):
         if match.group(2) in MONTHS:
             try:
-                found.append((match.start(), menu_page_date(f"{match.group(1)} {match.group(2)}")))
+                day = menu_page_date(f"{match.group(1)} {match.group(2)}")
+                found.append((match.start(), fix_weekday_date(day, lowered[max(0, match.start() - 14):match.start()])))
             except (RuntimeError, ValueError):
                 pass
     for match in re.finditer(r"\b(\d{1,2})[/.-](\d{1,2})\b", lowered):
         try:
             month = list(MONTHS)[int(match.group(2)) - 1]
-            found.append((match.start(), menu_page_date(f"{int(match.group(1))} {month}")))
+            day = menu_page_date(f"{int(match.group(1))} {month}")
+            found.append((match.start(), fix_weekday_date(day, lowered[max(0, match.start() - 14):match.start()])))
         except (IndexError, RuntimeError, ValueError):
             pass
     return [day for _, day in sorted(found)]
@@ -1346,6 +1378,37 @@ def same_picture(first: Path, second: Path) -> bool:
         return False
 
 
+def drop_copies(shop: dict[str, Any], folder: Path, keep: Path) -> None:
+    """La stessa foto salvata in ingresso con un'altra data (es. letta come "16 ottobre" prima che
+    la data sbagliata venisse corretta in 15): la copia con la data sbagliata va in dati/scartati,
+    altrimenti il giorno dopo verrebbe presa per il menu di quel giorno."""
+    def look(path: Path) -> list[int] | None:
+        """Impronta visiva (16x16 grigio): due catture della stessa storia non sono sempre identiche byte per byte."""
+        try:
+            from PIL import Image
+            with Image.open(path) as picture:
+                return list(picture.convert("L").resize((16, 16)).getdata())
+        except Exception:
+            return None
+
+    try:
+        mark, seen = file_hash(keep), look(keep)
+    except OSError:
+        return
+    kept_day = image_date(keep)
+    for other in folder.glob(f"*_online{keep.suffix}"):
+        if other == keep or not other.is_file() or not 0 < (image_date(other) - kept_day).days <= 3:
+            continue  # solo le copie con una data successiva (al massimo 3 giorni), quelle pericolose
+        same = file_hash(other) == mark
+        if not same and seen:
+            again = look(other)
+            same = bool(again) and sum(abs(a - b) for a, b in zip(seen, again)) / len(seen) < 6
+        if same:
+            DISCARDED.mkdir(parents=True, exist_ok=True)
+            other.replace(DISCARDED / f"{shop['id']}_copia_{other.name}")
+            print(f"  {shop['nome']} - tolto {other.name}: è la stessa foto di {keep.name} (ora in dati/scartati)")
+
+
 def discard_wrong_menu(shop: dict[str, Any], folder: Path, image: Path) -> None:
     """Il post appena letto NON è un menu. Se la stessa foto era stata salvata in ingresso come
     menu (es. con un controllo meno severo, o prima di una correzione), era un errore: la sposto
@@ -1427,6 +1490,7 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         dated = folder / f"{text_day.isoformat()}_online{image.suffix}"
         if dated != image:
             image.replace(dated)
+        drop_copies(shop, folder, dated)
         return Result(dated, text_day, source.get("nome", "browser"), checked)
     posted = browser.last_posted
     if posted and posted < date.today():
