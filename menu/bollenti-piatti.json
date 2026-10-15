@@ -1,0 +1,96 @@
+{
+  "data": "2026-10-15",
+  "testo": "MENÙ DI GIOVEDÌ\nPRIMI PIATTI\n●CICORIE ALL'OLIO 5,0\n●SPAGHETTI AL SUGO DI POMODORO 5,0\n●MINESTRA DI RISO CON VERZA, PANCETTA E CAROTE 5,0\n●GNOCCHI DI PATATE CON SUGO DI POMODORO, PESTO DI BASILICO E MORTADELLA PIASTRATA 5,5\n●FARFALLE AL SALMONE CON SPINACI 5,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●FAGOTTO DI CARNE CHIUSA CON SALAME E GALBANINO ALLA PIZZAIOLA\n●STRACCETTI DI POLLO CON CECI E VELLUTATA DI DATTERINO GIALLO\n●SBRICIOLATA DI PATATE, SALSICCIA E MOZZARELLA\n●SFORMATO DI VERDURE MISTE CON MOZZARELLA AL FORNO\n●POLPETTE DI PANE AL SUGO\n●PARMIGIANA\n●CUORE DI MERLUZZO AL SUGO DI CROSTACEI\n●INSALATA DI PATATE ALLO YOGURT E MAIONESE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI GIOVEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CICORIE ALL'OLIO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPAGHETTI AL SUGO DI POMODORO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MINESTRA DI RISO CON VERZA, PANCETTA E CAROTE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●GNOCCHI DI PATATE CON SUGO DI POMODORO, PESTO DI BASILICO E MORTADELLA PIASTRATA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FARFALLE AL SALMONE CON SPINACI 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAGOTTO DI CARNE CHIUSA CON SALAME E GALBANINO ALLA PIZZAIOLA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STRACCETTI DI POLLO CON CECI E VELLUTATA DI DATTERINO GIALLO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SBRICIOLATA DI PATATE, SALSICCIA E MOZZARELLA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SFORMATO DI VERDURE MISTE CON MOZZARELLA AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI PANE AL SUGO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CUORE DI MERLUZZO AL SUGO DI CROSTACEI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INSALATA DI PATATE ALLO YOGURT E MAIONESE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
