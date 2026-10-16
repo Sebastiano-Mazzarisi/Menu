@@ -1846,7 +1846,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 
 /* ---------- testata ---------- */
 .top{position:sticky;top:0;z-index:10;padding-top:env(safe-area-inset-top,0px);background:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-.top-in{max-width:1180px;margin:auto;padding:12px 16px 0;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.top-in{max-width:1180px;margin:auto;padding:12px 16px 0;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}
 /* logo di Menu: riquadro bianco con la stessa misura e gli stessi angoli dei loghi dei locali (56 px),
    con 6 px di margine bianco intorno al logo intero, allineato a loro
    (10 px = il margine interno delle schede) */
@@ -1860,6 +1860,10 @@ h1 .wd{font-weight:600;color:var(--muted)}
 .iconbtn{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--muted)}
 .iconbtn:hover{background:var(--surface2);color:var(--ink)}
 .iconbtn svg{width:22px;height:22px}
+/* "+ Home": apre la guida per mettere Menu sulla schermata Home (nascosto se la pagina è già aperta dalla Home) */
+.homebtn{height:38px;padding:0 11px;border-radius:10px;background:var(--accent);color:var(--surface);font-weight:800;font-size:15px;white-space:nowrap}
+.homebtn:hover{filter:brightness(1.08)}
+@media (max-width:420px){.homebtn{padding:0 8px;font-size:14px;height:36px}}
 .towns{max-width:1180px;margin:auto;display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none}
 .towns::-webkit-scrollbar{display:none}
 .chip{flex:none;display:flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-weight:700;font-size:15px;white-space:nowrap}
@@ -2002,6 +2006,7 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
   <div class="top-in">
     <button class="brand" id="brand" aria-label="Menu"><img src="icone/@@TITLE_LOGO@@?v=@@TV@@" alt="Menu"></button>
     <div class="day" id="day" title="Tocca per ricaricare"><h1 id="title">@@TITLE@@</h1><p id="sub"></p></div>
+    <button type="button" class="homebtn" id="homeBtn" onclick="aiutoHomeApri()" title="Come mettere Menu sulla schermata Home">+ Home</button>
     <button class="iconbtn" id="reload" aria-label="Aggiorna" title="Aggiorna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
   </div>
   <nav class="towns" id="towns" aria-label="Comuni"></nav>
@@ -2385,7 +2390,9 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
      Android: se Chrome può installare l'app compare anche il bottone a un tocco; "beforeinstallprompt"
      arriva solo se Menu non è installato, e getInstalledRelatedApps lo conferma.
      iPhone: Safari non può sapere se l'icona c'è già: c'è il bottone "Ce l'ho già sulla Home".
-     Mai quando la pagina è aperta dall'icona sulla Home (display-mode standalone), mai su PC. -->
+     Mai quando la pagina è aperta dall'icona sulla Home (display-mode standalone), mai su PC.
+     Il bottone "+ Home" in alto apre la stessa guida quando si vuole (iPhone: solo iPhone; Android: solo
+     Android, con il bottone a un tocco se possibile; PC: tutte e due); è nascosto se si è già nella app. -->
 <style>
 #aiutoHome{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:9999;max-width:560px;margin:0 auto;
   background:#fff;color:#111;border:2px solid var(--accent);border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.35);
@@ -2396,6 +2403,8 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
 #aiutoHome .guida{display:block;width:100%;height:auto;border-radius:8px}
 #aiutoHome .x{position:absolute;top:6px;right:8px;background:none;border:0;font-size:28px;line-height:1;color:#555;cursor:pointer;padding:4px 8px}
 #aiutoHome .ok{margin:0 0 10px;width:100%;padding:13px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+#aiutoHome .st{margin:12px 2px 6px;font-weight:800;font-size:16px}
+#aiutoHome .st:first-child{margin-top:0}
 #aiutoHome .gia{margin-top:10px;width:100%;padding:11px;border:1.5px solid #bbb;border-radius:10px;background:#f4f6f1;color:#111;font:inherit;font-weight:700;cursor:pointer}
 </style>
 <div id="aiutoHome" role="dialog" aria-label="Aggiungi alla schermata Home">
@@ -2412,17 +2421,24 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
   var suHome=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
   var box=document.getElementById('aiutoHome'),txt=document.getElementById('aiutoHomeTesto');
   window.aiutoHomeChiudi=function(){box.classList.remove('attivo');try{localStorage.setItem(CH,'1')}catch(e){}};
-  if(suHome){try{localStorage.setItem(CH,'1')}catch(e){}return}
-  var chiuso=false;try{chiuso=localStorage.getItem(CH)==='1'}catch(e){}
-  if(chiuso||!(ios||android))return;
   var guida=function(q){return '<img class="guida" src="icone/home-'+q+'.jpg?v=@@IV@@" alt="Come aggiungere Menu alla schermata Home">'};
-  if(ios){txt.innerHTML=guida('ios');setTimeout(function(){box.classList.add('attivo')},2500);return}
-  /* Android */
   var mostrato=false,rich=null;
-  var mostra=function(){if(mostrato)return;mostrato=true;
-    txt.innerHTML=(rich?'<button class="ok" id="aiutoHomeOk">📲 Aggiungi alla schermata Home</button>':'')+guida('android');
-    if(rich)document.getElementById('aiutoHomeOk').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted')aiutoHomeChiudi()})};
-    box.classList.add('attivo')};
+  /* contenuto della guida: solo la parte del proprio telefono; sul PC tutte e due */
+  var riempi=function(){
+    if(ios){txt.innerHTML=guida('ios');return}
+    if(android){txt.innerHTML=(rich?'<button class="ok" id="aiutoHomeOk">📲 Aggiungi alla schermata Home</button>':'')+guida('android');
+      if(rich)document.getElementById('aiutoHomeOk').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted')aiutoHomeChiudi()})};return}
+    txt.innerHTML='<div class="st">iPhone</div>'+guida('ios')+'<div class="st">Android</div>'+guida('android')};
+  /* bottone "+ Home" in alto: apre la guida in qualunque momento */
+  window.aiutoHomeApri=function(){mostrato=true;riempi();box.classList.add('attivo');box.scrollTop=0};
+  if(suHome){var hb=document.getElementById('homeBtn');if(hb)hb.style.display='none';try{localStorage.setItem(CH,'1')}catch(e){}return}
+  var chiuso=false;try{chiuso=localStorage.getItem(CH)==='1'}catch(e){}
+  /* Android: la richiesta di installazione si tiene sempre da parte, per il bottone "+ Home" */
+  if(android&&chiuso)window.addEventListener('beforeinstallprompt',function(ev){ev.preventDefault();rich=ev});
+  if(chiuso||!(ios||android))return;
+  if(ios){setTimeout(function(){if(!mostrato){mostrato=true;riempi();box.classList.add('attivo')}},2500);return}
+  /* Android */
+  var mostra=function(){if(mostrato)return;mostrato=true;riempi();box.classList.add('attivo')};
   /* già installato? (Chrome lo sa; in WhatsApp & C. la domanda non è possibile) */
   var installato=navigator.getInstalledRelatedApps?navigator.getInstalledRelatedApps().then(function(a){return !!(a&&a.length)}).catch(function(){return false}):Promise.resolve(false);
   window.addEventListener('beforeinstallprompt',function(ev){ev.preventDefault();rich=ev;installato.then(function(si){if(!si)mostra()})});

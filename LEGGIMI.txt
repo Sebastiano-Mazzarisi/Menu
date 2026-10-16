@@ -944,3 +944,13 @@ titolo cambiato da "Rosticcerie" a "Menu". Per cambiare la guida basta
 sostituire icone/home-ios.jpg e icone/home-android.jpg.
 Il codice è in fondo a PAGE_TEMPLATE in Menu.py (blocco "aiutoHome").
 Copia precedente: backup\Menu_2026-10-16_prima-del-riquadro-Home.py
+
+BOTTONE "+ HOME" IN ALTO (16/10/2026)
+In alto, accanto al bottone "Aggiorna", c'è il bottone "+ Home": toccandolo si apre
+in qualunque momento la stessa guida (anche se il riquadro era stato chiuso):
+- iPhone: solo l'immagine per iPhone; Android: solo quella per Android, con in
+  cima il bottone a un tocco quando Chrome lo permette; PC: tutte e due.
+- Il bottone non si vede quando Menu è aperto dall'icona sulla Home.
+Il codice è nello stesso blocco "aiutoHome" (funzione aiutoHomeApri) e nella
+testata di PAGE_TEMPLATE (bottone id="homeBtn").
+Copia precedente: backup\Menu_2026-10-16_prima-del-bottone-Home.py
