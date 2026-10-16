@@ -925,18 +925,22 @@ Sul telefono l'icona già aggiunta alla Home può restare quella vecchia:
 per vedere la nuova va tolta e aggiunta di nuovo.
 
 PROPOSTA "AGGIUNGI ALLA SCHERMATA HOME" (16/10/2026)
-In basso nella pagina compare un riquadro "Metti "Menu" sulla Home", ma SOLO
-se il collegamento non c'è già:
-- Android (Chrome): il bottone "Aggiungi alla schermata Home" compare solo se
-  Chrome dice che Menu non è installato (evento beforeinstallprompt e, in più,
-  controllo getInstalledRelatedApps grazie a "related_applications" nel
-  manifest). Se Menu è già sulla Home il riquadro non compare.
-- iPhone/iPad: Apple non permette alla pagina di sapere se l'icona c'è già
-  (Safari e l'app sulla Home hanno anche memorie separate). Il riquadro spiega
-  i due passi in Safari (Condividi -> Aggiungi alla schermata Home) e ha il
-  bottone "Ce l'ho già sulla Home": toccato una volta, non ricompare più.
-  Se la pagina è aperta dentro WhatsApp/Facebook spiega di aprirla in Safari.
-- Mai quando Menu è aperto dall'icona sulla Home, mai su PC.
-- La X chiude il riquadro per sempre su quel telefono.
+In basso nella pagina compare un riquadro "Metti "Menu" sulla Home" con la guida
+in immagine, ma SOLO se il collegamento non c'è già:
+- iPhone/iPad: immagine icone/home-ios.jpg (passi in Safari). Apple non permette
+  alla pagina di sapere se l'icona c'è già (Safari e l'app sulla Home hanno anche
+  memorie separate): c'è il bottone "Ce l'ho già sulla Home", toccato una volta
+  il riquadro non ricompare più su quel telefono.
+- Android in Chrome: compare solo se Chrome dice che Menu non è installato
+  (evento beforeinstallprompt + controllo getInstalledRelatedApps grazie a
+  "related_applications" nel manifest); c'è il bottone a un tocco
+  "Aggiungi alla schermata Home" e sotto l'immagine icone/home-android.jpg.
+- Android dentro WhatsApp/Facebook (lì Chrome non può installare né dire se c'è
+  già): immagine icone/home-android.jpg e bottone "Ce l'ho già sulla Home".
+- Mai quando Menu è aperto dall'icona sulla Home, mai su PC. La X lo chiude
+  per sempre su quel telefono.
+Le due immagini sono ricavate da icone/Home.jpg (metà iOS e metà Android) con il
+titolo cambiato da "Rosticcerie" a "Menu". Per cambiare la guida basta
+sostituire icone/home-ios.jpg e icone/home-android.jpg.
 Il codice è in fondo a PAGE_TEMPLATE in Menu.py (blocco "aiutoHome").
 Copia precedente: backup\Menu_2026-10-16_prima-del-riquadro-Home.py
