@@ -2381,58 +2381,56 @@ info.onclick=()=>{renderStats();sd.showModal();loadStats()};
 renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadStats()})}
 </script>
 <!-- Proposta "Aggiungi alla schermata Home": compare SOLO se il collegamento non c'è già.
-     Android: Chrome lancia "beforeinstallprompt" solo se l'app non è installata (in più si controlla
-     getInstalledRelatedApps). iPhone: Safari non può saperlo; si mostrano i passi con "Ce l'ho già".
-     Mai quando la pagina è aperta dall'icona sulla Home (display-mode standalone). -->
+     Le istruzioni sono immagini (icone/home-ios.jpg, icone/home-android.jpg, ricavate da icone/Home.jpg).
+     Android: se Chrome può installare l'app compare anche il bottone a un tocco; "beforeinstallprompt"
+     arriva solo se Menu non è installato, e getInstalledRelatedApps lo conferma.
+     iPhone: Safari non può sapere se l'icona c'è già: c'è il bottone "Ce l'ho già sulla Home".
+     Mai quando la pagina è aperta dall'icona sulla Home (display-mode standalone), mai su PC. -->
 <style>
-#aiutoHome{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999;max-width:520px;margin:0 auto;
-  background:var(--surface);color:var(--ink);border:2px solid var(--accent);border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.3);
-  padding:14px 44px 14px 14px;font:16px/1.45 "Atkinson Hyperlegible",system-ui,sans-serif;display:none}
+#aiutoHome{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:9999;max-width:560px;margin:0 auto;
+  background:#fff;color:#111;border:2px solid var(--accent);border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.35);
+  padding:12px;font:16px/1.4 "Atkinson Hyperlegible",system-ui,sans-serif;display:none;max-height:calc(100vh - 40px);overflow:auto}
 #aiutoHome.attivo{display:block}
-#aiutoHome .t{font-weight:800;font-size:17px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+#aiutoHome .t{font-weight:800;font-size:17px;margin:0 36px 8px 2px;display:flex;align-items:center;gap:10px}
 #aiutoHome .t img{width:34px;height:34px;border-radius:9px}
-#aiutoHome ol{margin:6px 0 0 20px;padding:0}#aiutoHome li{margin:3px 0}
-#aiutoHome .x{position:absolute;top:6px;right:8px;background:none;border:0;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;padding:4px 8px}
-#aiutoHome .ok{margin-top:10px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:inherit;font-weight:700;cursor:pointer}
-#aiutoHome .gia{margin-top:8px;width:100%;padding:9px;border:1.5px solid var(--line);border-radius:10px;background:none;color:var(--ink);font:inherit;cursor:pointer}
-#aiutoHome .ico{display:inline-block;border:1.5px solid currentColor;border-radius:5px;padding:0 5px;font-size:14px}
+#aiutoHome .guida{display:block;width:100%;height:auto;border-radius:8px}
+#aiutoHome .x{position:absolute;top:6px;right:8px;background:none;border:0;font-size:28px;line-height:1;color:#555;cursor:pointer;padding:4px 8px}
+#aiutoHome .ok{margin:0 0 10px;width:100%;padding:13px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+#aiutoHome .gia{margin-top:10px;width:100%;padding:11px;border:1.5px solid #bbb;border-radius:10px;background:#f4f6f1;color:#111;font:inherit;font-weight:700;cursor:pointer}
 </style>
 <div id="aiutoHome" role="dialog" aria-label="Aggiungi alla schermata Home">
   <button class="x" aria-label="Chiudi" onclick="aiutoHomeChiudi()">×</button>
   <div class="t"><img src="icone/icona-180.png?v=@@IV@@" alt="">Metti "Menu" sulla Home</div>
   <div id="aiutoHomeTesto"></div>
+  <button class="gia" onclick="aiutoHomeChiudi()">✔︎ Ce l'ho già sulla Home</button>
 </div>
 <script>
 (function(){
   var CH='menu_aiutoHome_chiuso',ua=navigator.userAgent||'';
   var ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  var android=/Android/i.test(ua);
   var suHome=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
   var box=document.getElementById('aiutoHome'),txt=document.getElementById('aiutoHomeTesto');
   window.aiutoHomeChiudi=function(){box.classList.remove('attivo');try{localStorage.setItem(CH,'1')}catch(e){}};
   if(suHome){try{localStorage.setItem(CH,'1')}catch(e){}return}
   var chiuso=false;try{chiuso=localStorage.getItem(CH)==='1'}catch(e){}
-  if(chiuso)return;
-  if(ios){
-    var inApp=/FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\//.test(ua)||!/Safari\//.test(ua);
-    var cond='<span class="ico">⬆︎</span> <b>Condividi</b>';
-    txt.innerHTML=(inApp
-      ?'La pagina è aperta dentro un\'app (per esempio WhatsApp).<ol><li>Tocca <b>⋯</b> o la bussola e scegli <b>Apri in Safari</b>.</li><li>In Safari tocca '+cond+' (se non lo vedi, prima <b>⋯</b>).</li><li>Scegli <b>Aggiungi alla schermata Home</b> e poi <b>Aggiungi</b>.</li></ol>'
-      :'<ol><li>Tocca '+cond+' (se non lo vedi, prima <b>⋯</b>).</li><li>Scegli <b>Aggiungi alla schermata Home</b> e poi <b>Aggiungi</b>.</li></ol>')
-      +'<button class="gia" onclick="aiutoHomeChiudi()">✔︎ Ce l\'ho già sulla Home</button>';
-    setTimeout(function(){box.classList.add('attivo')},2500);
-    return;
-  }
-  /* Android/Chrome: l'evento arriva solo se Menu NON è già installato */
-  window.addEventListener('beforeinstallprompt',function(ev){
-    ev.preventDefault();var rich=ev;
-    var mostra=function(){
-      txt.innerHTML='Apri il Menu con un tocco dalla schermata Home.<button class="ok" id="aiutoHomeOk">📲 Aggiungi alla schermata Home</button>';
-      document.getElementById('aiutoHomeOk').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted')aiutoHomeChiudi()})};
-      box.classList.add('attivo')};
-    /* doppio controllo: se Chrome dice che l'app è già installata, non si propone */
-    if(navigator.getInstalledRelatedApps){navigator.getInstalledRelatedApps().then(function(a){if(!a||!a.length)mostra()}).catch(mostra)}else mostra();
-  });
+  if(chiuso||!(ios||android))return;
+  var guida=function(q){return '<img class="guida" src="icone/home-'+q+'.jpg?v=@@IV@@" alt="Come aggiungere Menu alla schermata Home">'};
+  if(ios){txt.innerHTML=guida('ios');setTimeout(function(){box.classList.add('attivo')},2500);return}
+  /* Android */
+  var mostrato=false,rich=null;
+  var mostra=function(){if(mostrato)return;mostrato=true;
+    txt.innerHTML=(rich?'<button class="ok" id="aiutoHomeOk">📲 Aggiungi alla schermata Home</button>':'')+guida('android');
+    if(rich)document.getElementById('aiutoHomeOk').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted')aiutoHomeChiudi()})};
+    box.classList.add('attivo')};
+  /* già installato? (Chrome lo sa; in WhatsApp & C. la domanda non è possibile) */
+  var installato=navigator.getInstalledRelatedApps?navigator.getInstalledRelatedApps().then(function(a){return !!(a&&a.length)}).catch(function(){return false}):Promise.resolve(false);
+  window.addEventListener('beforeinstallprompt',function(ev){ev.preventDefault();rich=ev;installato.then(function(si){if(!si)mostra()})});
   window.addEventListener('appinstalled',function(){aiutoHomeChiudi()});
+  /* Chrome che NON propone l'installazione di solito vuol dire "già installata": allora si mostra la
+     guida solo dove Chrome non può dirlo (browser interno di WhatsApp/Facebook) */
+  setTimeout(function(){if(rich||mostrato)return;
+    if(/; wv\)|WhatsApp|FBAN|FBAV|Instagram/.test(ua))mostra()},4000);
 })();
 </script>
 </body></html>
