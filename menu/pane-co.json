@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-15",
+  "data": "2026-10-16",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -66,29 +66,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Penne all'arrabbiata",
+          "nome": "Cannerozzetti all'amatriciana",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
-        },
-        {
-          "nome": "Risotto con spinaci e gorgonzola",
-          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con pesto di pomodori (base ricotta) e capocollo croccante",
+          "nome": "Gnocchi di patate alla sorrentina",
           "prezzo": "€8.00",
           "descrizione": ""
         },
         {
-          "nome": "Tagliolino con carciofi e cernia",
+          "nome": "Risotto ai funghi porcini",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa del casale",
+          "nome": "Cavatellucci con pesce spada, pomodorini, capperi e origano",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Zuppa di ceci",
           "prezzo": "€6.00",
-          "descrizione": "Con orzo, ceci, farro, fagioli e lenticchie Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -96,14 +96,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Spezzatino di pollo con patate",
+          "nome": "Spezzatino di capocollo con zucchine e carote",
           "prezzo": "€7.50",
-          "descrizione": "4 pezzi"
+          "descrizione": ""
         },
         {
-          "nome": "Trancio di pesce spada alla pizzaiola",
+          "nome": "Filetto di cernia con vongole",
           "prezzo": "€8.50",
-          "descrizione": "Con pomodorini, origano e olive"
+          "descrizione": ""
         }
       ]
     }
