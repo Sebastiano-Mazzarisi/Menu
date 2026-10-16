@@ -1,0 +1,106 @@
+{
+  "data": "2026-10-16",
+  "testo": "MENÙ DI VENERDÌ\nPRIMI PIATTI\n●FAVE BIANCHE 4,0\n●FAVE E CICORIA 5,0\n●GNOCCHI CON VELLUTATA DI POMODORO, PESTO DI BASILICO E CUBETTI DI MORTADELLA 5,5\n●LASAGNA AL FORNO 5,0\n●ORECCHIETTE CON CIME DI RAPE 5,5\n●SPAGHETTI ALLE COZZE 5,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●MAXI HAMBURGER DI VITELLO ALLA CAPRESE\n●SALSICCIA DI POLLO AI FUNGHI E SCALOGNO\n●COSCIA E SOVRAVOSCIA DI POLLO NOSTRANO AL FORNO CON PATATE\n●PARMIGIANA\n●TRIANGOLO DI PATATE ALLO SPECK AL FORNO\n●FILETTO DI CERNIA IN CROSTA DI ZUCCHINE\n●OLIVE NERE FRITTE\n●SFORMATO DI VERDURE\n●VERDURE GRATINATE AL FORNO",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI VENERDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE BIANCHE 4,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE E CICORIA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●GNOCCHI CON VELLUTATA DI POMODORO, PESTO DI BASILICO E CUBETTI DI MORTADELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ORECCHIETTE CON CIME DI RAPE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPAGHETTI ALLE COZZE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MAXI HAMBURGER DI VITELLO ALLA CAPRESE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SALSICCIA DI POLLO AI FUNGHI E SCALOGNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●COSCIA E SOVRAVOSCIA DI POLLO NOSTRANO AL FORNO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRIANGOLO DI PATATE ALLO SPECK AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FILETTO DI CERNIA IN CROSTA DI ZUCCHINE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●OLIVE NERE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SFORMATO DI VERDURE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●VERDURE GRATINATE AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
