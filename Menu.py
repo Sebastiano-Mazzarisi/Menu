@@ -1864,7 +1864,8 @@ h1 .wd{font-weight:600;color:var(--muted)}
 .homebtn{height:38px;padding:0 11px;border-radius:10px;background:var(--accent);color:var(--surface);font-weight:800;font-size:15px;white-space:nowrap}
 .homebtn:hover{filter:brightness(1.08)}
 @media (max-width:420px){.homebtn{padding:0 8px;font-size:14px;height:36px}}
-.towns{max-width:1180px;margin:auto;display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none}
+/* i bottoni dei Comuni vanno a capo se non entrano nella larghezza */
+.towns{max-width:1180px;margin:auto;display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px}
 .towns::-webkit-scrollbar{display:none}
 .chip{flex:none;display:flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-weight:700;font-size:15px;white-space:nowrap}
 .chip .frac{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -1900,6 +1901,12 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 .infocard .total{min-width:44px;height:44px;padding:0 8px;border-radius:10px;display:grid;place-items:center;background:var(--accent);color:var(--surface);font-family:var(--f-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
 .infocard b{font-family:var(--f-display);font-size:18px}
 .infocard small{display:block;color:var(--muted);font-size:13px}
+/* Info (solo amministratore) nella testata, primo bottone della riga dei Comuni */
+.towns .infocard{flex:none;width:auto;margin:0;height:38px;padding:0 14px 0 4px;gap:8px;border-radius:999px}
+.towns .infocard .total{min-width:30px;height:30px;padding:0 6px;border-radius:999px;font-size:16px}
+.towns .infocard>span+span{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.towns .infocard b{font-size:15px}
+.towns .infocard small{display:inline;font-size:12px}
 
 /* ---------- scheda del menu ---------- */
 #detail{padding:0;border:0;margin:0;width:100vw;max-width:100vw;height:100vh;height:100dvh;max-height:100dvh;background:var(--sheet);color:var(--sheet-ink);overflow:hidden}
@@ -2080,6 +2087,7 @@ function drawTowns(){const nav=document.getElementById('towns'),list=townList();
     b.setAttribute('aria-pressed',k===TOWN);b.title=ok+' locali su '+ids.length+' con il menu di oggi';
     b.innerHTML='<span></span><span class="frac'+(ok===ids.length?' full':'')+'"></span>';b.children[0].textContent=k;b.children[1].textContent=ok+'/'+ids.length;
     b.onclick=()=>{if(k===TOWN)return;location.hash=k==='Tutti'?'':encodeURIComponent(k)};nav.append(b)});
+  const inf=document.querySelector('.infocard');if(inf)nav.prepend(inf); /* Info (amministratore) resta primo nella testata */
   const sel=nav.querySelector('[aria-pressed="true"]');if(sel&&sel.scrollIntoView)sel.scrollIntoView({block:'nearest',inline:'nearest'})}
 
 let renderStats=null; /* disegna i numeri dell'amministratore (vedi in fondo) */
@@ -2108,8 +2116,9 @@ function drawList(){const m=document.getElementById('main');m.querySelectorAll('
 /* ---------- testata ---------- */
 function drawHead(){const d=new Date(TODAY+'T12:00'),g=GG[d.getDay()];const h=document.getElementById('title');h.innerHTML='<span class="wd"></span> ';
   h.firstChild.textContent=g[0].toUpperCase()+g.slice(1);h.append(d.getDate()+' '+MM[d.getMonth()]);
-  const ok=DATA.shops.filter((s,i)=>isOk(i)).length,p=document.getElementById('sub');p.innerHTML='<b></b>';p.firstChild.textContent=ok+' su '+DATA.shops.length;
-  p.append(' menu di oggi'+(DATA.ora&&DATA.data===TODAY?' · aggiornato alle '+DATA.ora:''))}
+  const ok=DATA.shops.filter((s,i)=>isOk(i)).length,p=document.getElementById('sub');p.innerHTML='<b></b>';p.firstChild.textContent=ok+'/'+DATA.shops.length;
+  p.title=ok+' locali su '+DATA.shops.length+' con il menu di oggi';
+  p.append(DATA.ora&&DATA.data===TODAY?' alle ore '+DATA.ora:'')}  /* es. "12/13 alle ore 19:00" */
 function refresh(){TODAY=isoToday();drawHead();drawTowns();drawList()}
 
 /* ---------- pulizia dei menu scritti: "●LASAGNA AL FORNO 5,0" diventa "Lasagna al forno  € 5,00",
@@ -2345,7 +2354,7 @@ refresh();
    totale; un tocco su "Info" apre la tabella Rosticceria / Oggi / Mese / Anno / Tutto.
    I numeri arrivano da Registro_click.gs (?azione=statistiche). L'ultimo risultato è conservato sul
    dispositivo e mostrato subito, poi aggiornato appena arriva quello nuovo. ---------- */
-if(ADMIN&&DATA.log){const info=document.createElement('button');info.type='button';info.className='infocard';info.innerHTML='<span class="total">–</span><span><b>Info</b><small class="visits">Click e visite</small></span>';document.getElementById('main').insertBefore(info,document.querySelector('.foot'));
+if(ADMIN&&DATA.log){const info=document.createElement('button');info.type='button';info.className='infocard';info.innerHTML='<span class="total">–</span><span><b>Info</b><small class="visits">Click e visite</small></span>';document.getElementById('towns').prepend(info);
 const sd=document.createElement('dialog');sd.id='stats';sd.innerHTML='<div class="modal-head"><h2>Clic per rosticceria</h2><button type="button" class="x" aria-label="Chiudi">✕</button></div><div class="statwrap"><table><thead><tr><th data-k="nome">Rosticceria</th><th data-k="oggi">Oggi</th><th data-k="mese">Mese</th><th data-k="anno">Anno</th><th data-k="tutto">Tutto</th></tr></thead><tbody></tbody><tfoot></tfoot></table><p class="statnote"></p><div class="charts"></div></div>';document.body.append(sd);
 sd.querySelector('.x').onclick=()=>sd.close();
 /* ordine della tabella: alfabetico all'apertura; clic su un titolo = crescente per quella colonna,
@@ -2356,7 +2365,7 @@ let ST=null,loading=false;try{ST=JSON.parse(localStorage.getItem('menuStats')||'
 const P=['oggi','mese','anno','tutto'],today=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Rome'});
 function rowOf(d,n){const ns=[n].concat((DATA.shops.find(s=>s.nome===n)||{}).nomi_precedenti||[]);const z={};P.forEach(k=>z[k]=0);ns.forEach(x=>{const r=(d.righe||{})[x]||{};P.forEach(k=>z[k]+=r[k]||0)});if(d.data!==today()){z.oggi=0}return z}
 function cell(t,v){const c=document.createElement(t);c.textContent=v;return c}
-renderStats=function(){const m=document.getElementById('main');if(info.parentNode!==m||info.nextSibling!==m.querySelector('.foot'))m.insertBefore(info,m.querySelector('.foot'));if(!ST)return;
+renderStats=function(){const tw=document.getElementById('towns');if(tw.firstChild!==info)tw.prepend(info);if(!ST)return;
   document.querySelectorAll('.card').forEach(card=>{const b=card.querySelector('.count');b.textContent=rowOf(ST,DATA.shops[+card.dataset.index].nome).oggi;b.hidden=false});
   const ab=new Intl.Collator('it',{sensitivity:'base'}).compare;const names=DATA.shops.map(s=>s.nome).sort(ab),old=DATA.shops.flatMap(s=>s.nomi_precedenti||[]);Object.keys(ST.righe||{}).forEach(n=>{if(!names.includes(n)&&!old.includes(n))names.push(n)});const tot={oggi:0,mese:0,anno:0,tutto:0};
   if(SRT.k)names.sort((a,b)=>(SRT.k==='nome'?ab(a,b):(rowOf(ST,a)[SRT.k]-rowOf(ST,b)[SRT.k]))*SRT.d||ab(a,b));

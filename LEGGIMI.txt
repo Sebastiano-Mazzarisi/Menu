@@ -954,3 +954,16 @@ in qualunque momento la stessa guida (anche se il riquadro era stato chiuso):
 Il codice è nello stesso blocco "aiutoHome" (funzione aiutoHomeApri) e nella
 testata di PAGE_TEMPLATE (bottone id="homeBtn").
 Copia precedente: backup\Menu_2026-10-16_prima-del-bottone-Home.py
+
+TESTATA PIÙ COMPATTA (16/10/2026)
+- Sotto il titolo la riga è ridotta a "12/13 alle ore 19:00" (menu di oggi / locali,
+  ora dell'ultimo aggiornamento; l'ora c'è solo se l'aggiornamento è di oggi).
+  Tenendo il dito/mouse sopra si legge "12 locali su 13 con il menu di oggi".
+- I bottoni dei Comuni vanno a capo quando non entrano nella larghezza (prima
+  scorrevano di lato).
+- Il bottone "Info" (solo amministratore: ?v=57 / admin.html) è nella testata,
+  primo bottone della riga dei Comuni, quindi prima dell'elenco dei locali
+  (prima era in fondo alla pagina).
+Il codice è in PAGE_TEMPLATE: drawHead (riga sotto il titolo), .towns e drawTowns
+(Comuni), blocco "Info" con renderStats.
+Copia precedente: backup\Menu_2026-10-16_prima-di-testata-compatta.py
