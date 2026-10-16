@@ -924,3 +924,19 @@ se manca si usa il vecchio loghi/Menu.jpg.
 Sul telefono l'icona già aggiunta alla Home può restare quella vecchia:
 per vedere la nuova va tolta e aggiunta di nuovo.
 
+PROPOSTA "AGGIUNGI ALLA SCHERMATA HOME" (16/10/2026)
+In basso nella pagina compare un riquadro "Metti "Menu" sulla Home", ma SOLO
+se il collegamento non c'è già:
+- Android (Chrome): il bottone "Aggiungi alla schermata Home" compare solo se
+  Chrome dice che Menu non è installato (evento beforeinstallprompt e, in più,
+  controllo getInstalledRelatedApps grazie a "related_applications" nel
+  manifest). Se Menu è già sulla Home il riquadro non compare.
+- iPhone/iPad: Apple non permette alla pagina di sapere se l'icona c'è già
+  (Safari e l'app sulla Home hanno anche memorie separate). Il riquadro spiega
+  i due passi in Safari (Condividi -> Aggiungi alla schermata Home) e ha il
+  bottone "Ce l'ho già sulla Home": toccato una volta, non ricompare più.
+  Se la pagina è aperta dentro WhatsApp/Facebook spiega di aprirla in Safari.
+- Mai quando Menu è aperto dall'icona sulla Home, mai su PC.
+- La X chiude il riquadro per sempre su quel telefono.
+Il codice è in fondo a PAGE_TEMPLATE in Menu.py (blocco "aiutoHome").
+Copia precedente: backup\Menu_2026-10-16_prima-del-riquadro-Home.py

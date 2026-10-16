@@ -8,6 +8,12 @@
   "background_color": "#121915",
   "theme_color": "#121915",
   "lang": "it",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://sebastiano-mazzarisi.github.io/Menu/manifest-admin.webmanifest"
+    }
+  ],
   "icons": [
     {
       "src": "icone/icona-192.png?v=b78298bceb",

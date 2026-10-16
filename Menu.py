@@ -1771,6 +1771,8 @@ def write_manifest() -> str:
         "name": "Menu", "short_name": "Menu", "description": "Menu del giorno delle rosticcerie",
         "start_url": "./", "scope": "./", "display": "standalone",
         "background_color": "#121915", "theme_color": "#121915", "lang": "it",
+        # serve a Chrome/Android per dire alla pagina se Menu è già installato (getInstalledRelatedApps)
+        "related_applications": [{"platform": "webapp", "url": WEB_URL + "manifest.webmanifest"}],
         "icons": [
             {"src": f"icone/icona-192.png?v={iv}", "sizes": "192x192", "type": "image/png"},
             {"src": f"icone/icona-512.png?v={iv}", "sizes": "512x512", "type": "image/png"},
@@ -1779,7 +1781,8 @@ def write_manifest() -> str:
     }
     (ROOT / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     # versione amministratore: aggiunta alla Home da una pagina aperta con ?v=57, l'app si apre con ?v=57
-    admin = {**manifest, "start_url": "./admin.html", "id": "./admin.html"}
+    admin = {**manifest, "start_url": "./admin.html", "id": "./admin.html",
+             "related_applications": [{"platform": "webapp", "url": WEB_URL + "manifest-admin.webmanifest"}]}
     (ROOT / "manifest-admin.webmanifest").write_text(json.dumps(admin, ensure_ascii=False, indent=2), encoding="utf-8")
     return iv
 
@@ -2376,6 +2379,61 @@ function drawCharts(){const box=sd.querySelector('.charts');if(!box)return;
 function loadStats(){if(loading)return;loading=true;renderStats();fetch(DATA.log+'?azione=statistiche&t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(d=>{if(!d||!d.righe)return;d.ora=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});ST=d;try{localStorage.setItem('menuStats',JSON.stringify(d))}catch(e){}}).catch(()=>{}).finally(()=>{loading=false;renderStats()})}
 info.onclick=()=>{renderStats();sd.showModal();loadStats()};
 renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadStats()})}
+</script>
+<!-- Proposta "Aggiungi alla schermata Home": compare SOLO se il collegamento non c'è già.
+     Android: Chrome lancia "beforeinstallprompt" solo se l'app non è installata (in più si controlla
+     getInstalledRelatedApps). iPhone: Safari non può saperlo; si mostrano i passi con "Ce l'ho già".
+     Mai quando la pagina è aperta dall'icona sulla Home (display-mode standalone). -->
+<style>
+#aiutoHome{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999;max-width:520px;margin:0 auto;
+  background:var(--surface);color:var(--ink);border:2px solid var(--accent);border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.3);
+  padding:14px 44px 14px 14px;font:16px/1.45 "Atkinson Hyperlegible",system-ui,sans-serif;display:none}
+#aiutoHome.attivo{display:block}
+#aiutoHome .t{font-weight:800;font-size:17px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+#aiutoHome .t img{width:34px;height:34px;border-radius:9px}
+#aiutoHome ol{margin:6px 0 0 20px;padding:0}#aiutoHome li{margin:3px 0}
+#aiutoHome .x{position:absolute;top:6px;right:8px;background:none;border:0;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;padding:4px 8px}
+#aiutoHome .ok{margin-top:10px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+#aiutoHome .gia{margin-top:8px;width:100%;padding:9px;border:1.5px solid var(--line);border-radius:10px;background:none;color:var(--ink);font:inherit;cursor:pointer}
+#aiutoHome .ico{display:inline-block;border:1.5px solid currentColor;border-radius:5px;padding:0 5px;font-size:14px}
+</style>
+<div id="aiutoHome" role="dialog" aria-label="Aggiungi alla schermata Home">
+  <button class="x" aria-label="Chiudi" onclick="aiutoHomeChiudi()">×</button>
+  <div class="t"><img src="icone/icona-180.png?v=@@IV@@" alt="">Metti "Menu" sulla Home</div>
+  <div id="aiutoHomeTesto"></div>
+</div>
+<script>
+(function(){
+  var CH='menu_aiutoHome_chiuso',ua=navigator.userAgent||'';
+  var ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  var suHome=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+  var box=document.getElementById('aiutoHome'),txt=document.getElementById('aiutoHomeTesto');
+  window.aiutoHomeChiudi=function(){box.classList.remove('attivo');try{localStorage.setItem(CH,'1')}catch(e){}};
+  if(suHome){try{localStorage.setItem(CH,'1')}catch(e){}return}
+  var chiuso=false;try{chiuso=localStorage.getItem(CH)==='1'}catch(e){}
+  if(chiuso)return;
+  if(ios){
+    var inApp=/FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\//.test(ua)||!/Safari\//.test(ua);
+    var cond='<span class="ico">⬆︎</span> <b>Condividi</b>';
+    txt.innerHTML=(inApp
+      ?'La pagina è aperta dentro un\'app (per esempio WhatsApp).<ol><li>Tocca <b>⋯</b> o la bussola e scegli <b>Apri in Safari</b>.</li><li>In Safari tocca '+cond+' (se non lo vedi, prima <b>⋯</b>).</li><li>Scegli <b>Aggiungi alla schermata Home</b> e poi <b>Aggiungi</b>.</li></ol>'
+      :'<ol><li>Tocca '+cond+' (se non lo vedi, prima <b>⋯</b>).</li><li>Scegli <b>Aggiungi alla schermata Home</b> e poi <b>Aggiungi</b>.</li></ol>')
+      +'<button class="gia" onclick="aiutoHomeChiudi()">✔︎ Ce l\'ho già sulla Home</button>';
+    setTimeout(function(){box.classList.add('attivo')},2500);
+    return;
+  }
+  /* Android/Chrome: l'evento arriva solo se Menu NON è già installato */
+  window.addEventListener('beforeinstallprompt',function(ev){
+    ev.preventDefault();var rich=ev;
+    var mostra=function(){
+      txt.innerHTML='Apri il Menu con un tocco dalla schermata Home.<button class="ok" id="aiutoHomeOk">📲 Aggiungi alla schermata Home</button>';
+      document.getElementById('aiutoHomeOk').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted')aiutoHomeChiudi()})};
+      box.classList.add('attivo')};
+    /* doppio controllo: se Chrome dice che l'app è già installata, non si propone */
+    if(navigator.getInstalledRelatedApps){navigator.getInstalledRelatedApps().then(function(a){if(!a||!a.length)mostra()}).catch(mostra)}else mostra();
+  });
+  window.addEventListener('appinstalled',function(){aiutoHomeChiudi()});
+})();
 </script>
 </body></html>
 '''
