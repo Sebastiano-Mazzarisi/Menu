@@ -1865,6 +1865,8 @@ PAGE_TEMPLATE = r'''<!doctype html>
 <meta property="og:image" content="@@WEB_URL@@icone/icona-512.png?v=@@IV@@"><meta property="og:image:width" content="512"><meta property="og:image:height" content="512">
 <script>/* ?v=57 = amministratore: si passa a admin.html (stessa pagina), il cui indirizzo resta anche
    nell'app aggiunta alla Home; lì il manifest "amministratore" fa riaprire l'app sempre su admin.html */
+/* link delle foto su Facebook: ...#pdf-<id> apre subito il PDF del menu di quel locale */
+if(/^#pdf-[a-z0-9-]+$/.test(location.hash))location.replace('pdf/'+location.hash.slice(5)+'.pdf?t='+Date.now());
 (function(){const adm=location.pathname.endsWith('/admin.html');
 if(!adm&&new URLSearchParams(location.search).get('v')==='57'){location.replace('admin.html'+location.hash);return}
 document.write('<link rel="manifest" href="'+(adm?'manifest-admin':'manifest')+'.webmanifest?v=@@IV@@">')})()</script><link rel="icon" type="image/png" href="icone/favicon.png?v=@@IV@@">
@@ -3409,26 +3411,22 @@ def make_video(config: dict[str, Any]) -> Path | None:
 # solo testo); in fondo il link. Le salva in Foto\AAAA-MM-GG\NN Nome.jpg (le vecchie restano).
 # ------------------------------------------------------------------------------------------------
 PHOTOS = ROOT / "Foto"
-# PDF A4 di ogni menu, PUBBLICATI con il sito (pdf/AAAA-MM-GG/<id>.pdf) per il link sotto ogni foto
-# del post Facebook; si tengono gli ultimi PDF_DAYS giorni
+# PDF A4 di ogni menu, PUBBLICATI con il sito (pdf/<id>.pdf, sovrascritti ogni volta) per il link
+# sotto ogni foto del post Facebook: tinyurl.com/menurosticcerie#pdf-<id> (vedi photo_captions)
 PDFS = ROOT / "pdf"
-PDF_DAYS = 7
-PDF_INK = 0.6  # quanto "nero" resta nel PDF (1 = come l'originale, 0.6 = 40% di toner in meno)
+PDF_LINKS = DATA / "link-pdf.json"  # {indirizzo del PDF: link corto}, per non ricrearli ogni giorno
 
 
 def photo_pdf(entry: dict[str, Any], menu, when: str, target: Path) -> None:
-    """PDF A4 verticale (150 dpi) pensato per la STAMPA con poco toner: pagina bianca, niente
-    sfondi scuri; in alto logo piccolo, nome, paese e data in grigio; sotto il menu intero, il più
-    grande possibile, in scala di grigi (solo toner nero)."""
+    """PDF A4 verticale (150 dpi): pagina bianca; in alto logo piccolo, nome, paese e data; sotto il
+    menu intero, il più grande possibile, con i colori originali (schiarirlo lo rendeva illeggibile)."""
     from PIL import Image, ImageDraw, ImageOps
     page_w, page_h, margin = 1240, 1754, 70  # A4 a 150 dpi
     page = Image.new("RGB", (page_w, page_h), "white")
     draw = ImageDraw.Draw(page)
     logo_side = 120
     logo = video_logo(entry, logo_side).convert("RGBA")
-    gray_logo = ImageOps.grayscale(logo.convert("RGB")).convert("RGBA")
-    gray_logo.putalpha(logo.split()[3])
-    page.paste(gray_logo, (margin, margin), gray_logo)
+    page.paste(logo, (margin, margin), logo)
     text_x = margin + logo_side + 28
     name_font, name = video_fit_text(draw, entry["nome"], 50, True, page_w - text_x - margin)
     draw.text((text_x, margin + 52), name, font=name_font, fill=(40, 40, 40), anchor="ls")
@@ -3439,22 +3437,18 @@ def photo_pdf(entry: dict[str, Any], menu, when: str, target: Path) -> None:
     bottom = page_h - margin - 30
     flat = Image.new("RGB", menu.size, "white")
     flat.paste(menu, (0, 0), menu)
-    # risparmio toner: scala di grigi e neri schiariti (ogni grigio perde il 40% di "inchiostro"):
-    # le lavagne e gli sfondi scuri diventano grigio medio, le scritte restano leggibili
-    flat = ImageOps.grayscale(flat).point(lambda v: 255 - int((255 - v) * PDF_INK))
     scale = min((page_w - 2 * margin) / flat.width, (bottom - top) / flat.height)
     flat = flat.resize((max(1, round(flat.width * scale)), max(1, round(flat.height * scale))), Image.LANCZOS)
-    page.paste(flat.convert("RGB"), ((page_w - flat.width) // 2, top))
+    page.paste(flat, ((page_w - flat.width) // 2, top))
     draw.text((page_w / 2, page_h - margin), "Tutti i menu di oggi: tinyurl.com/menurosticcerie",
               font=video_font(26), fill=(130, 130, 130), anchor="ms")
     page.save(target, "PDF", resolution=150)
 
 
 def prune_pdfs() -> None:
-    """Toglie le cartelle pdf/AAAA-MM-GG più vecchie di PDF_DAYS giorni (il sito resta leggero)."""
-    limit = (date.today() - timedelta(days=PDF_DAYS)).isoformat()
+    """Toglie le vecchie cartelle pdf/AAAA-MM-GG (prima versione): ora c'è un solo PDF per locale."""
     for folder in PDFS.glob("????-??-??"):
-        if folder.is_dir() and folder.name < limit:
+        if folder.is_dir():
             shutil.rmtree(folder, ignore_errors=True)
 
 
@@ -3517,7 +3511,7 @@ def make_photos(config: dict[str, Any]) -> Path | None:
     day = date.today()
     folder = PHOTOS / day.isoformat()
     folder.mkdir(parents=True, exist_ok=True)
-    pdf_folder = PDFS / day.isoformat()
+    pdf_folder = PDFS
     pdf_folder.mkdir(parents=True, exist_ok=True)
     captions = []
     when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]} {day.year}"
@@ -3542,7 +3536,7 @@ def make_photos(config: dict[str, Any]) -> Path | None:
         image.save(target, quality=92, optimize=True, subsampling=0)
         photo_pdf(entry, menu, when, pdf_folder / f"{entry['id']}.pdf")
         captions.append({"file": target.name, "nome": entry["nome"], "comune": entry["comune"],
-                         "pdf": f"{WEB_URL}pdf/{day.isoformat()}/{entry['id']}.pdf"})
+                         "id": entry["id"], "pdf": f"{WEB_URL}pdf/{entry['id']}.pdf"})
         print(f"  {number}/{len(entries)} {target.name} ({width}x{height}) + PDF A4")
     save_json(folder / "didascalie.json", captions)
     prune_pdfs()
@@ -3891,25 +3885,29 @@ def publish_summary_facebook(image: Path, text: str) -> str:
 
 
 def short_link(url: str) -> str:
-    """Link corto per le didascalie (is.gd, se non risponde v.gd), così nel testo non compare
-    l'indirizzo lungo con nome e cognome. "" se nessuno dei due servizi risponde: allora la riga
-    del PDF non viene scritta (MAI l'indirizzo lungo)."""
+    """Link corto per le didascalie dei PDF, SENZA TinyURL (crea pagine "Preview" con l'indirizzo
+    completo) e senza is.gd (rifiuta i link). Prova da.gd, poi cleanuri.com; "" se nessuno risponde."""
     import urllib.parse
-    quoted = urllib.parse.quote(url, safe="")
-    # niente TinyURL: i link creati senza account mostrano una pagina "Preview" con l'indirizzo
-    # completo (nome e cognome). is.gd e v.gd (stesso servizio) portano subito al PDF.
-    services = (("https://is.gd/create.php?format=simple&url=" + quoted, "https://is.gd/"),
-                ("https://v.gd/create.php?format=simple&url=" + quoted, "https://v.gd/"))
-    for address, prefix in services:
-        try:
-            request = urllib.request.Request(address, headers={"User-Agent": "Mozilla/5.0 (Menu rosticcerie)"})
-            with urllib.request.urlopen(request, timeout=20) as answer:
-                short = answer.read().decode("utf-8").strip()
-            if short.startswith(prefix):
-                return short
-            print(f"  link corto non creato da {prefix}: {short[:80]}")
-        except Exception as exc:
-            print(f"  link corto non creato da {prefix}: {exc}")
+    headers = {"User-Agent": "Mozilla/5.0 (Menu rosticcerie)"}
+    try:  # da.gd: GET, risponde con il link corto in chiaro
+        request = urllib.request.Request("https://da.gd/s?url=" + urllib.parse.quote(url, safe=""), headers=headers)
+        with urllib.request.urlopen(request, timeout=20) as answer:
+            short = answer.read().decode("utf-8").strip()
+        if short.startswith("https://da.gd/"):
+            return short
+        print(f"  link corto non creato da da.gd: {short[:80]}")
+    except Exception as exc:
+        print(f"  link corto non creato da da.gd: {exc}")
+    try:  # cleanuri.com: POST, risponde in JSON {"result_url": ...}
+        data = urllib.parse.urlencode({"url": url}).encode()
+        request = urllib.request.Request("https://cleanuri.com/api/v1/shorten", data=data, headers=headers)
+        with urllib.request.urlopen(request, timeout=20) as answer:
+            short = json.loads(answer.read().decode("utf-8")).get("result_url", "")
+        if short.startswith("https://cleanuri.com/"):
+            return short
+        print(f"  link corto non creato da cleanuri: {short[:80]}")
+    except Exception as exc:
+        print(f"  link corto non creato da cleanuri: {exc}")
     return ""
 
 
@@ -3937,18 +3935,22 @@ def photo_captions(folder: Path, pictures: list[Path]) -> list[str]:
     first = next(iter(data.values()))["pdf"]
     print("Attendo che i PDF siano online...")
     online = wait_online(first)
+    pdf_links = read_json(PDF_LINKS, {})  # link corti già creati (uno per PDF, l'indirizzo non cambia)
     captions = []
     for picture in pictures:
         item = data.get(picture.name)
         if not item:
             captions.append("")
             continue
+        # link corto al PDF (da.gd / cleanuri, mai TinyURL né l'indirizzo lungo con nome e cognome);
+        # il PDF ha un indirizzo fisso per locale, quindi il link corto si crea una volta e si riusa
         lines = [f"{item['nome']} - {item['comune']}"]
-        short = short_link(item["pdf"]) if online else ""
+        short = pdf_links.get(item["pdf"]) or short_link(item["pdf"])
         if short:
-            lines.append(f"Menu-pdf: {short}")
-        lines.append(f"Menu-app: {SHORT_URL}")
+            pdf_links[item["pdf"]] = short
+            lines.append(f"Pdf: {short}")
         captions.append("\n".join(lines))
+    save_json(PDF_LINKS, pdf_links)
     return captions
 
 

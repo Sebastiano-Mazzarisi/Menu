@@ -1208,3 +1208,27 @@ PDF PER LA STAMPA (POCO TONER), LINK CORTI SICURI, DIDASCALIE BREVI - 17/10/2026
 - Sostituzione del post: le foto del post vecchio spariscono insieme al post; il messaggio
   "does not exist" non è più trattato come errore da riprovare.
 Copia precedente: backup\Menu_2026-10-17_prima-del-pdf-chiaro.py
+
+DIDASCALIA "PDF" CON IL LINK CORTO DELL'APP; PDF CON I COLORI ORIGINALI - 17/10/2026
+(sostituisce le due sezioni precedenti su link corti e toner)
+- is.gd rifiutava i link (Error, database insert failed) e TinyURL creato da programma mostra una
+  pagina "Preview" con l'indirizzo completo: niente più servizi esterni. La didascalia di ogni foto è
+      Fantasia - Putignano
+      Pdf: https://tinyurl.com/menurosticcerie#pdf-fantasia
+  Il link corto dell'app porta al sito, che vedendo #pdf-<id> apre SUBITO il PDF di quel locale
+  (la parte dopo # passa attraverso il reindirizzamento di TinyURL). Niente nome e cognome nel testo.
+- PDF: un file fisso per locale, pdf\<id>.pdf, rifatto ogni volta (sempre il menu più recente);
+  le vecchie cartelle pdf\AAAA-MM-GG vengono tolte.
+- Il PDF ha di nuovo i colori originali del menu (schiarito era spesso illeggibile); pagina bianca,
+  in alto logo, nome, paese e data.
+Copia precedente: backup\Menu_2026-10-17_prima-del-link-pdf.py
+
+LINK CORTO DEI PDF SENZA TINYURL - 17/10/2026 (sostituisce "Pdf: tinyurl.com/menurosticcerie#pdf-...")
+Didascalia di ogni foto:
+      Fantasia - Putignano
+      Pdf: https://da.gd/xxxx
+Il link corto si crea con da.gd (se non risponde, cleanuri.com); mai TinyURL e mai l'indirizzo lungo
+con nome e cognome: se nessuno dei due servizi risponde, la riga "Pdf:" non viene scritta.
+Il PDF di ogni locale ha un indirizzo fisso (pdf\<id>.pdf), quindi il link corto si crea una volta
+sola e viene riusato ogni giorno: è salvato in dati\link-pdf.json (cancellandolo si ricreano).
+Copia precedente: backup\Menu_2026-10-17_prima-di-dagd.py
