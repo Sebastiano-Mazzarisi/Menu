@@ -5,6 +5,7 @@
     "automatico": {"dalle": "08:00", "alle": "20:00", "ogni_minuti": 30},
     "avvisi_ogni_minuti": 60,
     "registro_click_url": "https://script.google.com/macros/s/AKfycbx8m-b5xkenUmdR8cbIFTVbCJGMIAQOgDWjY3xTY-FFgCowQd5hdB1qeDsEANf6w7wa/exec",
+    "registro_get": true,
     "registra_visite": true,
     "testo_per_tutti": false,
     "correzioni_ocr": [["fimghi", "funghi"], ["DolcedelloChef", "Dolce dello chef"]],
