@@ -3034,6 +3034,368 @@ def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
     return target
 
 
+# ------------------------------------------------------------------------------------------------
+# RIASSUNTO DEL GIORNO PER FACEBOOK (vedi LEGGIMI.txt > Riassunto delle 11:30)
+# Ogni giorno, al primo giro automatico dalle "ora" in poi (predefinito 11:30), dopo aver
+# ricontrollato TUTTE le rosticcerie, Menu.py crea in dati/riassunti/ un'immagine (AAAA-MM-GG.jpg)
+# e il testo del post (AAAA-MM-GG.txt) e, se il collegamento ufficiale con Facebook è stato fatto
+# (Collega-Facebook.bat), li pubblica sulla Pagina. Impostazioni in locali.json > impostazioni >
+# "riassunto": {"attivo": true, "ora": "11:30", "facebook": true}.
+# ------------------------------------------------------------------------------------------------
+SUMMARIES = DATA / "riassunti"
+SUMMARY_STATE = SUMMARIES / "stato.json"   # {"data": "AAAA-MM-GG", "creato": true, "pubblicato": "id del post", ...}
+FACEBOOK_CONFIG = DATA / "facebook.json"   # {"pagina_id", "pagina_nome", "token", ...} - resta solo sul PC (dati/ non va su GitHub)
+FACEBOOK_PAGE = "MenuRosticcerie"          # Pagina da collegare (nome utente o id)
+GRAPH = "https://graph.facebook.com"
+SUMMARY_WEEKDAYS = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
+# piatti "principali" da mettere per primi nel riassunto (primi e secondi prima dei contorni)
+MAIN_DISHES = re.compile(
+    r"\b(?:spaghett|orecchiett|cavatell|capunti|strascinat|fricell|lasagn|tortellin|cannellon|riso|risott|farro|"
+    r"trofie|fusill|penne|pennett|pasta|gnocch|minestr|zupp|polpett|pollo|capocollo|tagliata|salmone|zampina|"
+    r"scaloppin|braciol|bombett|bocconcin|cotolett|parmigian|straccett|pesce|seppi|calamar|baccal)", re.I)
+
+
+def summary_settings(settings: dict[str, Any]) -> dict[str, Any]:
+    return {"attivo": True, "ora": "11:30", "facebook": True, **settings.get("riassunto", {})}
+
+
+# Prima di ogni riassunto pubblicato c'è SEMPRE un controllo completo di tutte le rosticcerie
+# (giro automatico delle 11:30 con args.tutti, oppure --riassunto): il post non parte con dati vecchi.
+def summary_due(settings: dict[str, Any]) -> bool:
+    """È ora di fare il riassunto di oggi? (dall'ora impostata in poi, una volta al giorno;
+    se la pubblicazione su Facebook non è riuscita si riprova ai giri successivi, al massimo 3 volte)."""
+    plan = summary_settings(settings)
+    if not plan["attivo"]:
+        return False
+    hour, minute = (int(part) for part in str(plan["ora"]).split(":")[:2])
+    if datetime.now() < datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0):
+        return False
+    state = read_json(SUMMARY_STATE, {})
+    if state.get("data") != date.today().isoformat():
+        return True
+    return bool(state.get("da_ripubblicare")) and int(state.get("tentativi", 0)) < 3
+
+
+def clean_menu_text(text: str, shop: dict[str, Any], settings: dict[str, Any]) -> str:
+    """Testo letto nella foto con le stesse correzioni del pulsante "Testo" del sito
+    (impostazioni > correzioni_ocr, poi "sostituisci" e "togli" del locale)."""
+    rules = shop.get("testo", {}) or {}
+    for pair in list(settings.get("correzioni_ocr", [])) + list(rules.get("sostituisci", [])):
+        if isinstance(pair, (list, tuple)) and len(pair) == 2:
+            text = text.replace(pair[0], pair[1])
+    for word in rules.get("togli", []):
+        text = text.replace(word, "")
+    return text
+
+
+def summary_dishes(lines: list[str], limit: int = 2) -> list[str]:
+    """Dalle righe del menu tiene solo quelle che sono davvero piatti, leggibili e corte
+    (scarta pezzi letti male dall'OCR come "vhelloèlla" o "Spagh i"), primi e secondi per primi."""
+    found: list[str] = []
+    for line in lines:
+        line = re.sub(r"^[\s•●·▪\-–_'’*]+", "", line or "")
+        line = re.sub(r"\s*€\s*\d+(?:[.,]\d+)?|\s*\d+[.,]\d{1,2}\s*€?", "", line)
+        line = re.sub(r"\s+,", ",", line).strip(" .,;:")
+        if not 5 <= len(line) <= 42 or not DISH_WORDS.search(line):
+            continue
+        if re.search(r"[^\wÀ-ÿ\s,'’]", line):
+            continue
+        if line.isupper():
+            line = line[0] + line[1:].lower()
+        if not line[0].isupper():
+            continue
+        words = re.findall(r"[A-Za-zÀ-ÿ]+", line)
+        if any(len(word) == 1 and word.lower() not in ("e", "a", "o", "è") for word in words):
+            continue
+        if any(len(word) > 3 and not re.search(r"[aeiouàèéìòù]", word, re.I) for word in words):
+            continue
+        if any(len(word) > 14 for word in words):
+            continue
+        if plain(line) not in {plain(item) for item in found}:
+            found.append(line)
+    found.sort(key=lambda dish: 0 if MAIN_DISHES.search(dish) else 1)
+    return found[:limit]
+
+
+def summary_data(config: dict[str, Any]) -> dict[str, Any]:
+    """Locali con il menu di oggi (con due piatti ciascuno) e quelli ancora in attesa."""
+    settings = config.get("impostazioni", {})
+    shops = {shop["id"]: shop for shop in config.get("locali", [])}
+    today = date.today().isoformat()
+    ready, waiting = [], []
+    for item in read_json(STATE, {}).get("results", []):
+        shop = shops.get(item.get("id"))
+        if not shop:
+            continue
+        entry = {"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop), "piatti": []}
+        if item.get("menu_date") != today:
+            waiting.append(entry)
+            continue
+        if item.get("nota"):
+            entry["nota"] = item["nota"]  # es. chiusura
+        if item.get("sections"):
+            lines = [dish.get("nome", "") for section in item["sections"] for dish in section.get("piatti", [])]
+        else:
+            picture = ROOT / item["image"] if item.get("image") else None
+            text = ocr_lines(picture) if picture and picture.is_file() and shop.get("testo", {}).get("attivo", True) else ""
+            lines = clean_menu_text(text, shop, settings).splitlines()
+        entry["piatti"] = summary_dishes(lines)
+        ready.append(entry)
+    towns: dict[str, int] = {}
+    for shop in shops.values():
+        towns[shop_town(shop)] = towns.get(shop_town(shop), 0) + 1
+    order = lambda entry: (-towns.get(entry["comune"], 0), entry["comune"], sort_key_name(entry["nome"]))
+    return {"pronti": sorted(ready, key=order), "attesa": sorted(waiting, key=lambda e: sort_key_name(e["nome"])),
+            "totale": len(shops), "giorno": date.today(), "ora": datetime.now().strftime("%H:%M")}
+
+
+def summary_text(data: dict[str, Any]) -> str:
+    """Testo del post, pensato per il cellulare: una riga per rosticceria con i suoi piatti
+    (nell'immagine non ci stanno leggibili), poi chi è in arrivo, link corto e hashtag dei paesi."""
+    day = data["giorno"]
+    title = f"{SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
+    ready = data["pronti"]
+    count = (f"Tutte e {data['totale']} le rosticcerie hanno pubblicato il menu del giorno!"
+             if len(ready) == data["totale"] else
+             f"{len(ready)} rosticcerie su {data['totale']} hanno già pubblicato il menu del giorno:")
+    lines = []
+    for entry in ready:
+        dishes = " · ".join(entry["piatti"]) or entry.get("nota") or "menu in foto nell'app"
+        lines.append(f"✅ {entry['nome']} ({entry['comune']}): {dishes}")
+    waiting = ", ".join(entry["nome"] for entry in data["attesa"])
+    towns = []
+    for entry in ready + data["attesa"]:
+        tag = "#" + re.sub(r"[^A-Za-z]", "", unicodedata.normalize("NFKD", entry["comune"]).encode("ascii", "ignore").decode())
+        if len(tag) > 1 and tag not in towns:
+            towns.append(tag)
+    return (f"🍽️ Che si mangia oggi? Ecco i menu di {title}!\n\n{count}\n\n" + "\n".join(lines)
+            + (f"\n\n⏳ In arrivo: {waiting}" if waiting else "")
+            + f"\n\n👉 Tutti i menu completi, con foto e numeri per prenotare: {SHORT_URL}\n\n"
+            + " ".join(towns + ["#menudelgiorno", "#rosticceria"]))
+
+
+SHORT_URL = "https://tinyurl.com/menurosticcerie"  # link corto all'app (senza nome e cognome)
+
+
+def summary_html(data: dict[str, Any]) -> str:
+    """Pagina 1080x1350 da fotografare, PENSATA PER IL CELLULARE: nel feed l'immagine è larga
+    circa 390 punti (un terzo), quindi solo scritte grandi (nessuna sotto i 26 px = ~10 punti
+    sul telefono). Tutte le rosticcerie su due colonne con logo e nome: chi ha il menu di oggi
+    in evidenza con il segno verde, le altre sbiadite con "in arrivo". I piatti stanno nel
+    testo del post, dove sul telefono si leggono bene."""
+    day = data["giorno"]
+    title = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]}"
+    cards = []
+    for entry, ready in [(entry, True) for entry in data["pronti"]] + [(entry, False) for entry in data["attesa"]]:
+        logo = ICONS / f"logo-{entry['id']}.jpg"
+        picture = f'<img src="{logo.as_uri()}">' if logo.exists() else '<span class="nologo"></span>'
+        mark = '<div class="ck">✓</div>' if ready else ""
+        state = html.escape(entry["comune"]) if ready else "in arrivo"
+        cards.append(f'<div class="cd{"" if ready else " no"}">{picture}<div class="tx"><div class="n">'
+                     f'{html.escape(entry["nome"])}</div><div class="p">{state}</div></div>{mark}</div>')
+    count = (f'<b>{len(data["pronti"])} su {data["totale"]}</b> con il menu'
+             if len(data["pronti"]) < data["totale"] else f'<b>Tutte e {data["totale"]}</b> con il menu')
+    logo = APP_LOGO.as_uri() if APP_LOGO.exists() else ""
+    return f'''<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{{--k:1}}*{{box-sizing:border-box}}html,body{{margin:0}}
+.c{{width:1080px;height:1350px;position:relative;overflow:hidden;background:#f4efe6;color:#1e1a16;padding:46px 44px;
+  font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
+.D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
+.hd{{display:flex;align-items:center;gap:24px}}
+.hd img{{width:120px;height:120px;border-radius:26px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.1);object-fit:contain}}
+.kk{{font-size:32px;letter-spacing:.06em;text-transform:uppercase;color:#b8700a;font-weight:700}}
+h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
+.st{{margin:calc(26px*var(--k)) 0 calc(22px*var(--k));display:flex;align-items:center;gap:18px;font-size:40px;font-weight:700}}
+.st b{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-size:58px;color:#1d7f46}}
+.pill{{margin-left:auto;background:#1d7f46;color:#fff;border-radius:999px;padding:8px 22px;font-size:34px;font-weight:700}}
+.g{{display:grid;grid-template-columns:1fr 1fr;gap:calc(14px*var(--k)) 16px}}
+.cd{{display:flex;align-items:center;gap:16px;background:#fff;border-radius:22px;padding:calc(12px*var(--k)) 14px;
+  box-shadow:0 3px 10px rgba(60,40,10,.10);min-width:0;border:3px solid #1d7f46}}
+.cd.no{{background:#ebe4d8;box-shadow:none;border-color:transparent}}
+.cd.no img,.cd.no .nologo{{opacity:.45;filter:grayscale(1)}}
+.cd img,.nologo{{width:calc(104px*var(--k));height:calc(104px*var(--k));border-radius:16px;object-fit:cover;flex:none;background:#eee}}
+.tx{{flex:1;min-width:0}}
+.n{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800;font-size:calc(38px*var(--k));line-height:1.05;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+.cd.no .n{{color:#8a7f72}}
+.p{{font-size:calc(28px*var(--k));color:#6b5f52;margin-top:4px}}
+.cd.no .p{{color:#b4501a;font-weight:700}}
+.ck{{flex:none;width:58px;height:58px;border-radius:50%;background:#1d7f46;color:#fff;font-size:36px;display:grid;place-items:center;font-weight:700}}
+.ft{{position:absolute;left:44px;right:44px;bottom:36px;text-align:center;border-top:3px solid #e3d9c9;padding-top:20px;background:#f4efe6}}
+.ft .u{{font-size:52px}}
+.ft .u span{{color:#b8700a}}
+</style></head><body><div class="c"><div class="corpo">
+<div class="hd"><img src="{logo}"><div><div class="kk">Menu di oggi</div><h1 class="D">{html.escape(title)}</h1></div></div>
+<div class="st"><span>{count}</span><span class="pill">ore {data["ora"]}</span></div>
+<div class="g">{"".join(cards)}</div></div>
+<div class="ft"><div class="u D">tinyurl.com/<span>menurosticcerie</span></div></div>
+</div></body></html>'''
+
+
+def make_summary(config: dict[str, Any]) -> tuple[Path, str] | None:
+    """Crea dati/riassunti/AAAA-MM-GG.jpg e .txt. None se oggi nessun locale ha ancora il menu."""
+    data = summary_data(config)
+    if not data["pronti"]:
+        print("Riassunto: nessuna rosticceria ha ancora il menu di oggi, niente post")
+        return None
+    SUMMARIES.mkdir(parents=True, exist_ok=True)
+    stem = SUMMARIES / date.today().isoformat()
+    page_file = stem.with_suffix(".html")
+    page_file.write_text(summary_html(data), encoding="utf-8")
+    text = summary_text(data)
+    stem.with_suffix(".txt").write_text(text, encoding="utf-8")
+    image = stem.with_suffix(".jpg")
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(viewport={"width": 1080, "height": 1350})
+            page.goto(page_file.as_uri(), wait_until="load", timeout=60000)
+            try:
+                page.evaluate("document.fonts.ready.then(() => true)")
+            except Exception:
+                pass
+            # righe più strette finché tutto sta sopra il piede (tanti locali = righe più basse)
+            page.evaluate("""() => { const c = document.querySelector('.corpo'), f = document.querySelector('.ft');
+                let k = 1; while (k > 0.55 && c.getBoundingClientRect().bottom > f.getBoundingClientRect().top - 16) {
+                  k -= 0.05; document.documentElement.style.setProperty('--k', k); } }""")
+            page.wait_for_timeout(300)
+            page.screenshot(path=str(image), type="jpeg", quality=90)
+        finally:
+            browser.close()
+    print(f"Riassunto creato: {image.name} ({len(data['pronti'])} su {data['totale']} rosticcerie)")
+    return image, text
+
+
+def facebook_call(path: str, params: dict[str, str] | None = None, files: dict[str, Path] | None = None,
+                  version: str = "") -> dict[str, Any]:
+    """Chiamata all'interfaccia ufficiale di Facebook (Graph API). Con "files" è un invio multipart
+    (foto). Gli errori di Facebook diventano RuntimeError con il messaggio di Facebook."""
+    import urllib.error
+    import urllib.parse
+    url = f"{GRAPH}/{version + '/' if version else ''}{path}"
+    params = params or {}
+    if files is None:  # lettura (GET)
+        request = urllib.request.Request(url + ("?" + urllib.parse.urlencode(params) if params else ""))
+    else:  # invio di una foto (POST multipart)
+        boundary = "----menu" + hashlib.sha1(str(time.time()).encode()).hexdigest()[:16]
+        chunks: list[bytes] = []
+        for key, value in params.items():
+            chunks.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode())
+        for key, file in files.items():
+            chunks.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"; filename="{file.name}"\r\n'
+                          f'Content-Type: image/jpeg\r\n\r\n'.encode() + file.read_bytes() + b"\r\n")
+        chunks.append(f"--{boundary}--\r\n".encode())
+        request = urllib.request.Request(url, data=b"".join(chunks), method="POST",
+                                         headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    try:
+        with urllib.request.urlopen(request, timeout=90) as answer:
+            return json.loads(answer.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        try:
+            error = json.loads(exc.read().decode("utf-8")).get("error", {})
+        except Exception:
+            error = {}
+        code = error.get("code")
+        message = error.get("message") or str(exc)
+        if code == 190:
+            raise RuntimeError(f"collegamento Facebook scaduto o revocato ({message}): rifai Collega-Facebook.bat") from exc
+        if code in (10, 200) or "permission" in message.lower():
+            raise RuntimeError(f"permesso mancante ({message}): rifai Collega-Facebook.bat concedendo "
+                               "pages_manage_posts") from exc
+        raise RuntimeError(f"Facebook ha risposto: {message}") from exc
+
+
+def publish_summary_facebook(image: Path, text: str) -> str:
+    """Pubblica la foto con il testo sulla Pagina. Restituisce l'id del post."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
+    answer = facebook_call(f"{link['pagina_id']}/photos", {"message": text, "published": "true",
+                                                           "access_token": link["token"]},
+                           files={"source": image}, version=link.get("versione", ""))
+    return answer.get("post_id") or answer.get("id", "")
+
+
+def daily_summary(config: dict[str, Any], force: bool = False) -> None:
+    """Riassunto del giorno: crea immagine e testo e (se collegato) li pubblica su Facebook.
+    Lo stato di oggi è in dati/riassunti/stato.json, così il post non parte due volte."""
+    plan = summary_settings(config.get("impostazioni", {}))
+    state = read_json(SUMMARY_STATE, {})
+    if state.get("data") != date.today().isoformat():
+        state = {"data": date.today().isoformat(), "tentativi": 0}
+    if state.get("pubblicato") and not force:
+        print(f"Riassunto di oggi già pubblicato su Facebook (post {state['pubblicato']})")
+        return
+    made = make_summary(config)
+    if not made:
+        state.update({"creato": False, "da_ripubblicare": True})
+        save_json(SUMMARY_STATE, state)
+        return
+    image, text = made
+    state.update({"creato": True, "immagine": image.name, "ora": datetime.now().strftime("%H:%M"), "da_ripubblicare": False})
+    if plan.get("facebook", True):
+        try:
+            if read_json(FACEBOOK_CONFIG, {}).get("token"):
+                state["tentativi"] = int(state.get("tentativi", 0)) + 1
+            state["pubblicato"] = publish_summary_facebook(image, text)
+            state.pop("errore", None)
+            print(f"Riassunto pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
+        except LookupError as exc:
+            state["errore"] = str(exc)
+            print(f"Riassunto NON pubblicato: {exc}. Immagine e testo sono in dati/riassunti")
+        except Exception as exc:  # rete, Facebook: si riprova al giro successivo (max 3 volte)
+            state.update({"errore": str(exc), "da_ripubblicare": True})
+            print(f"Riassunto NON pubblicato su Facebook: {exc}")
+            notify_phone(f"Riassunto Facebook non pubblicato: {str(exc)[:120]}")
+    save_json(SUMMARY_STATE, state)
+
+
+def facebook_connect() -> None:
+    """Procedura guidata (Collega-Facebook.bat): dal codice provvisorio preso su Meta for Developers
+    ricava il codice di accesso della Pagina, che non scade, e lo salva in dati/facebook.json."""
+    print("\nCOLLEGAMENTO UFFICIALE CON FACEBOOK (vedi Facebook\\Collegamento-Facebook.txt)\n")
+    app_id = input("1) ID app (numero): ").strip()
+    app_secret = input("2) Chiave segreta dell'app: ").strip()
+    short = input("3) Codice di accesso provvisorio (Strumento di esplorazione API Graph): ").strip()
+    if not (app_id and app_secret and short):
+        raise SystemExit("Servono tutti e tre i dati. Nessuna modifica fatta.")
+    print("\nScambio il codice provvisorio con uno di lunga durata...")
+    long = facebook_call("oauth/access_token", {"grant_type": "fb_exchange_token", "client_id": app_id,
+                                                "client_secret": app_secret, "fb_exchange_token": short})["access_token"]
+    pages = facebook_call("me/accounts", {"access_token": long, "fields": "id,name,username,access_token,tasks"}).get("data", [])
+    if not pages:
+        raise SystemExit("Nessuna Pagina trovata: nello Strumento di esplorazione scegli la Pagina "
+                         "\"Menu rosticcerie\" e i permessi pages_show_list, pages_manage_posts, pages_read_engagement.")
+    wanted = [page for page in pages if FACEBOOK_PAGE.lower() in (str(page.get("username", "")).lower(), page.get("id"))
+              or page.get("name", "").lower() == "menu rosticcerie"]
+    page = wanted[0] if wanted else pages[0]
+    if not wanted:
+        print("Pagine trovate: " + ", ".join(p.get("name", "?") for p in pages) + f" -> uso {page.get('name')}")
+    DATA.mkdir(exist_ok=True)
+    save_json(FACEBOOK_CONFIG, {"pagina_id": page["id"], "pagina_nome": page.get("name", ""),
+                                "token": page["access_token"], "app_id": app_id,
+                                "salvato_il": datetime.now().isoformat(timespec="seconds")})
+    print(f"\nCollegata la Pagina \"{page.get('name')}\" (id {page['id']}). Codice salvato in {FACEBOOK_CONFIG}")
+    facebook_check()
+
+
+def facebook_check() -> None:
+    """Prova il collegamento senza pubblicare nulla: legge nome e indirizzo della Pagina."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token"):
+        print("Collegamento Facebook non ancora fatto: doppio clic su Collega-Facebook.bat")
+        return
+    try:
+        page = facebook_call(link["pagina_id"], {"fields": "name,link,username", "access_token": link["token"]},
+                             version=link.get("versione", ""))
+        print(f"Collegamento OK: Pagina \"{page.get('name')}\" ({page.get('link', '')})")
+    except Exception as exc:
+        print(f"Collegamento NON funzionante: {exc}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Raccoglie e pubblica menu da fonti configurabili.")
     parser.add_argument("--aggiungi", action="store_true", help="Aggiunge una rosticceria con procedura guidata.")
@@ -3058,6 +3420,16 @@ def main() -> None:
     parser.add_argument("--pianifica", action="store_true",
                         help="Crea o aggiorna l'attività \"Menu\" di Windows con gli orari di locali.json "
                              "(impostazioni > automatico: dalle, alle, ogni_minuti).")
+    parser.add_argument("--riassunto", action="store_true",
+                        help="Ricontrolla subito TUTTE le rosticcerie e pubblica il sito, poi crea il riassunto di oggi "
+                             "(immagine e testo in dati/riassunti) e, se collegato, lo pubblica su Facebook "
+                             "(se oggi è già stato pubblicato non lo ripubblica).")
+    parser.add_argument("--riassunto-prova", action="store_true",
+                        help="Crea il riassunto di oggi e apre l'immagine, SENZA pubblicare su Facebook.")
+    parser.add_argument("--facebook-collega", action="store_true",
+                        help="Collegamento ufficiale con la Pagina Facebook (Collega-Facebook.bat).")
+    parser.add_argument("--facebook-prova", action="store_true",
+                        help="Controlla che il collegamento con Facebook funzioni, senza pubblicare nulla.")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
@@ -3077,6 +3449,31 @@ def main() -> None:
         return
     make_folders()
     config = read_json(CONFIG, {"impostazioni": {}, "locali": []})
+    if args.facebook_collega:
+        facebook_connect()
+        return
+    if args.facebook_prova:
+        facebook_check()
+        return
+    if args.riassunto_prova:  # solo per vedere il post: non tocca lo stato, il post delle 11:30 parte lo stesso
+        made = make_summary(config)
+        if made and sys.platform == "win32":
+            os.startfile(made[0])
+        return
+    if args.riassunto:
+        # come alle 11:30: prima un controllo COMPLETO (tutte le rosticcerie, anche quelle già
+        # aggiornate) con pubblicazione del sito, poi immagine e post: niente post con dati vecchi
+        start_manual_log("riassunto per Facebook")
+        if not take_lock():
+            print("Un altro controllo è bloccato da oltre 20 minuti: riprova più tardi.")
+            return
+        args.pubblica, args.salta_aggiornati, args.solo_html, args.solo = True, False, False, None
+        try:
+            run(args, config)
+            daily_summary(read_json(CONFIG, config))
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
     if args.panorama:
         if not take_lock():
             print("Un controllo è in corso da oltre 20 minuti: riprova più tardi.")
@@ -3107,8 +3504,14 @@ def main() -> None:
             print("Esecuzione precedente bloccata da oltre 20 minuti: salto questo giro.")
             return
         args.pubblica, args.solo_html, args.visibile, args.aggiungi, args.login = True, False, False, False, False
+        # riassunto del giorno (dalle 11:30): prima si ricontrollano TUTTE le rosticcerie, anche quelle
+        # già aggiornate, così nel post ci sono i menu più recenti; poi immagine, testo e Facebook
+        summary = summary_due(config.get("impostazioni", {}))
+        args.tutti = summary
         try:
             run(args, config)
+            if summary:
+                daily_summary(read_json(CONFIG, config))
         except BaseException as exc:  # nel log, non in una finestra che nessuno vede
             import traceback
             print(f"ERRORE: {exc!r}\n{traceback.format_exc()}")
@@ -3230,7 +3633,8 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
             previous = previous_sources.get(shop["id"]) or "già acquisito oggi"
             save_json(IN_PROGRESS, {"id": shop["id"], "nome": shop.get("nome", "")})  # per il Monitor
             result = acquire(shop, browser, online=not args.solo_html,
-                             skip_if_today=previous if args.automatico or args.salta_aggiornati else None)
+                             skip_if_today=previous if (args.automatico and not getattr(args, "tutti", False))
+                             or args.salta_aggiornati else None)
             show_old = bool(settings.get("mostra_menu_vecchi", False))
             publishable = bool(result.image and result.menu_day and (show_old or result.menu_day == date.today()))
             current = copy_current(shop, result.image, result.menu_day) if publishable else None

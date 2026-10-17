@@ -994,3 +994,42 @@ MONITOR - ESITO CHE VA A CAPO E FUMETTI SUI PULSANTI (17/10/2026)
   appena il mouse esce o si clicca.
 Codice: classe Tooltip e Monitor.button_help in Monitor.py.
 Copia precedente: backup\Monitor_2026-10-17_prima-dei-fumetti.py
+
+RIASSUNTO DELLE 11:30 PER FACEBOOK (17/10/2026)
+Ogni giorno, al primo giro automatico dalle 11:30 in poi, Menu.py:
+1. ricontrolla online TUTTE le rosticcerie (anche quelle già aggiornate) e pubblica il
+   sito: l'immagine si fa solo DOPO questo controllo completo, così il post non è mai
+   più vecchio del sito;
+2. crea in dati\riassunti\ l'immagine AAAA-MM-GG.jpg e il testo del post AAAA-MM-GG.txt.
+   PENSATI PER IL CELLULARE (quasi tutti vedono post e sito dal telefono, dove
+   l'immagine è larga un terzo): nell'immagine solo scritte grandi (nessuna sotto
+   i 26 px) - giorno, "N su 13 con il menu", tutte le rosticcerie su due colonne con
+   logo e nome (con il menu: bordo e segno verde; senza: sbiadite, "in arrivo"),
+   link tinyurl.com/menurosticcerie. I piatti (due per rosticceria) stanno nel TESTO
+   del post, che sul telefono si legge bene. I piatti sono solo righe che sembrano
+   piatti veri e leggibili (stesse correzioni del pulsante "Testo": correzioni_ocr,
+   sostituisci, togli); se non se ne trovano: "menu in foto nell'app";
+3. se il collegamento ufficiale con Facebook è fatto (dati\facebook.json), pubblica
+   immagine e testo sulla Pagina https://www.facebook.com/MenuRosticcerie.
+Una sola volta al giorno (dati\riassunti\stato.json); se Facebook non risponde si
+riprova ai giri successivi (al massimo 3 volte) e arriva una notifica sul cellulare.
+Se nessuna rosticceria ha ancora il menu, niente post (si riprova al giro dopo).
+Il Monitor, sotto l'esito del giro, scrive "riassunto pubblicato su Facebook",
+"riassunto NON pubblicato su Facebook" oppure "riassunto creato (Facebook non collegato)".
+Collegamento con Facebook: guida passo passo in Facebook\Collegamento-Facebook.txt,
+poi doppio clic su Collega-Facebook.bat (chiede ID app, chiave segreta e codice
+provvisorio; salva in dati\facebook.json il codice della Pagina, che non scade).
+Comandi:
+  Prova-riassunto.bat           crea il riassunto di oggi e apre l'immagine, NON pubblica
+                                (non cambia lo stato: il post delle 11:30 parte lo stesso)
+  python Menu.py --riassunto        ricontrolla TUTTE le rosticcerie, pubblica il sito, poi crea
+                                    e pubblica subito il post (se oggi non è già pubblicato)
+  python Menu.py --facebook-prova   controlla il collegamento senza pubblicare
+  python Menu.py --facebook-collega come Collega-Facebook.bat
+Impostazioni: locali.json > impostazioni > "riassunto":
+  {"attivo": true, "ora": "11:30", "facebook": true}
+  "attivo": false = niente riassunto; "facebook": false = solo immagine e testo.
+Codice: blocco "RIASSUNTO DEL GIORNO PER FACEBOOK" in Menu.py (summary_*, make_summary,
+daily_summary, facebook_*), last_outcome in Monitor.py.
+Copie precedenti: backup\Menu_2026-10-17_prima-del-riassunto.py,
+backup\Monitor_2026-10-17_prima-del-riassunto.py, backup\locali_2026-10-17_prima-del-riassunto.json

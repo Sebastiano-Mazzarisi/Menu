@@ -215,6 +215,27 @@ def check_running() -> bool:
 
 
 def last_outcome() -> tuple[str, str]:
+    """Ora ed esito dell'ultimo giro; se in quel giro c'era il riassunto per Facebook (11:30)
+    si aggiunge anche il suo esito su una seconda riga."""
+    when, outcome = round_outcome()
+    try:
+        lines = LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-200:]
+        start = max((i for i, line in enumerate(lines) if line.startswith("=== ")), default=None)
+        block = lines[start + 1:] if start is not None else []
+    except OSError:
+        block = []
+    note = ""
+    for line in block:
+        if line.startswith("Riassunto pubblicato su Facebook"):
+            note = "riassunto pubblicato su Facebook"
+        elif line.startswith("Riassunto NON pubblicato su Facebook"):
+            note = "riassunto NON pubblicato su Facebook (vedi registro)"
+        elif line.startswith("Riassunto NON pubblicato:"):
+            note = "riassunto creato in dati/riassunti (Facebook non collegato)"
+    return when, f"{outcome}\n{note}" if note else outcome
+
+
+def round_outcome() -> tuple[str, str]:
     """Ora ed esito dell'ultimo giro, letti dal registro dati/automatico.log."""
     try:
         lines = LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-200:]

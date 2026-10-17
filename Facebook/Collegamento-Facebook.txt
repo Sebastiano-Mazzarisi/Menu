@@ -1,0 +1,68 @@
+COLLEGAMENTO UFFICIALE TRA MENU.PY E LA PAGINA FACEBOOK "MENU ROSTICCERIE"
+(si fa una volta sola, circa 15 minuti; Claude può guidarti passo passo)
+
+A cosa serve: ogni giorno alle 11:30 Menu.py ricontrolla tutte le rosticcerie,
+crea l'immagine e il testo del riassunto (cartella dati\riassunti) e li pubblica
+da solo sulla Pagina https://www.facebook.com/MenuRosticcerie.
+Finché il collegamento non è fatto, immagine e testo vengono creati lo stesso
+(ogni giorno, in dati\riassunti) ma non pubblicati.
+
+------------------------------------------------------------------
+PARTE 1 - Crea l'app su Meta for Developers
+------------------------------------------------------------------
+1. Apri https://developers.facebook.com e accedi con il tuo account Facebook
+   (se è la prima volta, premi "Inizia" e conferma la registrazione come sviluppatore).
+2. Premi "Le mie app" e poi "Crea app".
+3. Nome dell'app: Menu rosticcerie Pubblicazione   - e-mail: la tua.
+4. Caso d'uso: scegli "Gestisci tutto sulla tua Pagina"
+   ("Manage everything on your Page"). Avanti fino a "Crea app"
+   (ti chiede di nuovo la password di Facebook).
+5. Nel pannello dell'app, a sinistra "Casi d'uso" > "Personalizza" accanto a
+   "Gestisci tutto sulla tua Pagina": premi "Aggiungi" accanto a
+   pages_manage_posts  e  pages_read_engagement
+   (pages_show_list c'è già).
+6. A sinistra "Impostazioni dell'app" > "Di base": copia
+   - ID app             (un numero)
+   - Chiave segreta     (premi "Mostra", ti chiede la password)
+   Tienili da parte per la Parte 3. L'app può restare "In sviluppo":
+   la usi solo tu sulla tua Pagina, non serve la revisione di Meta.
+
+------------------------------------------------------------------
+PARTE 2 - Prendi il codice di accesso provvisorio
+------------------------------------------------------------------
+7. Apri https://developers.facebook.com/tools/explorer (Strumento di esplorazione API Graph).
+8. A destra, "App Meta": scegli "Menu rosticcerie Pubblicazione".
+9. "Utente o Pagina": scegli "Ottieni token d'accesso utente".
+10. In "Autorizzazioni" aggiungi: pages_show_list, pages_manage_posts,
+    pages_read_engagement.
+11. Premi "Generate Access Token": nella finestra di Facebook scegli la Pagina
+    "Menu rosticcerie" e premi "Continua" / "Salva".
+12. Copia il lungo codice che compare nel campo "Token d'accesso".
+
+------------------------------------------------------------------
+PARTE 3 - Salva il collegamento sul PC
+------------------------------------------------------------------
+13. Doppio clic su  C:\Dropbox\Prog\Menu\Collega-Facebook.bat
+14. Incolla, uno alla volta, quando richiesti:
+    1) ID app   2) Chiave segreta   3) Codice provvisorio (Parte 2)
+15. Deve comparire:  Collegamento OK: Pagina "Menu rosticcerie"
+    Il programma trasforma il codice provvisorio (dura un'ora) in quello
+    della Pagina, che NON scade, e lo salva in dati\facebook.json
+    (resta solo sul PC: la cartella dati non va su GitHub).
+
+Fatto. Da quel giorno il post parte da solo alle 11:30.
+
+------------------------------------------------------------------
+PROVE E PROBLEMI
+------------------------------------------------------------------
+- Vedere il post di oggi SENZA pubblicarlo: doppio clic su Prova-riassunto.bat
+  (apre l'immagine; il testo è in dati\riassunti\AAAA-MM-GG.txt).
+- Controllare il collegamento senza pubblicare: python Menu.py --facebook-prova
+- Pubblicare subito il riassunto di oggi (se non è già stato pubblicato): prima
+  ricontrolla tutte le rosticcerie, poi pubblica:  python Menu.py --riassunto
+- Se cambi la password di Facebook o togli l'app, il codice smette di valere:
+  il Monitor mostra "riassunto NON pubblicato su Facebook", arriva una notifica
+  sul cellulare e basta rifare la Parte 2 e la Parte 3.
+- Orario o disattivazione: locali.json > impostazioni > "riassunto":
+  {"attivo": true, "ora": "11:30", "facebook": true}
+  ("facebook": false = crea solo immagine e testo, senza pubblicare).

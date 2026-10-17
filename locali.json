@@ -7,7 +7,8 @@
     "registro_click_url": "https://script.google.com/macros/s/AKfycbx8m-b5xkenUmdR8cbIFTVbCJGMIAQOgDWjY3xTY-FFgCowQd5hdB1qeDsEANf6w7wa/exec",
     "registra_visite": true,
     "testo_per_tutti": false,
-    "correzioni_ocr": [["fimghi", "funghi"], ["DolcedelloChef", "Dolce dello chef"]]
+    "correzioni_ocr": [["fimghi", "funghi"], ["DolcedelloChef", "Dolce dello chef"]],
+    "riassunto": {"attivo": true, "ora": "11:30", "facebook": true}
   },
   "locali": [
     {
