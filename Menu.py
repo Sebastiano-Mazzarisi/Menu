@@ -49,6 +49,25 @@ MONTHS = {"gennaio": 1, "febbraio": 2, "marzo": 3, "aprile": 4, "maggio": 5, "gi
           "agosto": 8, "settembre": 9, "ottobre": 10, "novembre": 11, "dicembre": 12}
 
 
+def remove_file(path: Path) -> bool:
+    """Cancella un file di lavoro senza mai fermare il programma.
+
+    Su Windows un file appena creato può restare bloccato per qualche istante
+    (Dropbox che lo sincronizza, l'antivirus, il programma che lo ha letto):
+    si riprova per circa 3 secondi e, se è ancora occupato, lo si lascia lì.
+    Verrà tolto in un giro successivo o ignorato: non è mai un motivo per fermarsi."""
+    for attempt in range(6):
+        try:
+            path.unlink(missing_ok=True)
+            return True
+        except PermissionError:
+            time.sleep(0.5)
+        except OSError:
+            break
+    print(f"  (file {path.name} occupato da un altro programma: lo lascio, verrà tolto più avanti)")
+    return False
+
+
 def slugify(value: str) -> str:
     clean = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]+", "-", clean.lower()).strip("-") or "locale"
@@ -116,7 +135,7 @@ def copy_current(shop: dict[str, Any], source: Path, menu_day: date) -> Path:
     extension = source.suffix.lower() if source.suffix.lower() in MENU_EXTENSIONS else ".jpg"
     for old in CURRENT.glob(f"{shop['id']}.*"):
         if old.suffix.lower() != extension and old.suffix.lower() in MENU_EXTENSIONS:
-            old.unlink()
+            remove_file(old)
     target = CURRENT / f"{shop['id']}{extension}"
     changed = not target.exists() or file_hash(target) != file_hash(source)
     if changed:
@@ -132,7 +151,7 @@ def remove_current(shop: dict[str, Any]) -> None:
     """Rimuove soltanto le copie generate; ingresso e archivio restano intatti."""
     for candidate in CURRENT.glob(f"{shop['id']}.*"):
         if candidate.is_file() and candidate.suffix.lower() in MENU_EXTENSIONS:
-            candidate.unlink()
+            remove_file(candidate)
 
 
 @dataclass
@@ -589,7 +608,7 @@ class BrowserCollector:
             # nessuna foto buona adesso: una foto salvata stamattina viene ritrovata dalla fonte
             # "cartella" (con i suoi controlli); qui si tolgono solo le anteprime sfocate
             if destination.exists() and not image_is_sharp(destination.read_bytes()):
-                destination.unlink()  # anteprima sfocata salvata da una versione precedente
+                remove_file(destination)  # anteprima sfocata salvata da una versione precedente
             print(f"  {shop['nome']} - nessuna foto nitida di oggi nella storia")
             return None
         except Exception:
@@ -1006,13 +1025,13 @@ def check_notice(shop: dict[str, Any], browser: "BrowserCollector | None", check
     closed = closure_today(f"{text}\n{photo_text}")
     if not closed:
         if image:
-            image.unlink(missing_ok=True)  # foto usata solo per cercare l'avviso
+            remove_file(image)  # foto usata solo per cercare l'avviso
         return None
     print(f"  {shop['nome']} - avviso di chiusura dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
     from_photo = image is not None and closure_today(photo_text) is not None
     saved = save_closure(folder, closed, image if from_photo else None, text)
     if image:
-        image.unlink(missing_ok=True)
+        remove_file(image)
     return Result(saved, date.today(), "avviso", checked)
 
 
@@ -1443,7 +1462,7 @@ def discard_wrong_menu(shop: dict[str, Any], folder: Path, image: Path) -> None:
                 saved.replace(DISCARDED / f"{shop['id']}_{saved.name}")
                 print(f"  {shop['nome']} - tolto {saved.name}: era questa foto, che non è un menu (ora in dati/scartati)")
     finally:
-        image.unlink(missing_ok=True)
+        remove_file(image)
 
 
 def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, browser: "BrowserCollector",
@@ -1576,7 +1595,7 @@ def keep_first_seen(folder: Path, captured: Path) -> tuple[Path, date]:
                and item.suffix.lower() in IMAGE_EXTENSIONS and file_hash(item) == digest]
     if earlier:
         first = min(earlier, key=lambda item: (image_date(item), item.stat().st_mtime))
-        captured.unlink()
+        remove_file(captured)
         return first, image_date(first)
     return captured, date.today()
 
@@ -1646,7 +1665,7 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
     if online and skip_if_today is not None:
         latest = newest_image(folder)
         if latest and latest.stem.endswith("_storia") and not image_is_sharp(latest.read_bytes()):
-            latest.unlink()  # anteprima sfocata di una storia: va ricatturata
+            remove_file(latest)  # anteprima sfocata di una storia: va ricatturata
             latest = newest_image(folder)
         # un menu solo testo viene comunque riletto: il post può essere stato completato o corretto
         if latest and image_date(latest) == date.today() and not latest.stem.endswith("_testo") \
@@ -3030,7 +3049,7 @@ def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
     target = OVERVIEW / f"Panorama_{datetime.now():%Y-%m-%d_%H%M}.pdf"
     pages[0].save(target, "PDF", resolution=150, save_all=True, append_images=pages[1:])
     for old in sorted(OVERVIEW.glob("Panorama_*.pdf"))[:-10]:
-        old.unlink(missing_ok=True)  # si tengono solo le ultime 10
+        remove_file(old)  # si tengono solo le ultime 10
     return target
 
 

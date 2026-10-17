@@ -1036,3 +1036,12 @@ Codice: blocco "RIASSUNTO DEL GIORNO PER FACEBOOK" in Menu.py (summary_*, make_s
 daily_summary, facebook_*), last_outcome in Monitor.py.
 Copie precedenti: backup\Menu_2026-10-17_prima-del-riassunto.py,
 backup\Monitor_2026-10-17_prima-del-riassunto.py, backup\locali_2026-10-17_prima-del-riassunto.json
+
+
+FILE OCCUPATI (errore "WinError 32 ... utilizzato da un altro processo") - 17/10/2026
+Su Windows una foto appena scaricata può restare bloccata per qualche istante (Dropbox che
+la sincronizza, l'antivirus, il programma che l'ha letta). Prima questo fermava tutto il giro
+(e anche Pubblica-riassunto.bat). Ora le foto di lavoro (dati\catture, anteprime sfocate,
+doppioni, vecchi Panorama) si cancellano con remove_file(): riprova per circa 3 secondi e,
+se il file è ancora occupato, lo lascia lì e va avanti scrivendo solo una riga di avviso.
+Copia precedente: backup\Menu_2026-10-17_prima-dei-file-occupati.py
