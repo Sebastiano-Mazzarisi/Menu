@@ -3413,16 +3413,40 @@ PHOTOS = ROOT / "Foto"
 # del post Facebook; si tengono gli ultimi PDF_DAYS giorni
 PDFS = ROOT / "pdf"
 PDF_DAYS = 7
+PDF_INK = 0.6  # quanto "nero" resta nel PDF (1 = come l'originale, 0.6 = 40% di toner in meno)
 
 
-def photo_pdf(image, target: Path) -> None:
-    """PDF A4 verticale (150 dpi) con tutta l'immagine, la più grande possibile, centrata."""
-    from PIL import Image
-    page_w, page_h = 1240, 1754  # A4 a 150 dpi
-    scale = min(page_w / image.width, page_h / image.height)
-    picture = image.resize((round(image.width * scale), round(image.height * scale)), Image.LANCZOS)
-    page = Image.new("RGB", (page_w, page_h), VIDEO_BG)
-    page.paste(picture, ((page_w - picture.width) // 2, (page_h - picture.height) // 2))
+def photo_pdf(entry: dict[str, Any], menu, when: str, target: Path) -> None:
+    """PDF A4 verticale (150 dpi) pensato per la STAMPA con poco toner: pagina bianca, niente
+    sfondi scuri; in alto logo piccolo, nome, paese e data in grigio; sotto il menu intero, il più
+    grande possibile, in scala di grigi (solo toner nero)."""
+    from PIL import Image, ImageDraw, ImageOps
+    page_w, page_h, margin = 1240, 1754, 70  # A4 a 150 dpi
+    page = Image.new("RGB", (page_w, page_h), "white")
+    draw = ImageDraw.Draw(page)
+    logo_side = 120
+    logo = video_logo(entry, logo_side).convert("RGBA")
+    gray_logo = ImageOps.grayscale(logo.convert("RGB")).convert("RGBA")
+    gray_logo.putalpha(logo.split()[3])
+    page.paste(gray_logo, (margin, margin), gray_logo)
+    text_x = margin + logo_side + 28
+    name_font, name = video_fit_text(draw, entry["nome"], 50, True, page_w - text_x - margin)
+    draw.text((text_x, margin + 52), name, font=name_font, fill=(40, 40, 40), anchor="ls")
+    draw.text((text_x, margin + 100), f"{entry['comune']} · Menu di {when.lower()}", font=video_font(32),
+              fill=(110, 110, 110), anchor="ls")
+    top = margin + logo_side + 30
+    draw.line((margin, top - 14, page_w - margin, top - 14), fill=(200, 200, 200), width=2)
+    bottom = page_h - margin - 30
+    flat = Image.new("RGB", menu.size, "white")
+    flat.paste(menu, (0, 0), menu)
+    # risparmio toner: scala di grigi e neri schiariti (ogni grigio perde il 40% di "inchiostro"):
+    # le lavagne e gli sfondi scuri diventano grigio medio, le scritte restano leggibili
+    flat = ImageOps.grayscale(flat).point(lambda v: 255 - int((255 - v) * PDF_INK))
+    scale = min((page_w - 2 * margin) / flat.width, (bottom - top) / flat.height)
+    flat = flat.resize((max(1, round(flat.width * scale)), max(1, round(flat.height * scale))), Image.LANCZOS)
+    page.paste(flat.convert("RGB"), ((page_w - flat.width) // 2, top))
+    draw.text((page_w / 2, page_h - margin), "Tutti i menu di oggi: tinyurl.com/menurosticcerie",
+              font=video_font(26), fill=(130, 130, 130), anchor="ms")
     page.save(target, "PDF", resolution=150)
 
 
@@ -3516,7 +3540,7 @@ def make_photos(config: dict[str, Any]) -> Path | None:
         safe = re.sub(r'[\\/:*?"<>|]', "", entry["nome"]).strip()
         target = folder / f"{number:02d} {safe}.jpg"
         image.save(target, quality=92, optimize=True, subsampling=0)
-        photo_pdf(image, pdf_folder / f"{entry['id']}.pdf")
+        photo_pdf(entry, menu, when, pdf_folder / f"{entry['id']}.pdf")
         captions.append({"file": target.name, "nome": entry["nome"], "comune": entry["comune"],
                          "pdf": f"{WEB_URL}pdf/{day.isoformat()}/{entry['id']}.pdf"})
         print(f"  {number}/{len(entries)} {target.name} ({width}x{height}) + PDF A4")
@@ -3867,15 +3891,24 @@ def publish_summary_facebook(image: Path, text: str) -> str:
 
 
 def short_link(url: str) -> str:
-    """Link corto (is.gd) per le didascalie; se il servizio non risponde, il link intero."""
+    """Link corto per le didascalie (TinyURL, se non risponde is.gd), così nel testo non compare
+    l'indirizzo lungo con nome e cognome. "" se nessuno dei due servizi risponde: allora la riga
+    del PDF non viene scritta (MAI l'indirizzo lungo)."""
     import urllib.parse
-    try:
-        with urllib.request.urlopen("https://is.gd/create.php?format=simple&url=" + urllib.parse.quote(url, safe=""),
-                                    timeout=20) as answer:
-            short = answer.read().decode("utf-8").strip()
-        return short if short.startswith("https://is.gd/") else url
-    except Exception:
-        return url
+    quoted = urllib.parse.quote(url, safe="")
+    services = (("https://tinyurl.com/api-create.php?url=" + quoted, "https://tinyurl.com/"),
+                ("https://is.gd/create.php?format=simple&url=" + quoted, "https://is.gd/"))
+    for address, prefix in services:
+        try:
+            request = urllib.request.Request(address, headers={"User-Agent": "Mozilla/5.0 (Menu rosticcerie)"})
+            with urllib.request.urlopen(request, timeout=20) as answer:
+                short = answer.read().decode("utf-8").strip()
+            if short.startswith(prefix):
+                return short
+            print(f"  link corto non creato da {prefix}: {short[:80]}")
+        except Exception as exc:
+            print(f"  link corto non creato da {prefix}: {exc}")
+    return ""
 
 
 def wait_online(url: str, seconds: int = 240) -> bool:
@@ -3909,9 +3942,10 @@ def photo_captions(folder: Path, pictures: list[Path]) -> list[str]:
             captions.append("")
             continue
         lines = [f"{item['nome']} - {item['comune']}"]
-        if online:
-            lines.append(f"Menu completo da leggere (PDF): {short_link(item['pdf'])}")
-        lines.append(f"Tutti i menu di oggi: {SHORT_URL}")
+        short = short_link(item["pdf"]) if online else ""
+        if short:
+            lines.append(f"Menu-pdf: {short}")
+        lines.append(f"Menu-app: {SHORT_URL}")
         captions.append("\n".join(lines))
     return captions
 
@@ -3960,6 +3994,8 @@ def delete_facebook_posts(ids: list[str]) -> list[str]:
             facebook_call(post, {"access_token": link.get("token", "")}, version=link.get("versione", ""), method="DELETE")
             print(f"Tolto dalla Pagina il post precedente di oggi ({post})")
         except Exception as exc:
+            if "does not exist" in str(exc):
+                continue  # già tolto (es. le foto di un post cancellato spariscono con il post)
             print(f"Post precedente {post} non cancellato: {exc}")
             left.append(post)
     return left
