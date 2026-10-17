@@ -1127,3 +1127,18 @@ Se un post precedente non si riesce a cancellare resta in dati\riassunti\stato.j
 e si riprova alla pubblicazione successiva dello stesso giorno. I post dei giorni prima non si toccano.
 Nota: dopo il caricamento Facebook "elabora" il video per qualche minuto prima di mostrarlo.
 Copia precedente: backup\Menu_2026-10-17_prima-di-sostituisci-post.py
+
+REGISTRO CLICK CON METODO "IMMAGINE" (GET) - 17/10/2026
+Dubbio: dai browser interni delle app (Facebook, Instagram, WhatsApp) visite e click potrebbero non
+arrivare. Nuovo metodo: la pagina manda i dati come richiesta GET di un'"immagine"
+(registro?azione=registra&d={...}), che qualunque browser esegue.
+- Registro_click.gs: nuova funzione registra(dati) usata da doPost e da GET ?azione=registra.
+  Va incollato nell'editor Apps Script del foglio "Menu" e ridistribuito con
+  Esegui il deployment > Gestisci deployment > Modifica (matita) > Versione: Nuova versione
+  (l'indirizzo /exec resta lo stesso).
+- locali.json > impostazioni > "registro_get": true  attiva il nuovo metodo nella pagina
+  (solo DOPO aver ridistribuito lo script, altrimenti visite e click andrebbero persi).
+- Tolta l'esclusione per navigator.webdriver (alcuni browser interni lo hanno attivo): ora non
+  vengono contati solo i dispositivi dell'amministratore. Il Panorama apre già ?v=57.
+Copie precedenti: backup\Menu_2026-10-17_prima-di-registro-get.py,
+backup\Registro_click_2026-10-17_prima-di-registra-get.gs

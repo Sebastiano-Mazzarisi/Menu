@@ -2109,7 +2109,7 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 /* Registro dei click sul foglio Google "Menu" (Apps Script in Registro_click.gs).
    ?v=57 nell'indirizzo = amministratore: quei click non vengono registrati. Senza ?v=57 si registra
    sempre, anche sullo stesso dispositivo (non viene ricordato nulla). */
-const Q=new URLSearchParams(location.search);const ADMIN=Q.get('v')==='57'||/\/admin(\.html)?$/.test(location.pathname);/* dispositivo dell'amministratore: basta averci aperto una volta la versione amministratore (?v=57 o admin.html) perché da quel browser visite e click non vengano più contati, anche aprendo il sito normale; ?v=0 lo toglie */const MINE=(()=>{try{if(ADMIN)localStorage.setItem('menu_admin','1');if(Q.get('v')==='0')localStorage.removeItem('menu_admin');return localStorage.getItem('menu_admin')==='1'}catch(e){return ADMIN}})(),NOCOUNT=ADMIN||MINE||!!navigator.webdriver;
+const Q=new URLSearchParams(location.search);const ADMIN=Q.get('v')==='57'||/\/admin(\.html)?$/.test(location.pathname);/* dispositivo dell'amministratore: basta averci aperto una volta la versione amministratore (?v=57 o admin.html) perché da quel browser visite e click non vengano più contati, anche aprendo il sito normale; ?v=0 lo toglie */const MINE=(()=>{try{if(ADMIN)localStorage.setItem('menu_admin','1');if(Q.get('v')==='0')localStorage.removeItem('menu_admin');return localStorage.getItem('menu_admin')==='1'}catch(e){return ADMIN}})(),NOCOUNT=ADMIN||MINE;
 try{localStorage.removeItem('menuAdmin')}catch(e){}
 function deviceLabel(){const u=navigator.userAgent||'';let o='Altro',b='Altro';
 if(/iPad/.test(u))o='iPad';else if(/iPhone/.test(u))o='iPhone';else if(/Android/.test(u))o='Android';else if(/Macintosh/.test(u))o='Mac';else if(/Windows/.test(u))o='Windows';else if(/Linux/.test(u))o='Linux';
@@ -2119,7 +2119,10 @@ let placeP=null;function approxPlace(){if(!placeP)placeP=fetch('https://ipwho.is
    dall'icona sulla Home) sendBeacon risponde true anche quando poi la richiesta non parte, e il ripiego non
    scattava mai. sendBeacon resta come riserva se fetch manca o fallisce. LOGSTATO = ultimo esito, per ?debug=1 */
 let LOGSTATO='nessun invio';
-function postLog(body){if(!DATA.log){LOGSTATO='manca DATA.log';return}const beacon=why=>{try{const ok=!!(navigator.sendBeacon&&navigator.sendBeacon(DATA.log,new Blob([body],{type:'text/plain'})));LOGSTATO=(why?why+' → ':'')+'sendBeacon '+(ok?'accodato':'rifiutato')}catch(e){LOGSTATO='errore sendBeacon: '+e.message}if(window.mostraDebug)mostraDebug()};
+function postLog(body){if(!DATA.log){LOGSTATO='manca DATA.log';return}
+  /* metodo "immagine": una GET con i dati nell'indirizzo; le immagini si caricano in qualunque browser,
+     anche dentro le app di Facebook e Instagram, senza CORS né sendBeacon */
+  if(DATA.logGet){try{const px=new Image();(window.__logPx=window.__logPx||[]).push(px);px.onload=px.onerror=()=>{LOGSTATO='GET consegnata '+new Date().toLocaleTimeString('it-IT');if(window.mostraDebug)mostraDebug()};px.src=DATA.log+'?azione=registra&t='+Date.now()+'&d='+encodeURIComponent(body);LOGSTATO='GET in corso…';return}catch(e){LOGSTATO='errore GET: '+e.message}}const beacon=why=>{try{const ok=!!(navigator.sendBeacon&&navigator.sendBeacon(DATA.log,new Blob([body],{type:'text/plain'})));LOGSTATO=(why?why+' → ':'')+'sendBeacon '+(ok?'accodato':'rifiutato')}catch(e){LOGSTATO='errore sendBeacon: '+e.message}if(window.mostraDebug)mostraDebug()};
   if(window.fetch){try{LOGSTATO='fetch in corso…';fetch(DATA.log,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain'},body}).then(()=>{LOGSTATO='fetch consegnata '+new Date().toLocaleTimeString('it-IT');if(window.mostraDebug)mostraDebug()}).catch(e=>beacon('fetch fallita ('+e.message+')'));return}catch(e){beacon('fetch non avviata')}}else beacon('');}
 function sendLog(body){if(NOCOUNT){LOGSTATO='non inviato: questo dispositivo non viene contato';if(window.mostraDebug)mostraDebug();return}postLog(body)}
 /* ?debug=1: barra in basso con lo stato del registro su QUESTO dispositivo (da fotografare e mandare)
@@ -2129,7 +2132,7 @@ if(Q.get('debug')==='1'){window.mostraDebug=()=>{let box=document.getElementById
   const sa=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;let mem='?';try{mem=localStorage.getItem('menu_admin')}catch(e){mem='non leggibile'}
   box.innerHTML='<b>Diagnosi registro click</b><br>ADMIN: '+ADMIN+' · MINE: '+MINE+' (menu_admin='+mem+') · webdriver: '+!!navigator.webdriver+' · <b>NOCOUNT: '+NOCOUNT+'</b><br>Aperta dalla Home: '+sa+' · fetch: '+!!window.fetch+' · sendBeacon: '+!!navigator.sendBeacon+'<br>Registro: …'+String(DATA.log||'(vuoto)').slice(-24)+'<br>Ultimo invio: <b>'+LOGSTATO+'</b><br>'+navigator.userAgent.slice(0,160)+'<br><button data-a="prova" style="margin:6px 6px 0 0;padding:6px 10px;border-radius:8px;background:#fff;color:#111">Prova invio</button><button data-a="conta" style="margin:6px 0 0;padding:6px 10px;border-radius:8px;background:#fff;color:#111">Conta questo dispositivo</button>'};
   window.mostraDebug()}
-/* navigator.webdriver: pagina aperta da un programma (Panorama, robot): non è una visita vera */
+/* chi viene contato: tutti tranne il dispositivo dell'amministratore (ADMIN/MINE); il Panorama apre ?v=57 */
 if(!NOCOUNT&&DATA.log){approxPlace();/* visita alla pagina: una per apertura del sito (foglio "Visite") */if(DATA.visite)Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({tipo:'visita',pagina:decodeURIComponent(location.hash.slice(1))||'iniziale',dispositivo:deviceLabel(),posizione:p||''})))}
 function logClick(name){if(NOCOUNT||!DATA.log)return;Promise.race([approxPlace(),new Promise(r=>setTimeout(()=>r(''),1500))]).then(p=>sendLog(JSON.stringify({rosticceria:name,dispositivo:deviceLabel(),posizione:p||''})))}
 
@@ -2583,7 +2586,10 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
                           "testo_larghezza": settings.get("testo_larghezza", 50),
                           "log": settings.get("registro_click_url", ""),
                           # visite alla pagina (foglio "Visite"): solo dopo aver aggiornato Registro_click.gs
-                          "visite": bool(settings.get("registra_visite", False))}, ensure_ascii=False).replace("</", "<\\/")
+                          "visite": bool(settings.get("registra_visite", False)),
+                          # invio come richiesta GET "immagine" (funziona anche nei browser interni di
+                          # Facebook/Instagram): solo con Registro_click.gs aggiornato (azione=registra)
+                          "logGet": bool(settings.get("registro_get", False))}, ensure_ascii=False).replace("</", "<\\/")
     days = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
     today = date.today()
     today_text = f"{days[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}"

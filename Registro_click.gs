@@ -20,10 +20,15 @@
  * conteggi vengono ricalcolati da capo automaticamente alla richiesta successiva.
  */
 function doPost(e) {
+  return registra(JSON.parse((e && e.postData && e.postData.contents) || '{}'));
+}
+
+/** Scrive una visita (dati.tipo === 'visita') o un click. Usata da doPost e da GET ?azione=registra&d={...}
+ *  (il metodo "immagine" della pagina, che funziona anche nei browser interni di Facebook e Instagram). */
+function registra(dati) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000); // due click contemporanei non si sovrascrivono
   try {
-    var dati = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (dati.tipo === 'visita') {
       registraVisita(dati);
       return ContentService.createTextOutput('ok');
@@ -54,11 +59,17 @@ function doPost(e) {
  *   per giorno della settimana e per ora del giorno (i due grafici sotto la tabella di Info).
  * GET ?azione=oggi: solo i click di oggi (compatibilità con le pagine vecchie).
  * GET ?azione=ricalcola: ricalcola i conteggi rileggendo tutto il foglio.
+ * GET ?azione=registra&d={json}: come doPost (visita o click), per il metodo "immagine" della pagina.
  * GET ?azione=ultima: indirizzo del foglio e numero dell'ultima riga, usati dal pulsante
  * "Accessi" della finestra di controllo (Monitor.py) per aprire il foglio sull'ultimo click.
  */
 function doGet(e) {
   var azione = (e && e.parameter && e.parameter.azione) || '';
+  if (azione === 'registra') {
+    var dati = {};
+    try { dati = JSON.parse(e.parameter.d || '{}'); } catch (err) { return ContentService.createTextOutput('dati non validi'); }
+    return registra(dati);
+  }
   if (azione === 'statistiche' || azione === 'ricalcola') {
     var s = statistiche(azione === 'ricalcola');
     s.visite = statisticheVisite();
