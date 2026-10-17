@@ -460,13 +460,13 @@ class Monitor(tk.Tk):
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
         self.buttons_frame = buttons  # la sua larghezza decide dove va a capo la scritta dell'esito
-        # pulsanti su quattro righe (3 + 3 + 3 + 2), tutti larghi uguale: la finestra resta stretta
+        # pulsanti su quattro righe (3 + 3 + 3 + 3), tutti larghi uguale: la finestra resta stretta
         layout = (("Controlla", self.check, 0, 0), ("Ricontrolla", self.recheck, 0, 1),
                   ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
                   ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2),
                   ("Panorama", self.overview, 2, 0), ("Pubblica", self.publish, 2, 1),
                   ("FB", self.open_facebook, 2, 2), ("Video", self.video, 3, 0),
-                  ("Pubblica FB", self.publish_facebook, 3, 1))
+                  ("Pubblica FB", self.publish_facebook, 3, 1), ("Foto", self.photos, 3, 2))
         # pulsanti che avviano un giro di Menu.py: spenti (grigi, non cliccabili) mentre un controllo
         # è in corso, perché un secondo giro dovrebbe solo aspettare che finisca il primo
         self.run_buttons: list[tk.Button] = []
@@ -761,9 +761,11 @@ class Monitor(tk.Tk):
             self.video: "Crea il video verticale (4:5) dei menu di oggi per la Pagina Facebook: per ogni "
                         "rosticceria il logo, una freccia e il menu. Lo salva in Facebook\\Video-AAAA-MM-GG.mp4 e lo apre "
                         "(circa un minuto).",
-            self.publish_facebook: "Pubblica SUBITO sulla Pagina Facebook il video dei menu di questo momento con il "
+            self.publish_facebook: "Pubblica SUBITO sulla Pagina Facebook il post con le foto dei menu di questo momento con il "
                                    "testo del riassunto (chiede conferma). Quello automatico parte da solo la mattina: "
                                    "appena ci sono tutti i menu, o alle 11:30 con quelli presenti.",
+            self.photos: "Crea un'immagine per ogni rosticceria con il menu di oggi (logo, nome, data e il menu "
+                         "intero da leggere) nella cartella Foto\\AAAA-MM-GG e la apre.",
             self.open_facebook: "Apre nel browser la pagina Facebook \"Menu rosticcerie\" (post del giorno, riassunto delle 11:30).",
             self.publish: "Rifà la pagina con i menu già scaricati e la pubblica subito online, "
                           "senza ricontrollare Facebook, Instagram e i siti.",
@@ -904,7 +906,7 @@ class Monitor(tk.Tk):
         self.say("Video avviato: tra circa un minuto si apre")
 
     def publish_facebook(self) -> None:
-        """Pubblica FB: dopo la conferma, Menu.py --pubblica-video crea il video dei menu di adesso e lo
+        """Pubblica FB: dopo la conferma, Menu.py --pubblica-video crea le foto dei menu di adesso e le
         pubblica sulla Pagina, in una finestra a parte."""
         if sys.platform != "win32":
             return
@@ -912,7 +914,7 @@ class Monitor(tk.Tk):
             self.say("Un controllo è in corso: attendi che finisca")
             return
         from tkinter import messagebox
-        if not messagebox.askyesno("Menu", "Pubblicare adesso sulla Pagina Facebook il video con i menu di questo momento?",
+        if not messagebox.askyesno("Menu", "Pubblicare adesso sulla Pagina Facebook le foto dei menu di questo momento?\n\nIl post di oggi già pubblicato verrà sostituito.",
                                    parent=self):
             return
         python = Path(sys.executable).with_name("python.exe")
@@ -923,6 +925,19 @@ class Monitor(tk.Tk):
         subprocess.Popen(f'cmd /c "title Menu - pubblicazione su Facebook & {exe} Menu.py --pubblica-video & {closing}"',
                          cwd=ROOT, creationflags=subprocess.CREATE_NEW_CONSOLE)
         self.say("Pubblicazione su Facebook avviata: un paio di minuti")
+
+    def photos(self) -> None:
+        """Foto: crea con Menu.py --foto le immagini dei menu di oggi in Foto\\AAAA-MM-GG e apre la cartella."""
+        if sys.platform != "win32":
+            return
+        python = Path(sys.executable).with_name("python.exe")
+        exe = str(python) if python.exists() else "python"
+        exe = f'"{exe}"' if " " in exe else exe
+        closing = (f"echo. & echo La finestra si chiude da sola tra {CONSOLE_SECONDS} secondi "
+                   f"(un tasto qualsiasi la chiude subito) & timeout /t {CONSOLE_SECONDS} >nul")
+        subprocess.Popen(f'cmd /c "title Menu - foto & {exe} Menu.py --foto & {closing}"', cwd=ROOT,
+                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+        self.say("Foto avviate: tra pochi secondi si apre la cartella")
 
     def open_facebook(self) -> None:
         """FB: apre la pagina Facebook "Menu rosticcerie" nel browser predefinito."""

@@ -10,3 +10,5 @@ __pycache__/
 backup/
 # video dei menu (pesanti, da caricare a mano su Facebook)
 Facebook/Video-*.mp4
+# immagini dei menu (pulsante Foto)
+Foto/

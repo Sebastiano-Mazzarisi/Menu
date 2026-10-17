@@ -3402,6 +3402,100 @@ def make_video(config: dict[str, Any]) -> Path | None:
 
 
 # ------------------------------------------------------------------------------------------------
+# FOTO DEI MENU (pulsante "Foto" del Monitor, o python Menu.py --foto)
+# Per ogni rosticceria con il menu di oggi crea un'immagine verticale da leggere sul cellulare
+# (larga 1080): in alto logo, nome, paese e data; subito sotto il menu INTERO (la foto del locale
+# senza tagli, ingrandita e resa più nitida, oppure i piatti riscritti per intero se il menu è
+# solo testo); in fondo il link. Le salva in Foto\AAAA-MM-GG\NN Nome.jpg (le vecchie restano).
+# ------------------------------------------------------------------------------------------------
+PHOTOS = ROOT / "Foto"
+
+
+def photo_wrap(draw, text: str, font, width: int) -> list[str]:
+    """Spezza il testo in righe che stanno nella larghezza (a parole)."""
+    lines, line = [], ""
+    for word in text.split():
+        trial = f"{line} {word}".strip()
+        if line and draw.textlength(trial, font=font) > width:
+            lines.append(line)
+            line = word
+        else:
+            line = trial
+    return lines + ([line] if line else [])
+
+
+def photo_menu_text(entry: dict[str, Any], width: int):
+    """Menu solo testo riscritto per intero: titoli delle sezioni e piatti, righe lunghe a capo."""
+    from PIL import Image, ImageDraw
+    title_font, dish_font = video_font(44, bold=True), video_font(38)
+    probe = ImageDraw.Draw(Image.new("RGB", (10, 10)))
+    rows: list[tuple[str, Any, tuple, int, int]] = []  # testo, carattere, colore, x, altezza riga
+    for text, title in entry["righe"]:
+        if title:
+            for k, part in enumerate(photo_wrap(probe, text, title_font, width - 120)):
+                rows.append((part, title_font, (180, 100, 10), 60, (74 if k == 0 and rows else 58)))
+        else:
+            for k, part in enumerate(photo_wrap(probe, text, dish_font, width - 170)):
+                rows.append((("• " if k == 0 else "   ") + part, dish_font, (30, 35, 32), 84, 52))
+    height = 56 + sum(row[4] for row in rows) + 40
+    card = Image.new("RGB", (width, height), (250, 247, 240))
+    draw = ImageDraw.Draw(card)
+    y = 48
+    for text, font, color, x, step in rows:
+        y += step - 52 if step > 58 else 0
+        draw.text((x, y), text, font=font, fill=color)
+        y += 52 if step <= 58 else 58
+    return video_rounded(card, 24)
+
+
+def photo_menu_picture(entry: dict[str, Any], width: int):
+    """La foto del menu intera, larga quanto l'immagine: ingrandita bene e un po' più nitida."""
+    from PIL import Image, ImageFilter
+    with Image.open(entry["foto"]) as photo:
+        photo = photo.convert("RGB")
+        scale = width / photo.width
+        photo = photo.resize((width, max(1, round(photo.height * scale))), Image.LANCZOS)
+        if scale > 1.05:
+            photo = photo.filter(ImageFilter.UnsharpMask(radius=max(1.0, scale * 0.7), percent=70, threshold=2))
+    return video_rounded(photo, 24)
+
+
+def make_photos(config: dict[str, Any]) -> Path | None:
+    """Crea Foto\\AAAA-MM-GG\\NN Nome.jpg per ogni rosticceria con il menu di oggi. Restituisce la cartella."""
+    from PIL import Image, ImageDraw
+    entries = video_shops(config)
+    if not entries:
+        print("Foto non create: nessuna rosticceria ha ancora il menu di oggi.")
+        return None
+    day = date.today()
+    folder = PHOTOS / day.isoformat()
+    folder.mkdir(parents=True, exist_ok=True)
+    when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]} {day.year}"
+    width, margin, logo_side = 1080, 40, 170
+    for number, entry in enumerate(entries, 1):
+        menu = photo_menu_picture(entry, width - 2 * margin) if entry["foto"] else photo_menu_text(entry, width - 2 * margin)
+        head = 2 * 44 + logo_side
+        height = max(1350, head + menu.height + 110)
+        image = Image.new("RGB", (width, height), VIDEO_BG)
+        draw = ImageDraw.Draw(image)
+        logo = video_logo(entry, logo_side)
+        image.paste(logo, (margin, 44), logo)
+        text_x, text_w = margin + logo_side + 32, width - (margin + logo_side + 32) - margin
+        name_font, name = video_fit_text(draw, entry["nome"], 64, True, text_w)
+        draw.text((text_x, 44 + 70), name, font=name_font, fill=VIDEO_INK, anchor="ls")
+        draw.text((text_x, 44 + 122), entry["comune"], font=video_font(40), fill=VIDEO_MUTED, anchor="ls")
+        draw.text((text_x, 44 + 166), f"Menu di {when.lower()}", font=video_font(36, bold=True), fill=VIDEO_ACCENT, anchor="ls")
+        image.paste(menu, (margin, head), menu)
+        draw.text((width / 2, height - 48), "tinyurl.com/menurosticcerie", font=video_font(32), fill=VIDEO_MUTED, anchor="mm")
+        safe = re.sub(r'[\\/:*?"<>|]', "", entry["nome"]).strip()
+        target = folder / f"{number:02d} {safe}.jpg"
+        image.save(target, quality=92, optimize=True, subsampling=0)
+        print(f"  {number}/{len(entries)} {target.name} ({width}x{height})")
+    print(f"Foto pronte in {folder}")
+    return folder
+
+
+# ------------------------------------------------------------------------------------------------
 # RIASSUNTO DEL GIORNO PER FACEBOOK (vedi LEGGIMI.txt > Riassunto delle 11:30)
 # Ogni giorno, al primo giro automatico dalle "ora" in poi (predefinito 11:30), dopo aver
 # ricontrollato TUTTE le rosticcerie, Menu.py crea in dati/riassunti/ un'immagine (AAAA-MM-GG.jpg)
@@ -3424,7 +3518,9 @@ MAIN_DISHES = re.compile(
 
 
 def summary_settings(settings: dict[str, Any]) -> dict[str, Any]:
-    return {"attivo": True, "ora": "11:30", "facebook": True, "video": True, **settings.get("riassunto", {})}
+    # "formato": "foto" = post con le immagini del pulsante Foto (una per rosticceria),
+    # "video" = il video dei menu, "immagine" = l'immagine riassuntiva unica
+    return {"attivo": True, "ora": "11:30", "facebook": True, "formato": "foto", **settings.get("riassunto", {})}
 
 
 def all_menus_ready(config: dict[str, Any]) -> bool:
@@ -3739,6 +3835,26 @@ def publish_summary_facebook(image: Path, text: str) -> str:
     return answer.get("post_id") or answer.get("id", "")
 
 
+def publish_photos_facebook(pictures: list[Path], text: str) -> tuple[str, list[str]]:
+    """Post con più foto: carica ogni immagine come foto NON pubblicata, poi un unico post della
+    Pagina con il testo e tutte le foto allegate. Restituisce (id del post, id delle foto)."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
+    token, version, page = link["token"], link.get("versione", ""), link["pagina_id"]
+    ids: list[str] = []
+    for number, picture in enumerate(pictures, 1):
+        print(f"  carico la foto {number}/{len(pictures)}: {picture.name}")
+        answer = facebook_call(f"{page}/photos", {"published": "false", "access_token": token},
+                               files={"source": picture}, version=version)
+        ids.append(answer.get("id", ""))
+    params = {"message": text, "published": "true", "access_token": token}
+    for index, photo in enumerate(ids):
+        params[f"attached_media[{index}]"] = json.dumps({"media_fbid": photo})
+    answer = facebook_call(f"{page}/feed", params, files={}, version=version)
+    return answer.get("id", ""), ids
+
+
 def publish_video_facebook(video: Path, text: str) -> str:
     """Pubblica il video con il testo sulla Pagina (graph-video). Restituisce l'id del video."""
     link = read_json(FACEBOOK_CONFIG, {})
@@ -3786,18 +3902,32 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
     state.update({"creato": True, "immagine": image.name, "ora": datetime.now().strftime("%H:%M"), "da_ripubblicare": False})
     # il post è il VIDEO dei menu (logo, freccia, menu, musica) con il testo; se il video non si
     # riesce a creare si pubblica l'immagine riassuntiva come prima
-    video = None
-    if plan.get("video", True):
-        try:
+    # cosa pubblicare (impostazioni > riassunto > "formato"): le FOTO dei menu (predefinito, una per
+    # rosticceria, come il pulsante Foto), il video, oppure l'immagine riassuntiva unica. Se le foto o
+    # il video non si riescono a creare si pubblica l'immagine riassuntiva.
+    form = plan.get("formato") or ("video" if plan.get("video") else "foto")
+    video, pictures = None, []
+    try:
+        if form == "foto":
+            folder = make_photos(config)
+            pictures = sorted(folder.glob("*.jpg")) if folder else []
+        elif form == "video":
             video = make_video(config)
-        except Exception as exc:
-            print(f"Video non creato ({exc}): pubblico l'immagine")
+    except Exception as exc:
+        print(f"{form.capitalize()} non create ({exc}): pubblico l'immagine riassuntiva")
+    previous_photos = state.get("foto_ids", [])  # foto del post di oggi già sulla Pagina
     state["video"] = video.name if video else ""
+    state["foto"] = len(pictures)
+    state["foto_ids"] = []
     if plan.get("facebook", True):
         try:
             if read_json(FACEBOOK_CONFIG, {}).get("token"):
                 state["tentativi"] = int(state.get("tentativi", 0)) + 1
-            if video:
+            if pictures:
+                print(f"Pubblico sulla Pagina Facebook il post con {len(pictures)} foto dei menu...")
+                state["pubblicato"], state["foto_ids"] = publish_photos_facebook(pictures, text)
+                print(f"Post con le foto dei menu pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
+            elif video:
                 print("Carico il video sulla Pagina Facebook (1-2 minuti, non chiudere la finestra)...")
                 state["pubblicato"] = publish_video_facebook(video, text)
                 print(f"Video dei menu pubblicato su Facebook (id {state['pubblicato']})")
@@ -3807,7 +3937,9 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
             state.pop("errore", None)
             # una nuova pubblicazione nello stesso giorno (pulsante Pubblica FB) SOSTITUISCE quella di
             # prima: i post precedenti di oggi vengono tolti dalla Pagina, così non ci sono doppioni
-            old = [post for post in state.get("precedenti", []) + [previous] if post and post != state["pubblicato"]]
+            # (anche le foto caricate per il post precedente, che altrimenti resterebbero negli album)
+            keep = {state["pubblicato"], *state.get("foto_ids", [])}
+            old = [post for post in state.get("precedenti", []) + [previous] + previous_photos if post and post not in keep]
             state["precedenti"] = delete_facebook_posts(list(dict.fromkeys(old)))
         except LookupError as exc:
             state["errore"] = str(exc)
@@ -3920,8 +4052,11 @@ def main() -> None:
     parser.add_argument("--riassunto-prova", action="store_true",
                         help="Crea il riassunto di oggi e apre l'immagine, SENZA pubblicare su Facebook.")
     parser.add_argument("--pubblica-video", action="store_true",
-                        help="Pubblica SUBITO sulla Pagina Facebook il video dei menu di questo momento con il testo "
+                        help="Pubblica SUBITO sulla Pagina Facebook il post con le foto dei menu di questo momento e il testo "
                              "del riassunto (pulsante \"Pubblica FB\" del Monitor), anche se oggi è già stato pubblicato.")
+    parser.add_argument("--foto", action="store_true",
+                        help="Crea in Foto\\AAAA-MM-GG un'immagine per rosticceria (logo, nome, data e menu intero "
+                             "da leggere) e apre la cartella (pulsante Foto del Monitor).")
     parser.add_argument("--video", action="store_true",
                         help="Crea Facebook\\Video-AAAA-MM-GG.mp4 (verticale 4:5) con il logo e il menu di oggi di ogni "
                              "rosticceria, e lo apre (pulsante Video del Monitor).")
@@ -3953,6 +4088,11 @@ def main() -> None:
         return
     if args.facebook_prova:
         facebook_check()
+        return
+    if args.foto:  # immagini dei menu di oggi da leggere / condividere
+        made = make_photos(config)
+        if made and sys.platform == "win32":
+            os.startfile(made)
         return
     if args.video:  # video dei menu di oggi per la Pagina Facebook
         made = make_video(config)

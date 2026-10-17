@@ -1154,3 +1154,26 @@ poi una tabella giorno per giorno (dal più recente). Le righe "Prova di funzion
 GET ?azione=sistema: toglie le righe di prova (Prova di funzionamento, dispositivo PROVA... o
 DEBUG...) dai fogli dei click e delle visite e riscrive il Contatore.
 Copia precedente: backup\Registro_click_2026-10-17_prima-del-contatore.gs
+
+PULSANTE "FOTO" DEL MONITOR (immagini dei menu da leggere) - 17/10/2026
+"Foto" (quarta riga, accanto a "Pubblica FB") o python Menu.py --foto: per ogni rosticceria con il
+menu di oggi crea un'immagine larga 1080 (alta quanto serve, almeno 1350) con in alto logo, nome,
+paese e "Menu di <giorno>", subito sotto il menu INTERO: la foto del locale senza tagli, ingrandita e
+resa più nitida, oppure (menu solo testo, es. Bollenti piatti e Pane & Co) i piatti riscritti per
+intero con le righe lunghe a capo; in fondo il link. Salvate in Foto\AAAA-MM-GG\NN Nome.jpg
+(stesso ordine del video), poi si apre la cartella. La cartella Foto non va su GitHub (.gitignore).
+Copie precedenti: backup\Menu_2026-10-17_prima-delle-foto.py, backup\Monitor_2026-10-17_prima-delle-foto.py
+
+POST DEL GIORNO = FOTO DEI MENU (al posto del video) - 17/10/2026
+Il post su Facebook ora è UN post con tutte le immagini del pulsante "Foto" (una per rosticceria,
+menu intero da leggere) e il testo del riassunto. Parte:
+- da solo appena tutte le rosticcerie hanno il menu di oggi, oppure alle 11:30 con quelle presenti;
+- a mano con "Pubblica FB" (chiede conferma), in qualunque momento.
+Ogni nuova pubblicazione dello stesso giorno SOSTITUISCE la precedente: dopo il nuovo post vengono
+tolti dalla Pagina il post precedente di oggi e le sue foto.
+Come si pubblica: ogni immagine viene caricata come foto non pubblicata, poi un unico post della
+Pagina con "attached_media" (publish_photos_facebook). Il video resta (pulsante "Video").
+Formato: locali.json > impostazioni > riassunto > "formato": "foto" (predefinito), "video" o
+"immagine" (l'immagine riassuntiva unica di prima). Se le foto non si riescono a creare si
+pubblica l'immagine riassuntiva.
+Copie precedenti: backup\Menu_2026-10-17_prima-del-post-foto.py, backup\Monitor_2026-10-17_prima-del-post-foto.py
