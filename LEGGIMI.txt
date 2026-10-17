@@ -1008,7 +1008,10 @@ Ogni giorno, al primo giro automatico dalle 11:30 in poi, Menu.py:
    link tinyurl.com/menurosticcerie. I piatti (due per rosticceria) stanno nel TESTO
    del post, che sul telefono si legge bene. I piatti sono solo righe che sembrano
    piatti veri e leggibili (stesse correzioni del pulsante "Testo": correzioni_ocr,
-   sostituisci, togli); se non se ne trovano: "menu in foto nell'app";
+   sostituisci, togli); se non se ne trovano: "menu in foto nell'app". I nomi lunghi
+   che nella foto vanno a capo vengono ricomposti ("Riso basmati con bresaola, rucola e"
+   + "limone"); un piatto rimasto tagliato a metà ("grana e") viene scartato; quelli
+   scritti TUTTO MAIUSCOLO diventano normali ("Trancio di salmone al pepe rosa");
 3. se il collegamento ufficiale con Facebook è fatto (dati\facebook.json), pubblica
    immagine e testo sulla Pagina https://www.facebook.com/MenuRosticcerie.
 Una sola volta al giorno (dati\riassunti\stato.json); se Facebook non risponde si

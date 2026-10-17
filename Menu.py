@@ -3089,20 +3089,58 @@ def clean_menu_text(text: str, shop: dict[str, Any], settings: dict[str, Any]) -
     return text
 
 
+# parola finale che dice "il nome del piatto continua alla riga dopo" ("Tagliata di manzo, rucola, grana e")
+DANGLING = re.compile(r"(?:[,;]|\b(?:e|ed|con|al|alla|allo|ai|agli|alle|di|del|della|dello|dei|degli|delle|a|in|su|sul|"
+                      r"sulla|da|per|tra|fra|o))\s*$", re.IGNORECASE)
+
+
+def join_dish_lines(lines: list[str]) -> list[str]:
+    """Nei menu in foto il nome lungo di un piatto va a capo: "Riso basmati con bresaola, rucola e" +
+    "limone". Una riga che finisce con "e", "con", "al", una virgola... continua nella riga seguente
+    (saltando righe vuote e prezzi) se quella comincia in minuscolo, oppure se sono entrambe in
+    MAIUSCOLO ("TRANCIO DI SALMONE AL" + "PEPE ROSA"). Altrimenti resta tagliata e viene scartata."""
+    # un testo su una riga sola con i punti elenco ("Primi • Impanata • Fave e cicorie") = più righe
+    rows = [piece.strip() for line in lines for piece in re.split(r"\s*[•●▪]\s*", line or "")]
+    joined: list[str] = []
+    i = 0
+    while i < len(rows):
+        line = rows[i]
+        i += 1
+        while line and DANGLING.search(line):
+            j = i
+            while j < len(rows) and (not rows[j] or re.fullmatch(r"[€\d\s.,{}]+", rows[j])):
+                j += 1  # righe vuote e prezzi ("€ 8,00") in mezzo
+            if j >= len(rows):
+                break
+            following = re.sub(r"^[\s•●·▪\-–_'’*]+", "", rows[j])
+            caps = lambda text: (lambda ls: bool(ls) and sum(c.isupper() for c in ls) >= 0.7 * len(ls))(
+                re.findall(r"[A-Za-zÀ-ÿ]", text))
+            whole_word = re.search(r"[A-Za-zÀ-ÿ]{4,}", following)  # non un pezzo letto male ("str")
+            if following and whole_word and (following[0].islower() or (caps(line) and caps(following))):
+                line = f"{line} {following}"
+                i = j + 1
+            else:
+                break
+        joined.append(line)
+    return joined
+
+
 def summary_dishes(lines: list[str], limit: int = 2) -> list[str]:
     """Dalle righe del menu tiene solo quelle che sono davvero piatti, leggibili e corte
     (scarta pezzi letti male dall'OCR come "vhelloèlla" o "Spagh i"), primi e secondi per primi."""
     found: list[str] = []
-    for line in lines:
+    for line in join_dish_lines(lines):
         line = re.sub(r"^[\s•●·▪\-–_'’*]+", "", line or "")
         line = re.sub(r"\s*€\s*\d+(?:[.,]\d+)?|\s*\d+[.,]\d{1,2}\s*€?", "", line)
         line = re.sub(r"\s+,", ",", line).strip(" .,;:")
-        if not 5 <= len(line) <= 42 or not DISH_WORDS.search(line):
-            continue
+        if not 5 <= len(line) <= 55 or not DISH_WORDS.search(line) or DANGLING.search(line):
+            continue  # troppo corta/lunga, non è un piatto, oppure tagliata a metà ("grana e")
         if re.search(r"[^\wÀ-ÿ\s,'’]", line):
             continue
-        if line.isupper():
-            line = line[0] + line[1:].lower()
+        letters = re.findall(r"[A-Za-zÀ-ÿ]", line)
+        if letters and sum(char.isupper() for char in letters) >= 0.7 * len(letters):  # TUTTO MAIUSCOLO
+            line = re.sub(r"\bDl\b", "DI", re.sub(r"\bAl\b", "AI", line))  # OCR: "Dl" = DI
+            line = line[0].upper() + line[1:].lower()
         if not line[0].isupper():
             continue
         words = re.findall(r"[A-Za-zÀ-ÿ]+", line)
