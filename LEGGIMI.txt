@@ -984,3 +984,13 @@ Correzioni (valgono per tutti i locali):
   veri restano riconosciuti.
 Codice: post_day, BrowserCollector (lettura data), browser_result, looks_like_dishes.
 Copia precedente: backup\Menu_2026-10-17_prima-di-post-vecchi.py
+
+MONITOR - ESITO CHE VA A CAPO E FUMETTI SUI PULSANTI (17/10/2026)
+- La scritta dell'ultimo giro (verde/grigia/rossa, sopra i pulsanti) va a capo alla
+  larghezza delle righe dei locali e dei pulsanti: un elenco lungo di "novità" non
+  allarga più la finestra.
+- Fermando il mouse su un pulsante compare un fumetto giallo che spiega cosa fa
+  (per "Pianifica"/"Disabilita" dice anche gli orari attuali). Il fumetto sparisce
+  appena il mouse esce o si clicca.
+Codice: classe Tooltip e Monitor.button_help in Monitor.py.
+Copia precedente: backup\Monitor_2026-10-17_prima-dei-fumetti.py

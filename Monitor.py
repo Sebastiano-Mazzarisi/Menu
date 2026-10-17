@@ -361,6 +361,52 @@ def log_error(text: str) -> None:
         pass
 
 
+class Tooltip:
+    """Fumetto che compare quando il mouse si ferma su un widget e spiega cosa fa.
+    text: testo fisso oppure funzione che lo restituisce (per i pulsanti che cambiano scritta)."""
+
+    def __init__(self, widget: tk.Widget, text, delay: int = 500) -> None:
+        self.widget, self.text, self.delay = widget, text, delay
+        self.tip: tk.Toplevel | None = None
+        self.pending = None
+        widget.bind("<Enter>", self.schedule, add="+")
+        widget.bind("<Leave>", self.hide, add="+")
+        widget.bind("<ButtonPress>", self.hide, add="+")
+
+    def schedule(self, _event=None) -> None:
+        self.hide()
+        self.pending = self.widget.after(self.delay, self.show)
+
+    def show(self) -> None:
+        self.pending = None
+        text = self.text() if callable(self.text) else self.text
+        if not text or self.tip is not None:
+            return
+        tip = tk.Toplevel(self.widget)
+        tip.wm_overrideredirect(True)
+        tip.attributes("-topmost", True)  # la finestra del Monitor è sempre in primo piano
+        tk.Label(tip, text=text, justify="left", wraplength=260, font=("Segoe UI", 9),
+                 bg="#fef9c3", fg="#1f2937", relief="solid", borderwidth=1, padx=8, pady=5).pack()
+        tip.update_idletasks()
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
+        # dentro lo schermo: se non c'è spazio sotto o a destra va sopra / più a sinistra
+        if x + tip.winfo_width() > tip.winfo_screenwidth():
+            x = tip.winfo_screenwidth() - tip.winfo_width() - 4
+        if y + tip.winfo_height() > tip.winfo_screenheight() - 40:
+            y = self.widget.winfo_rooty() - tip.winfo_height() - 4
+        tip.geometry(f"+{max(0, x)}+{max(0, y)}")
+        self.tip = tip
+
+    def hide(self, _event=None) -> None:
+        if self.pending is not None:
+            self.widget.after_cancel(self.pending)
+            self.pending = None
+        if self.tip is not None:
+            self.tip.destroy()
+            self.tip = None
+
+
 class Monitor(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -391,6 +437,7 @@ class Monitor(tk.Tk):
 
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
+        self.buttons_frame = buttons  # la sua larghezza decide dove va a capo la scritta dell'esito
         # pulsanti su tre righe (3 + 3 + 2), tutti larghi uguale: la finestra resta stretta
         layout = (("Controlla", self.check, 0, 0), ("Ricontrolla", self.recheck, 0, 1),
                   ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
@@ -406,6 +453,7 @@ class Monitor(tk.Tk):
             if action in (self.check, self.recheck, self.overview, self.publish):
                 self.run_buttons.append(button)
             button.grid(row=row, column=column, padx=3, pady=3, sticky="we")
+            Tooltip(button, self.button_help(action))
             if action == self.toggle_task:
                 # il pulsante che cambia scritta ("Pianifica" / "Disabilita"); prima era "l'ultimo
                 # pulsante creato" e con Panorama la scritta finiva sul pulsante sbagliato
@@ -484,7 +532,10 @@ class Monitor(tk.Tk):
         text = f"Ultimo giro {when}: {outcome}" if when else outcome
         if self.message and now < self.message_until:
             text += f"\n{self.message}"
-        self.outcome.config(text=text, fg=colour)
+        # l'esito va a capo alla larghezza delle righe dei locali / dei pulsanti: un testo lungo
+        # (es. "novità: A, B, C...") non allarga più la finestra
+        wrap = max(self.rows.winfo_reqwidth(), self.buttons_frame.winfo_reqwidth()) - 12
+        self.outcome.config(text=text, fg=colour, wraplength=max(200, wrap))
         self.after(1000, self.tick)
 
     def blink(self) -> None:
@@ -663,6 +714,31 @@ class Monitor(tk.Tk):
         self.querying = False
 
     # --- pulsanti -------------------------------------------------------------------------------
+    def button_help(self, action):
+        """Testo del fumetto di ogni pulsante (Pianifica/Disabilita cambia secondo lo stato)."""
+        def schedule_help() -> str:
+            dalle, alle, every = plan(read_json(CONFIG, {}).get("impostazioni", {}))
+            if self.is_active():
+                return (f"Disabilita i controlli automatici (ora ogni {every} minuti, dalle {dalle} alle {alle}). "
+                        "Chiede conferma: il sito non si aggiorna più da solo finché non premi Pianifica.")
+            return f"Attiva i controlli automatici: ogni {every} minuti, dalle {dalle} alle {alle}."
+        texts = {
+            self.check: "Controlla subito online solo le rosticcerie che non hanno ancora il menu di oggi, "
+                        "poi aggiorna e pubblica il sito.",
+            self.recheck: "Ricontrolla online TUTTE le rosticcerie, anche quelle già aggiornate "
+                          "(es. un menu corretto dopo la pubblicazione), poi pubblica il sito.",
+            self.open_log: "Apre nel Blocco note il registro dei controlli (cosa è stato letto e deciso per ogni locale).",
+            self.open_site: "Apre il sito Menu come amministratore (i tuoi click non vengono contati). "
+                            "Se è già aperto lo porta davanti e lo aggiorna.",
+            self.open_accesses: "Apre il foglio Google con i click sulle rosticcerie, sull'ultima riga inserita.",
+            self.toggle_task: schedule_help,
+            self.overview: "Crea e apre un PDF con, per ogni locale, la scheda del sito e la fonte "
+                           "(post o storia) come appare adesso. Richiede qualche minuto.",
+            self.publish: "Rifà la pagina con i menu già scaricati e la pubblica subito online, "
+                          "senza ricontrollare Facebook, Instagram e i siti.",
+        }
+        return texts.get(action, "")
+
     def check(self) -> None:
         """Controlla: come il giro automatico, ma subito e a qualunque ora.
         Le rosticcerie che hanno già il menu di oggi non vengono ricontrollate online."""
