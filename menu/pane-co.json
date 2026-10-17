@@ -31,11 +31,6 @@
           "descrizione": "Al pezzo"
         },
         {
-          "nome": "Riso rosso integrale e riso basmati con ceci, cetrioli, zucchina e pollo al vapore",
-          "prezzo": "€5.00",
-          "descrizione": ""
-        },
-        {
           "nome": "Orzo con caponata di verdure",
           "prezzo": "€5.00",
           "descrizione": "Melanzane, cetrioli, zucchina, peperoni"
@@ -66,27 +61,27 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla San Giovanni",
+          "nome": "Penne all'amatriciana",
           "prezzo": "€6.50",
-          "descrizione": "Con acciughe, capperi, pomodorino e aglio"
-        },
-        {
-          "nome": "Orecchiette con vellutata di zucca e speck croccante",
-          "prezzo": "€8.00",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con asparagi e cernia",
+          "nome": "Orecchiette con vellutata di cavolfiore e capocollo croccante",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Mezze maniche con pomodorino, salsiccia e rucola",
+          "nome": "Risotto con funghi porcini e zafferano",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di lenticchie",
+          "nome": "Cavatelli al grano arso con ragù di baccalà",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Zuppa di ceci",
           "prezzo": "€6.00",
           "descrizione": "Con o senza pasta"
         }
@@ -96,13 +91,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Bocconcini di capocollo all'ortolana",
-          "prezzo": "€7.50",
-          "descrizione": ""
+          "nome": "Filetto di merluzzo gratinato con zucchina",
+          "prezzo": "€8.50",
+          "descrizione": "Con pomodorino"
         },
         {
-          "nome": "Trancio di baccalà gratinato",
-          "prezzo": "€8.50",
+          "nome": "Bocconcini di petto di pollo con piselli",
+          "prezzo": "€7.50",
           "descrizione": ""
         }
       ]
