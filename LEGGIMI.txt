@@ -1056,3 +1056,18 @@ PULSANTE "FB" (pagina Facebook "Menu rosticcerie") - 17/10/2026
   stessa pagina nel browser predefinito (FACEBOOK_URL in Monitor.py).
 Copie precedenti: backup\Menu_2026-10-17_prima-del-pulsante-FB.py,
 backup\Monitor_2026-10-17_prima-del-pulsante-FB.py
+
+REGISTRO CLICK DAI TELEFONI: INVIO PIÙ SICURO E DIAGNOSI ?debug=1 - 17/10/2026
+Il 17/10 un click fatto da un telefono reale non arrivava al foglio, mentre dal PC sì.
+- Invio (postLog/sendLog nella pagina): ora si usa PRIMA fetch con keepalive (POST no-cors, text/plain).
+  Su iOS, soprattutto con Menu aperto dall'icona sulla Home, sendBeacon risponde "true" anche quando
+  poi la richiesta non parte, e il ripiego non scattava mai. sendBeacon resta come riserva se fetch
+  manca o fallisce.
+- Diagnosi: aprire sul telefono  https://sebastiano-mazzarisi.github.io/Menu/?debug=1
+  In basso compare una barra nera con: ADMIN, MINE (segno amministratore salvato), webdriver,
+  NOCOUNT (true = questo dispositivo NON viene contato), se la pagina è aperta dalla Home,
+  l'esito dell'ultimo invio e il browser. Basta fotografarla e mandarla.
+  Pulsanti: "Prova invio" scrive nel foglio una riga "Prova di funzionamento" (non entra nei conteggi);
+  "Conta questo dispositivo" toglie il segno amministratore (come ?v=0), poi va ricaricata la pagina.
+- Se la prova non arriva al foglio: Apps Script > Esecuzioni, cercare doPost all'ora della prova.
+Copia precedente: backup\Menu_2026-10-17_prima-di-debug-click.py
