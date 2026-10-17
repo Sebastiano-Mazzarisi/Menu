@@ -1177,3 +1177,18 @@ Formato: locali.json > impostazioni > riassunto > "formato": "foto" (predefinito
 "immagine" (l'immagine riassuntiva unica di prima). Se le foto non si riescono a creare si
 pubblica l'immagine riassuntiva.
 Copie precedenti: backup\Menu_2026-10-17_prima-del-post-foto.py, backup\Monitor_2026-10-17_prima-del-post-foto.py
+
+DIDASCALIA CON LINK SOTTO OGNI FOTO DEL POST + PDF A4 DI OGNI MENU - 17/10/2026
+- Il pulsante "Foto" (e il post del giorno) crea anche, per ogni rosticceria, un PDF A4 verticale con
+  tutta l'immagine del menu: pdf\AAAA-MM-GG\<id>.pdf. La cartella pdf va online con il sito
+  (https://sebastiano-mazzarisi.github.io/Menu/pdf/...); si tengono gli ultimi 7 giorni.
+- Nel post su Facebook ogni foto ha la sua didascalia (si vede aprendo la foto):
+      Fantasia - Putignano
+      Menu completo da leggere (PDF): https://is.gd/xxxxx
+      Tutti i menu di oggi: https://tinyurl.com/menurosticcerie
+  Su Facebook si possono toccare solo gli indirizzi scritti per intero (non "Fantasia - Putignano"
+  come parola-link): per questo il link al PDF è una riga a sé, accorciato con is.gd (niente nome e
+  cognome nel testo). Prima del post il sito viene pubblicato e si aspetta (max 4 minuti) che i PDF
+  siano online; se non lo sono, la didascalia ha solo nome, paese e link alla webapp.
+Codice: photo_pdf, prune_pdfs, short_link, wait_online, photo_captions, publish_photos_facebook.
+Copia precedente: backup\Menu_2026-10-17_prima-dei-pdf.py

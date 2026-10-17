@@ -3151,7 +3151,7 @@ def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
                     lines.append((text, raw == text and text.isupper() and len(text) <= 28))
         if not (picture and picture.is_file()) and not lines:
             continue
-        found.append({"nome": shop.get("nome", ""), "comune": shop_town(shop), "logo": shop_logo_source(shop),
+        found.append({"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop), "logo": shop_logo_source(shop),
                       "foto": picture if picture and picture.is_file() else None, "righe": lines})
     found.sort(key=lambda e: (-towns.get(e["comune"], 0), e["comune"], sort_key_name(e["nome"])))
     return found
@@ -3409,6 +3409,29 @@ def make_video(config: dict[str, Any]) -> Path | None:
 # solo testo); in fondo il link. Le salva in Foto\AAAA-MM-GG\NN Nome.jpg (le vecchie restano).
 # ------------------------------------------------------------------------------------------------
 PHOTOS = ROOT / "Foto"
+# PDF A4 di ogni menu, PUBBLICATI con il sito (pdf/AAAA-MM-GG/<id>.pdf) per il link sotto ogni foto
+# del post Facebook; si tengono gli ultimi PDF_DAYS giorni
+PDFS = ROOT / "pdf"
+PDF_DAYS = 7
+
+
+def photo_pdf(image, target: Path) -> None:
+    """PDF A4 verticale (150 dpi) con tutta l'immagine, la più grande possibile, centrata."""
+    from PIL import Image
+    page_w, page_h = 1240, 1754  # A4 a 150 dpi
+    scale = min(page_w / image.width, page_h / image.height)
+    picture = image.resize((round(image.width * scale), round(image.height * scale)), Image.LANCZOS)
+    page = Image.new("RGB", (page_w, page_h), VIDEO_BG)
+    page.paste(picture, ((page_w - picture.width) // 2, (page_h - picture.height) // 2))
+    page.save(target, "PDF", resolution=150)
+
+
+def prune_pdfs() -> None:
+    """Toglie le cartelle pdf/AAAA-MM-GG più vecchie di PDF_DAYS giorni (il sito resta leggero)."""
+    limit = (date.today() - timedelta(days=PDF_DAYS)).isoformat()
+    for folder in PDFS.glob("????-??-??"):
+        if folder.is_dir() and folder.name < limit:
+            shutil.rmtree(folder, ignore_errors=True)
 
 
 def photo_wrap(draw, text: str, font, width: int) -> list[str]:
@@ -3470,6 +3493,9 @@ def make_photos(config: dict[str, Any]) -> Path | None:
     day = date.today()
     folder = PHOTOS / day.isoformat()
     folder.mkdir(parents=True, exist_ok=True)
+    pdf_folder = PDFS / day.isoformat()
+    pdf_folder.mkdir(parents=True, exist_ok=True)
+    captions = []
     when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]} {day.year}"
     width, margin, logo_side = 1080, 40, 170
     for number, entry in enumerate(entries, 1):
@@ -3490,8 +3516,13 @@ def make_photos(config: dict[str, Any]) -> Path | None:
         safe = re.sub(r'[\\/:*?"<>|]', "", entry["nome"]).strip()
         target = folder / f"{number:02d} {safe}.jpg"
         image.save(target, quality=92, optimize=True, subsampling=0)
-        print(f"  {number}/{len(entries)} {target.name} ({width}x{height})")
-    print(f"Foto pronte in {folder}")
+        photo_pdf(image, pdf_folder / f"{entry['id']}.pdf")
+        captions.append({"file": target.name, "nome": entry["nome"], "comune": entry["comune"],
+                         "pdf": f"{WEB_URL}pdf/{day.isoformat()}/{entry['id']}.pdf"})
+        print(f"  {number}/{len(entries)} {target.name} ({width}x{height}) + PDF A4")
+    save_json(folder / "didascalie.json", captions)
+    prune_pdfs()
+    print(f"Foto pronte in {folder} (PDF in {pdf_folder}, online dopo la pubblicazione del sito)")
     return folder
 
 
@@ -3835,7 +3866,57 @@ def publish_summary_facebook(image: Path, text: str) -> str:
     return answer.get("post_id") or answer.get("id", "")
 
 
-def publish_photos_facebook(pictures: list[Path], text: str) -> tuple[str, list[str]]:
+def short_link(url: str) -> str:
+    """Link corto (is.gd) per le didascalie; se il servizio non risponde, il link intero."""
+    import urllib.parse
+    try:
+        with urllib.request.urlopen("https://is.gd/create.php?format=simple&url=" + urllib.parse.quote(url, safe=""),
+                                    timeout=20) as answer:
+            short = answer.read().decode("utf-8").strip()
+        return short if short.startswith("https://is.gd/") else url
+    except Exception:
+        return url
+
+
+def wait_online(url: str, seconds: int = 240) -> bool:
+    """Aspetta che GitHub Pages pubblichi il file appena inviato (di solito 1-2 minuti)."""
+    deadline = time.time() + seconds
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=20) as answer:
+                if answer.status == 200:
+                    return True
+        except Exception:
+            pass
+        time.sleep(10)
+    return False
+
+
+def photo_captions(folder: Path, pictures: list[Path]) -> list[str]:
+    """Didascalia di ogni foto del post: nome e paese, link al PDF A4 del menu, link alla webapp.
+    Prima pubblica il sito (così i PDF sono online) e aspetta che il primo PDF risponda."""
+    data = {item["file"]: item for item in read_json(folder / "didascalie.json", [])}
+    if not data:
+        return [""] * len(pictures)
+    publish()
+    first = next(iter(data.values()))["pdf"]
+    print("Attendo che i PDF siano online...")
+    online = wait_online(first)
+    captions = []
+    for picture in pictures:
+        item = data.get(picture.name)
+        if not item:
+            captions.append("")
+            continue
+        lines = [f"{item['nome']} - {item['comune']}"]
+        if online:
+            lines.append(f"Menu completo da leggere (PDF): {short_link(item['pdf'])}")
+        lines.append(f"Tutti i menu di oggi: {SHORT_URL}")
+        captions.append("\n".join(lines))
+    return captions
+
+
+def publish_photos_facebook(pictures: list[Path], text: str, captions: list[str] | None = None) -> tuple[str, list[str]]:
     """Post con più foto: carica ogni immagine come foto NON pubblicata, poi un unico post della
     Pagina con il testo e tutte le foto allegate. Restituisce (id del post, id delle foto)."""
     link = read_json(FACEBOOK_CONFIG, {})
@@ -3845,8 +3926,10 @@ def publish_photos_facebook(pictures: list[Path], text: str) -> tuple[str, list[
     ids: list[str] = []
     for number, picture in enumerate(pictures, 1):
         print(f"  carico la foto {number}/{len(pictures)}: {picture.name}")
-        answer = facebook_call(f"{page}/photos", {"published": "false", "access_token": token},
-                               files={"source": picture}, version=version)
+        params = {"published": "false", "access_token": token}
+        if captions and captions[number - 1]:
+            params["caption"] = captions[number - 1]  # didascalia della singola foto (link cliccabili)
+        answer = facebook_call(f"{page}/photos", params, files={"source": picture}, version=version)
         ids.append(answer.get("id", ""))
     params = {"message": text, "published": "true", "access_token": token}
     for index, photo in enumerate(ids):
@@ -3925,7 +4008,8 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
                 state["tentativi"] = int(state.get("tentativi", 0)) + 1
             if pictures:
                 print(f"Pubblico sulla Pagina Facebook il post con {len(pictures)} foto dei menu...")
-                state["pubblicato"], state["foto_ids"] = publish_photos_facebook(pictures, text)
+                captions = photo_captions(pictures[0].parent, pictures)
+                state["pubblicato"], state["foto_ids"] = publish_photos_facebook(pictures, text, captions)
                 print(f"Post con le foto dei menu pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
             elif video:
                 print("Carico il video sulla Pagina Facebook (1-2 minuti, non chiudere la finestra)...")
