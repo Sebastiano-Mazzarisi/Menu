@@ -1146,3 +1146,11 @@ backup\Registro_click_2026-10-17_prima-di-registra-get.gs
 VIDEO: NIENTE DISSOLVENZA ALL'INIZIO - 17/10/2026
 Il video parte già con la schermata d'apertura piena (prima compariva dal nero): Facebook usa
 l'inizio del video come anteprima, che altrimenti era un rettangolo nero.
+
+SCHEDA "CONTATORE" NEL FOGLIO GOOGLE MENU - 17/10/2026
+Registro_click.gs crea e aggiorna da solo, a ogni visita o click, la scheda "Contatore" (ultima
+scheda del foglio "Menu"): visite al sito e click sulle rosticcerie di oggi, del mese e in totale,
+poi una tabella giorno per giorno (dal più recente). Le righe "Prova di funzionamento" non contano.
+GET ?azione=sistema: toglie le righe di prova (Prova di funzionamento, dispositivo PROVA... o
+DEBUG...) dai fogli dei click e delle visite e riscrive il Contatore.
+Copia precedente: backup\Registro_click_2026-10-17_prima-del-contatore.gs

@@ -31,6 +31,7 @@ function registra(dati) {
   try {
     if (dati.tipo === 'visita') {
       registraVisita(dati);
+      aggiornaContatoreSicuro();
       return ContentService.createTextOutput('ok');
     }
     var foglio = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
@@ -46,6 +47,7 @@ function registra(dati) {
       String(dati.posizione || '').slice(0, 150)
     ]);
     aggiungiAiConti(String(dati.rosticceria || '').slice(0, 100), foglio);
+    aggiornaContatoreSicuro();
     return ContentService.createTextOutput('ok');
   } finally {
     lock.releaseLock();
@@ -60,11 +62,18 @@ function registra(dati) {
  * GET ?azione=oggi: solo i click di oggi (compatibilità con le pagine vecchie).
  * GET ?azione=ricalcola: ricalcola i conteggi rileggendo tutto il foglio.
  * GET ?azione=registra&d={json}: come doPost (visita o click), per il metodo "immagine" della pagina.
+ * GET ?azione=sistema: toglie le righe di prova (Prova di funzionamento, PROVA..., DEBUG...) e aggiorna
+ *   la scheda "Contatore" (visite e click di oggi, del mese, totali e giorno per giorno).
  * GET ?azione=ultima: indirizzo del foglio e numero dell'ultima riga, usati dal pulsante
  * "Accessi" della finestra di controllo (Monitor.py) per aprire il foglio sull'ultimo click.
  */
 function doGet(e) {
   var azione = (e && e.parameter && e.parameter.azione) || '';
+  if (azione === 'sistema') {  // una volta: toglie le righe di prova e (ri)crea la scheda Contatore
+    var tolte = pulisciProve();
+    aggiornaContatore();
+    return ContentService.createTextOutput('ok: tolte ' + tolte + ' righe di prova, Contatore aggiornato');
+  }
   if (azione === 'registra') {
     var dati = {};
     try { dati = JSON.parse(e.parameter.d || '{}'); } catch (err) { return ContentService.createTextOutput('dati non validi'); }
@@ -262,4 +271,101 @@ function oraDi(valore, tz) {
   }
   var m = String(valore || '').match(/^\s*(\d{1,2})[:.]/);
   return m ? Number(m[1]) : -1;
+}
+
+
+/* ---------------------------------------------------------------------------------------------
+ * SCHEDA "CONTATORE": visite al sito e click sulle rosticcerie di oggi, del mese, in totale e
+ * giorno per giorno (dal più recente). Valori scritti dallo script (niente formule: funziona con
+ * qualunque lingua del foglio), aggiornati a ogni visita o click. Le righe "Prova di funzionamento"
+ * non si contano. È l'ultima scheda: il primo foglio resta quello dei click.
+ * ------------------------------------------------------------------------------------------- */
+function aggiornaContatoreSicuro() {
+  try { aggiornaContatore(); } catch (err) { /* il contatore non deve mai impedire la registrazione */ }
+}
+
+function giorniDi(foglio, conColonnaNome) {
+  var tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  var conti = {};
+  if (!foglio || foglio.getLastRow() < 2) return conti;
+  var righe = foglio.getRange(2, 1, foglio.getLastRow() - 1, 3).getValues();
+  for (var i = 0; i < righe.length; i++) {
+    if (conColonnaNome && String(righe[i][2]) === 'Prova di funzionamento') continue;
+    var g = giornoDi(righe[i][0], tz);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(g)) continue;
+    conti[g] = (conti[g] || 0) + 1;
+  }
+  return conti;
+}
+
+function aggiornaContatore() {
+  var file = SpreadsheetApp.getActiveSpreadsheet();
+  var visite = giorniDi(file.getSheetByName('Visite'), false);
+  var click = giorniDi(file.getSheets()[0], true);
+  var oggi = Utilities.formatDate(new Date(), 'Europe/Rome', 'yyyy-MM-dd');
+  var somma = function (conti, filtro) {
+    var n = 0;
+    for (var g in conti) if (filtro(g)) n += conti[g];
+    return n;
+  };
+  var tutti = function () { return true; };
+  var delGiorno = function (g) { return g === oggi; };
+  var delMese = function (g) { return g.slice(0, 7) === oggi.slice(0, 7); };
+  var giorni = Object.keys(visite).concat(Object.keys(click))
+    .filter(function (g, i, a) { return a.indexOf(g) === i; }).sort().reverse();
+  var mesi = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+  var settimana = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+  var bello = function (g) {
+    var d = new Date(Number(g.slice(0, 4)), Number(g.slice(5, 7)) - 1, Number(g.slice(8, 10)));
+    return settimana[d.getDay()] + ' ' + d.getDate() + ' ' + mesi[d.getMonth()] + ' ' + d.getFullYear();
+  };
+  var righe = [
+    ['Contatore Menu', '', ''],
+    ['aggiornato il ' + Utilities.formatDate(new Date(), 'Europe/Rome', 'dd/MM/yyyy HH:mm'), '', ''],
+    ['', 'Visite al sito', 'Click sulle rosticcerie'],
+    ['Oggi', somma(visite, delGiorno), somma(click, delGiorno)],
+    ['Questo mese', somma(visite, delMese), somma(click, delMese)],
+    ['Totale', somma(visite, tutti), somma(click, tutti)],
+    ['', '', ''],
+    ['Giorno', 'Visite', 'Click']
+  ];
+  giorni.forEach(function (g) { righe.push([bello(g), visite[g] || 0, click[g] || 0]); });
+  var foglio = file.getSheetByName('Contatore');
+  if (!foglio) {
+    foglio = file.insertSheet('Contatore', file.getSheets().length);
+  }
+  foglio.clearContents();
+  foglio.getRange(1, 1, righe.length, 3).setValues(righe);
+  foglio.getRange('A1').setFontSize(14).setFontWeight('bold');
+  foglio.getRange('A2').setFontColor('#777777');
+  foglio.getRange('A3:C3').setFontWeight('bold');
+  foglio.getRange('A4:A6').setFontWeight('bold');
+  foglio.getRange('B4:C6').setFontSize(13).setHorizontalAlignment('center');
+  foglio.getRange('A8:C8').setFontWeight('bold');
+  foglio.getRange(9, 2, Math.max(1, righe.length - 8), 2).setHorizontalAlignment('center');
+  foglio.setColumnWidth(1, 170);
+  foglio.setColumnWidth(2, 120);
+  foglio.setColumnWidth(3, 170);
+}
+
+/** Toglie dai fogli Click e Visite le righe di prova; restituisce quante. */
+function pulisciProve() {
+  var file = SpreadsheetApp.getActiveSpreadsheet();
+  var tz = file.getSpreadsheetTimeZone();
+  var tolte = 0;
+  [file.getSheets()[0], file.getSheetByName('Visite')].forEach(function (foglio) {
+    if (!foglio || foglio.getLastRow() < 2) return;
+    var righe = foglio.getRange(2, 1, foglio.getLastRow() - 1, 4).getValues();
+    for (var i = righe.length - 1; i >= 0; i--) {
+      var nome = String(righe[i][2]), disp = String(righe[i][3]);
+      var ora = righe[i][1] && typeof righe[i][1].getFullYear === 'function'
+        ? Utilities.formatDate(righe[i][1], tz, 'HH:mm:ss') : String(righe[i][1]);
+      var prova = nome === 'Prova di funzionamento' || /^(PROVA|DEBUG)/.test(disp) ||
+        // click di prova fatto da Claude il 17/10/2026 alle 15:19:19 (Forno Sant'Antonio, dal PC)
+        (giornoDi(righe[i][0], tz) === '2026-10-17' && ora === '15:19:19' && nome === "Forno Sant'Antonio");
+      if (prova) { foglio.deleteRow(i + 2); tolte++; }
+    }
+  });
+  PropertiesService.getScriptProperties().deleteProperty('conti');  // conteggi da ricalcolare
+  return tolte;
 }
