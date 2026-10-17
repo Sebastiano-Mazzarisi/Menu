@@ -3092,7 +3092,8 @@ def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
 VIDEO_DIR = ROOT / "Facebook"
 VIDEO_W, VIDEO_H, VIDEO_FPS = 1080, 1350, 30
 VIDEO_BG, VIDEO_INK, VIDEO_MUTED, VIDEO_ACCENT = (18, 25, 21), (245, 242, 235), (170, 180, 172), (232, 146, 30)
-VIDEO_SHOP_SECONDS = 6.0   # tempo per ogni rosticceria: comparsa logo, freccia, menu, ~4 s fermo per leggere
+VIDEO_SHOP_SECONDS = 7.0   # tempo per ogni rosticceria: la pagina del menu (come il PDF) ferma per leggerla
+VIDEO_FADE_SECONDS = 0.5   # dissolvenza incrociata da una pagina alla successiva
 VIDEO_OPEN_SECONDS, VIDEO_CLOSE_SECONDS = 5.5, 6.0   # schermata iniziale e finale
 # musica di sottofondo: Facebook\musica-video.m4a (o .mp3), composta apposta per Menu, tranquilla e
 # senza diritti di terzi. Per cambiarla basta sostituire il file; se manca il video è muto.
@@ -3156,6 +3157,12 @@ def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
         found.append({"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop), "logo": shop_logo_source(shop),
                       "foto": picture if picture and picture.is_file() else None, "righe": lines})
     found.sort(key=lambda e: (-towns.get(e["comune"], 0), e["comune"], sort_key_name(e["nome"])))
+    # per le prove: locali.json > impostazioni > riassunto > "solo_primi": 3 = solo le prime 3
+    # rosticcerie in foto, PDF, video e post (togliere la riga per tornare a tutte)
+    limit = int(config.get("impostazioni", {}).get("riassunto", {}).get("solo_primi", 0) or 0)
+    if limit > 0:
+        print(f"PROVA: solo le prime {limit} rosticcerie (impostazioni > riassunto > solo_primi)")
+        found = found[:limit]
     return found
 
 
@@ -3184,42 +3191,6 @@ def video_fit_text(draw, text: str, font_size: int, bold: bool, width: int):
     return font, text + "…"
 
 
-def video_menu_card(entry: dict[str, Any], box: tuple[int, int]):
-    """La foto del menu (intera, grande quanto possibile nel riquadro) o, per i menu solo testo,
-    un cartoncino chiaro con i piatti."""
-    from PIL import Image, ImageDraw
-    box_w, box_h = box
-    if entry["foto"]:
-        with Image.open(entry["foto"]) as photo:
-            photo = photo.convert("RGB")
-            scale = min(box_w / photo.width, box_h / photo.height)
-            photo = photo.resize((max(1, round(photo.width * scale)), max(1, round(photo.height * scale))), Image.LANCZOS)
-            if scale > 1.05:  # foto piccola ingrandita: un po' di nitidezza per le scritte
-                from PIL import ImageFilter
-                photo = photo.filter(ImageFilter.UnsharpMask(radius=max(1.0, scale * 0.7), percent=70, threshold=2))
-        return video_rounded(photo, 22)
-    card = Image.new("RGB", (box_w, box_h), (250, 247, 240))
-    draw = ImageDraw.Draw(card)
-    y, rows = 48, entry["righe"]
-    title_font, dish_font = video_font(38, bold=True), video_font(34)
-    for text, title in rows:
-        font = title_font if title else dish_font
-        if title and y > 48:
-            y += 16
-        limit = box_w - (120 if title else 150)
-        if draw.textlength(text, font=font) > limit:
-            while text and draw.textlength(text + "…", font=font) > limit:
-                text = text[:-1]
-            text = text.rstrip(" ,") + "…"
-        if y + 50 > box_h - 40:
-            draw.text((84, y), "…", font=font, fill=(90, 90, 90))
-            break
-        draw.text((60 if title else 84, y), text if title else "• " + text, font=font,
-                  fill=(180, 100, 10) if title else (30, 35, 32))
-        y += 52 if title else 46
-    return video_rounded(card, 22)
-
-
 def video_logo(entry: dict[str, Any], side: int):
     """Logo quadrato su sfondo bianco con angoli arrotondati (o le iniziali se manca)."""
     from PIL import Image, ImageDraw
@@ -3242,112 +3213,38 @@ def video_logo(entry: dict[str, Any], side: int):
     return video_rounded(square, 28)
 
 
-def video_ease(t: float) -> float:
-    """Da 0 a 1 con partenza e arrivo morbidi."""
-    t = max(0.0, min(1.0, t))
-    return t * t * (3 - 2 * t)
-
-
-def video_shop_frames(entry: dict[str, Any], number: int, total: int):
-    """Fotogrammi (bytes RGB) di una rosticceria: logo e nome, la freccia che parte verso destra e
-    scende sul menu, il menu che compare, poi fermo per poterlo leggere."""
+def video_title_image(lines: list[tuple[str, int, bool, tuple]], logo_path: Path | None):
+    """Schermata d'apertura o di chiusura, bianca come le pagine dei menu: logo di Menu e righe centrate."""
     from PIL import Image, ImageDraw
-    logo_side, logo_x, logo_y = 210, 56, 52
-    line_y = logo_y + logo_side // 2
-    menu_top, menu_bottom = 340, VIDEO_H - 96
-    arrow_x = VIDEO_W - 70  # dove la freccia piega verso il basso
-    base = Image.new("RGB", (VIDEO_W, VIDEO_H), VIDEO_BG)
-    draw = ImageDraw.Draw(base)
-    text_x, text_w = logo_x + logo_side + 36, arrow_x - (logo_x + logo_side + 36) - 30
-    name_font, name = video_fit_text(draw, entry["nome"], 62, True, text_w)
-    town_font = video_font(38)
-    footer = video_font(30)
-    draw.text((VIDEO_W / 2, VIDEO_H - 44), f"tinyurl.com/menurosticcerie   ·   {number}/{total}",
-              font=footer, fill=VIDEO_MUTED, anchor="mm")
-    logo = video_logo(entry, logo_side)
-    card = video_menu_card(entry, (VIDEO_W - 2 * 56, menu_bottom - menu_top))
-    card_x = (VIDEO_W - card.width) // 2
-    card_y = menu_top + (menu_bottom - menu_top - card.height) // 2
-    arrow_x = min(arrow_x, card_x + card.width - 60)  # piega sopra la foto, vicino al suo bordo destro
-    path_h = arrow_x - (logo_x + logo_side + 18)     # tratto orizzontale
-    path_v = card_y - 22 - line_y                    # tratto verticale fino al menu
-    frames = round(VIDEO_SHOP_SECONDS * VIDEO_FPS)
-    t_logo, t_arrow, t_menu = 0.45, 1.25, 1.75     # secondi: fine logo, fine freccia, fine comparsa menu
-    held = None
-    for index in range(frames):
-        t = index / VIDEO_FPS
-        if t > t_menu + 0.05 and held is not None and index < frames - 6:
-            yield held
-            continue
-        frame = base.copy()
-        draw = ImageDraw.Draw(frame)
-        appear = video_ease(t / t_logo)
-        # logo (sale di 30 px e compare) e nome con il paese
-        if appear > 0:
-            layer = Image.new("RGBA", frame.size, (0, 0, 0, 0))
-            layer.paste(logo, (logo_x, logo_y + round(30 * (1 - appear))), logo)
-            text = ImageDraw.Draw(layer)
-            alpha = round(255 * appear)
-            text.text((text_x, line_y - 26), name, font=name_font, fill=VIDEO_INK + (alpha,), anchor="ls")
-            text.text((text_x, line_y + 60), entry["comune"], font=town_font, fill=VIDEO_MUTED + (alpha,), anchor="ls")
-            frame.paste(layer, (0, 0), layer)
-        # freccia: verso destra sotto il nome, poi giù fino al menu, con la punta
-        grow = video_ease((t - t_logo) / (t_arrow - t_logo)) * (path_h + path_v)
-        if grow > 0:
-            x0 = logo_x + logo_side + 18
-            if grow <= path_h:
-                end = (x0 + grow, line_y)
-                draw.line((x0, line_y, end[0], line_y), fill=VIDEO_ACCENT, width=10)
-                tip = [(end[0] + 26, end[1]), (end[0] - 4, end[1] - 18), (end[0] - 4, end[1] + 18)]
-            else:
-                down = grow - path_h
-                draw.line((x0, line_y, arrow_x, line_y), fill=VIDEO_ACCENT, width=10)
-                draw.line((arrow_x, line_y - 5, arrow_x, line_y + down), fill=VIDEO_ACCENT, width=10)
-                end = (arrow_x, line_y + down)
-                tip = [(end[0], end[1] + 26), (end[0] - 18, end[1] - 4), (end[0] + 18, end[1] - 4)]
-            draw.ellipse((x0 - 9, line_y - 9, x0 + 9, line_y + 9), fill=VIDEO_ACCENT)
-            draw.polygon(tip, fill=VIDEO_ACCENT)
-        # menu: compare crescendo leggermente
-        show = video_ease((t - t_arrow) / (t_menu - t_arrow))
-        if show > 0:
-            scale = 0.94 + 0.06 * show
-            size = (max(1, round(card.width * scale)), max(1, round(card.height * scale)))
-            piece = card.resize(size, Image.LANCZOS) if scale < 1 else card
-            alpha = piece.split()[3].point(lambda v: round(v * show))
-            frame.paste(piece, (card_x + (card.width - size[0]) // 2, card_y + (card.height - size[1]) // 2), alpha)
-        # ultimi fotogrammi: dissolvenza verso lo sfondo
-        fade = (index - (frames - 6)) / 6
-        if fade > 0:
-            frame = Image.blend(frame, Image.new("RGB", frame.size, VIDEO_BG), min(1, fade))
-        data = frame.tobytes()
-        if t > t_menu:
-            held = data
-        yield data
-
-
-def video_title_frames(lines: list[tuple[str, int, bool, tuple]], seconds: float, logo_path: Path | None,
-                       fade_in: bool = True):
-    """Schermata d'apertura o di chiusura: logo di Menu e qualche riga centrata, con dissolvenze.
-    fade_in=False per l'apertura: il primo fotogramma è già pieno, così l'anteprima di Facebook
-    (che usa l'inizio del video) non è un rettangolo nero."""
-    from PIL import Image, ImageDraw
-    base = Image.new("RGB", (VIDEO_W, VIDEO_H), VIDEO_BG)
+    base = Image.new("RGB", (VIDEO_W, VIDEO_H), "white")
     draw = ImageDraw.Draw(base)
     y = 330
     if logo_path and logo_path.is_file():
-        logo = video_logo({"logo": logo_path, "nome": "Menu"}, 300)
+        logo = video_logo({"logo": logo_path, "nome": "Menu"}, 300).convert("RGBA")
         base.paste(logo, ((VIDEO_W - 300) // 2, y), logo)
         y += 380
     for text, size, bold, color in lines:
         font, text = video_fit_text(draw, text, size, bold, VIDEO_W - 120)
         draw.text((VIDEO_W / 2, y), text, font=font, fill=color, anchor="mt")
         y += round(size * 1.45)
-    frames = round(seconds * VIDEO_FPS)
-    black = Image.new("RGB", base.size, VIDEO_BG)
-    still = base.tobytes()
-    for index in range(frames):
-        edge = min(index, frames - 1 - index) if fade_in else frames - 1 - index
-        yield still if edge >= 9 else Image.blend(black, base, edge / 9).tobytes()
+    return base
+
+
+def video_sequence(stills: list[tuple[Any, float]]):
+    """Fotogrammi (bytes RGB) da una serie di (immagine, secondi): ogni immagine resta ferma e passa
+    alla successiva con una dissolvenza incrociata. Il primo fotogramma è già pieno (niente
+    dissolvenza d'inizio: l'anteprima di Facebook non è un rettangolo vuoto); alla fine sfuma in bianco."""
+    from PIL import Image
+    fade = max(1, round(VIDEO_FADE_SECONDS * VIDEO_FPS))
+    stills = stills + [(Image.new("RGB", (VIDEO_W, VIDEO_H), "white"), 0.0)]
+    for index, (image, seconds) in enumerate(stills[:-1]):
+        data = image.tobytes()
+        frames = round(seconds * VIDEO_FPS)
+        for _ in range(max(0, frames - fade)):
+            yield data
+        following = stills[index + 1][0]
+        for step in range(1, fade + 1):
+            yield Image.blend(image, following, step / (fade + 1)).tobytes()
 
 
 def make_video(config: dict[str, Any]) -> Path | None:
@@ -3378,20 +3275,22 @@ def make_video(config: dict[str, Any]) -> Path | None:
                 "-pix_fmt", "yuv420p", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
                 "-movflags", "+faststart", str(target)]
     print(f"Creo il video con {len(entries)} rosticcerie...")
+    ink, accent, muted = (40, 40, 40), (200, 110, 10), (110, 110, 110)
+    stills = [(video_title_image([("I menu del giorno", 70, True, ink), (when, 52, False, accent),
+                                  (f"{len(entries)} rosticcerie su {total}", 40, False, muted)], APP_LOGO),
+               VIDEO_OPEN_SECONDS)]
+    for number, entry in enumerate(entries, 1):
+        print(f"  {number}/{len(entries)} {entry['nome']}")
+        page = photo_page(entry, photo_menu(entry), when, (VIDEO_W, VIDEO_H),
+                          f"tinyurl.com/menurosticcerie   ·   {number}/{len(entries)}")
+        stills.append((page, VIDEO_SHOP_SECONDS))
+    stills.append((video_title_image([("Tutti i menu, ogni giorno", 60, True, ink),
+                                      ("tinyurl.com/menurosticcerie", 50, True, accent),
+                                      ("Per ordinare chiama la rosticceria", 38, False, muted)], APP_LOGO),
+                   VIDEO_CLOSE_SECONDS))
     process = subprocess.Popen(command, stdin=subprocess.PIPE)
     try:
-        opening = [("I menu del giorno", 70, True, VIDEO_INK), (when, 52, False, VIDEO_ACCENT),
-                   (f"{len(entries)} rosticcerie su {total}", 40, False, VIDEO_MUTED)]
-        for frame in video_title_frames(opening, VIDEO_OPEN_SECONDS, APP_LOGO, fade_in=False):
-            process.stdin.write(frame)
-        for number, entry in enumerate(entries, 1):
-            print(f"  {number}/{len(entries)} {entry['nome']}")
-            for frame in video_shop_frames(entry, number, len(entries)):
-                process.stdin.write(frame)
-        closing = [("Tutti i menu, ogni giorno", 60, True, VIDEO_INK),
-                   ("tinyurl.com/menurosticcerie", 50, True, VIDEO_ACCENT),
-                   ("Per ordinare chiama la rosticceria", 38, False, VIDEO_MUTED)]
-        for frame in video_title_frames(closing, VIDEO_CLOSE_SECONDS, APP_LOGO):
+        for frame in video_sequence(stills):
             process.stdin.write(frame)
     finally:
         process.stdin.close()
@@ -3413,43 +3312,101 @@ def make_video(config: dict[str, Any]) -> Path | None:
 PHOTOS = ROOT / "Foto"
 # PDF A4 di ogni menu, PUBBLICATI con il sito (pdf/<id>.pdf, sovrascritti ogni volta) per il link
 # sotto ogni foto del post Facebook: tinyurl.com/menurosticcerie#pdf-<id> (vedi photo_captions)
-PDFS = ROOT / "pdf"
-PDF_LINKS = DATA / "link-pdf.json"  # {indirizzo del PDF: link corto}, per non ricrearli ogni giorno
+PDFS = ROOT / "pdf"   # vecchia cartella dei PDF nel sito Menu (non più usata: viene svuotata)
+# PDF dei menu su un sito SENZA nome e cognome: l'organizzazione GitHub "menurosticcerie" con il
+# repository "menurosticcerie.github.io" -> https://menurosticcerie.github.io/<id>.pdf
+# (nome dell'organizzazione modificabile in locali.json > impostazioni > "sito_pdf").
+# Copia locale del repository: cartella pdf-sito (fuori dal sito Menu, vedi .gitignore).
+PDF_SITE_DIR = ROOT / "pdf-sito"
 
 
-def photo_pdf(entry: dict[str, Any], menu, when: str, target: Path) -> None:
-    """PDF A4 verticale (150 dpi): pagina bianca; in alto logo piccolo, nome, paese e data; sotto il
-    menu intero, il più grande possibile, con i colori originali (schiarirlo lo rendeva illeggibile)."""
-    from PIL import Image, ImageDraw, ImageOps
-    page_w, page_h, margin = 1240, 1754, 70  # A4 a 150 dpi
+def pdf_site(settings: dict[str, Any] | None = None) -> tuple[str, str]:
+    """(indirizzo del sito dei PDF, indirizzo git del repository)."""
+    org = ((settings or read_json(CONFIG, {}).get("impostazioni", {})).get("sito_pdf") or "menurosticcerie").strip()
+    return f"https://{org}.github.io/", f"https://github.com/{org}/{org}.github.io.git"
+
+
+def publish_pdf_site() -> bool:
+    """Invia i PDF di pdf-sito al repository <org>.github.io (la prima volta lo scarica).
+    True se l'invio è riuscito (o non c'era niente da inviare)."""
+    site, repo = pdf_site()
+
+    def git(*args: str, cwd: Path = PDF_SITE_DIR) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True, encoding="utf-8",
+                              errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+    if not (PDF_SITE_DIR / ".git").exists():
+        files = {f.name: f.read_bytes() for f in PDF_SITE_DIR.glob("*.pdf")} if PDF_SITE_DIR.exists() else {}
+        shutil.rmtree(PDF_SITE_DIR, ignore_errors=True)
+        cloned = git("clone", repo, str(PDF_SITE_DIR), cwd=ROOT)
+        if cloned.returncode != 0:
+            print(f"Sito dei PDF non raggiungibile ({repo}): {(cloned.stderr or cloned.stdout).strip()[:200]}")
+            PDF_SITE_DIR.mkdir(exist_ok=True)
+            for name, data in files.items():
+                (PDF_SITE_DIR / name).write_bytes(data)
+            return False
+        for name, data in files.items():
+            (PDF_SITE_DIR / name).write_bytes(data)
+    index = PDF_SITE_DIR / "index.html"  # pagina semplice: chi apre il sito trova il link all'app
+    if not index.exists():
+        index.write_text('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
+                         '<title>Menu rosticcerie</title><p style="font:18px sans-serif;margin:2em">Menu del giorno '
+                         'delle rosticcerie: <a href="https://tinyurl.com/menurosticcerie">apri l\'app</a></p>',
+                         encoding="utf-8")
+    git("add", "-A")
+    if git("status", "--porcelain").stdout.strip():
+        git("commit", "-m", f"PDF menu {datetime.now():%Y-%m-%d %H:%M}")
+    pushed = git("push")
+    if pushed.returncode != 0:
+        print(f"PDF NON pubblicati su {site}: {(pushed.stderr or pushed.stdout).strip()[:200]}")
+        return False
+    print(f"PDF pubblicati su {site}")
+    return True
+
+
+def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (1240, 1754),
+               footer: str = "Tutti i menu di oggi: tinyurl.com/menurosticcerie"):
+    """Pagina bianca del menu (la stessa del PDF): in alto logo piccolo, nome, paese e data; sotto il
+    menu intero, il più grande possibile, con i colori originali; in fondo una riga grigia.
+    size=(1240, 1754) = A4 a 150 dpi per il PDF; (1080, 1350) = fotogramma 4:5 del video."""
+    from PIL import Image, ImageDraw
+    page_w, page_h = size
+    k = page_w / 1240                       # tutto in proporzione alla larghezza dell'A4
+    margin, logo_side = round(70 * k), round(120 * k)
     page = Image.new("RGB", (page_w, page_h), "white")
     draw = ImageDraw.Draw(page)
-    logo_side = 120
     logo = video_logo(entry, logo_side).convert("RGBA")
     page.paste(logo, (margin, margin), logo)
-    text_x = margin + logo_side + 28
-    name_font, name = video_fit_text(draw, entry["nome"], 50, True, page_w - text_x - margin)
-    draw.text((text_x, margin + 52), name, font=name_font, fill=(40, 40, 40), anchor="ls")
-    draw.text((text_x, margin + 100), f"{entry['comune']} · Menu di {when.lower()}", font=video_font(32),
-              fill=(110, 110, 110), anchor="ls")
-    top = margin + logo_side + 30
-    draw.line((margin, top - 14, page_w - margin, top - 14), fill=(200, 200, 200), width=2)
-    bottom = page_h - margin - 30
+    text_x = margin + logo_side + round(28 * k)
+    name_font, name = video_fit_text(draw, entry["nome"], round(50 * k), True, page_w - text_x - margin)
+    draw.text((text_x, margin + round(52 * k)), name, font=name_font, fill=(40, 40, 40), anchor="ls")
+    draw.text((text_x, margin + round(100 * k)), f"{entry['comune']} · Menu di {when.lower()}",
+              font=video_font(round(32 * k)), fill=(110, 110, 110), anchor="ls")
+    top = margin + logo_side + round(30 * k)
+    draw.line((margin, top - round(14 * k), page_w - margin, top - round(14 * k)), fill=(200, 200, 200), width=2)
+    bottom = page_h - margin - round(30 * k)
     flat = Image.new("RGB", menu.size, "white")
     flat.paste(menu, (0, 0), menu)
     scale = min((page_w - 2 * margin) / flat.width, (bottom - top) / flat.height)
     flat = flat.resize((max(1, round(flat.width * scale)), max(1, round(flat.height * scale))), Image.LANCZOS)
     page.paste(flat, ((page_w - flat.width) // 2, top))
-    draw.text((page_w / 2, page_h - margin), "Tutti i menu di oggi: tinyurl.com/menurosticcerie",
-              font=video_font(26), fill=(130, 130, 130), anchor="ms")
-    page.save(target, "PDF", resolution=150)
+    draw.text((page_w / 2, page_h - margin), footer, font=video_font(round(26 * k)), fill=(130, 130, 130), anchor="ms")
+    return page
+
+
+def photo_pdf(entry: dict[str, Any], menu, when: str, target: Path) -> None:
+    """PDF A4 verticale (150 dpi) con la pagina del menu (vedi photo_page)."""
+    photo_page(entry, menu, when).save(target, "PDF", resolution=150)
+
+
+def photo_menu(entry: dict[str, Any], width: int = 1000):
+    """Il menu della rosticceria come immagine: la foto intera o, se è solo testo, i piatti riscritti."""
+    return photo_menu_picture(entry, width) if entry["foto"] else photo_menu_text(entry, width)
 
 
 def prune_pdfs() -> None:
-    """Toglie le vecchie cartelle pdf/AAAA-MM-GG (prima versione): ora c'è un solo PDF per locale."""
-    for folder in PDFS.glob("????-??-??"):
-        if folder.is_dir():
-            shutil.rmtree(folder, ignore_errors=True)
+    """Svuota la vecchia cartella pdf del sito Menu: i PDF ora stanno sul sito senza nome e cognome."""
+    shutil.rmtree(PDFS, ignore_errors=True)
 
 
 def photo_wrap(draw, text: str, font, width: int) -> list[str]:
@@ -3511,13 +3468,14 @@ def make_photos(config: dict[str, Any]) -> Path | None:
     day = date.today()
     folder = PHOTOS / day.isoformat()
     folder.mkdir(parents=True, exist_ok=True)
-    pdf_folder = PDFS
+    pdf_folder = PDF_SITE_DIR
     pdf_folder.mkdir(parents=True, exist_ok=True)
+    site = pdf_site(config.get("impostazioni", {}))[0]
     captions = []
     when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]} {day.year}"
     width, margin, logo_side = 1080, 40, 170
     for number, entry in enumerate(entries, 1):
-        menu = photo_menu_picture(entry, width - 2 * margin) if entry["foto"] else photo_menu_text(entry, width - 2 * margin)
+        menu = photo_menu(entry, width - 2 * margin)
         head = 2 * 44 + logo_side
         height = max(1350, head + menu.height + 110)
         image = Image.new("RGB", (width, height), VIDEO_BG)
@@ -3536,7 +3494,7 @@ def make_photos(config: dict[str, Any]) -> Path | None:
         image.save(target, quality=92, optimize=True, subsampling=0)
         photo_pdf(entry, menu, when, pdf_folder / f"{entry['id']}.pdf")
         captions.append({"file": target.name, "nome": entry["nome"], "comune": entry["comune"],
-                         "id": entry["id"], "pdf": f"{WEB_URL}pdf/{entry['id']}.pdf"})
+                         "id": entry["id"], "pdf": f"{site}{entry['id']}.pdf"})
         print(f"  {number}/{len(entries)} {target.name} ({width}x{height}) + PDF A4")
     save_json(folder / "didascalie.json", captions)
     prune_pdfs()
@@ -3931,26 +3889,22 @@ def photo_captions(folder: Path, pictures: list[Path]) -> list[str]:
     data = {item["file"]: item for item in read_json(folder / "didascalie.json", [])}
     if not data:
         return [""] * len(pictures)
-    publish()
-    first = next(iter(data.values()))["pdf"]
-    print("Attendo che i PDF siano online...")
-    online = wait_online(first)
-    pdf_links = read_json(PDF_LINKS, {})  # link corti già creati (uno per PDF, l'indirizzo non cambia)
+    online = publish_pdf_site()
+    if online:
+        print("Attendo che i PDF siano online...")
+        online = wait_online(next(iter(data.values()))["pdf"])
     captions = []
     for picture in pictures:
         item = data.get(picture.name)
         if not item:
             captions.append("")
             continue
-        # link corto al PDF (da.gd / cleanuri, mai TinyURL né l'indirizzo lungo con nome e cognome);
-        # il PDF ha un indirizzo fisso per locale, quindi il link corto si crea una volta e si riusa
+        # link diretto al PDF sul sito senza nome e cognome (https://menurosticcerie.github.io/<id>.pdf),
+        # nessun servizio di link corti; se il sito dei PDF non è pronto, solo nome e paese
         lines = [f"{item['nome']} - {item['comune']}"]
-        short = pdf_links.get(item["pdf"]) or short_link(item["pdf"])
-        if short:
-            pdf_links[item["pdf"]] = short
-            lines.append(f"Pdf: {short}")
+        if online:
+            lines.append(f"Pdf: {item['pdf']}")
         captions.append("\n".join(lines))
-    save_json(PDF_LINKS, pdf_links)
     return captions
 
 

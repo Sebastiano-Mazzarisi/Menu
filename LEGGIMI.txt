@@ -1232,3 +1232,36 @@ con nome e cognome: se nessuno dei due servizi risponde, la riga "Pdf:" non vien
 Il PDF di ogni locale ha un indirizzo fisso (pdf\<id>.pdf), quindi il link corto si crea una volta
 sola e viene riusato ogni giorno: è salvato in dati\link-pdf.json (cancellandolo si ricreano).
 Copia precedente: backup\Menu_2026-10-17_prima-di-dagd.py
+
+PDF SU UN SITO SENZA NOME E COGNOME (soluzione definitiva) - 17/10/2026
+(sostituisce i link corti da.gd / is.gd / TinyURL, che non funzionavano o mostravano l'indirizzo)
+- Organizzazione GitHub gratuita "menurosticcerie" con il repository pubblico
+  "menurosticcerie.github.io": i PDF sono su https://menurosticcerie.github.io/<id>.pdf
+  (es. https://menurosticcerie.github.io/fantasia.pdf), un file fisso per locale rifatto ogni volta.
+- Copia locale del repository: cartella pdf-sito (non va nel sito Menu: .gitignore). La prima volta
+  Menu.py la scarica da solo (git clone), poi a ogni post invia i PDF nuovi (publish_pdf_site) e
+  aspetta che siano online prima di pubblicare le foto su Facebook.
+- Didascalia di ogni foto:
+      Fantasia - Putignano
+      Pdf: https://menurosticcerie.github.io/fantasia.pdf
+  Se il sito dei PDF non è raggiungibile, solo nome e paese.
+- Il pulsante "Foto" crea i PDF in pdf-sito; la vecchia cartella pdf del sito Menu viene tolta.
+- Nome dell'organizzazione diverso: locali.json > impostazioni > "sito_pdf": "<nome>".
+Copia precedente: backup\Menu_2026-10-17_prima-del-sito-pdf.py
+
+
+------------------------------------------------------------------------------------------------
+VIDEO CON LE PAGINE DEL PDF  (e modalità prova "solo_primi")
+------------------------------------------------------------------------------------------------
+Il video (pulsante "Video" o formato "video" del riassunto) ora usa, per ogni rosticceria, la
+stessa pagina bianca del PDF: logo, nome, paese e data in alto, sotto il menu intero con i colori
+originali, in fondo tinyurl.com/menurosticcerie e il numero (1/13...). Formato 4:5 (1080x1350).
+- Apertura e chiusura sono bianche come le pagine; tra una pagina e l'altra c'è una dissolvenza
+  di mezzo secondo; il primo fotogramma è già pieno (anteprima Facebook non nera).
+- Tempi in Menu.py: VIDEO_SHOP_SECONDS = 7.0 (ogni menu), VIDEO_FADE_SECONDS = 0.5,
+  VIDEO_OPEN_SECONDS / VIDEO_CLOSE_SECONDS. La musica di chitarra resta.
+- PDF e video usano la stessa funzione photo_page: se cambia l'impaginazione cambia per entrambi.
+
+Modalità prova: in locali.json > impostazioni > "riassunto" si può aggiungere "solo_primi": 3
+per usare solo le prime 3 rosticcerie (foto, PDF, video, post). Togliendo la voce si torna a
+tutte. ATTENZIONE: vale anche per il post automatico del mattino. Ora è tolta.

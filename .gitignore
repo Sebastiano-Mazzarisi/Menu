@@ -12,3 +12,5 @@ backup/
 Facebook/Video-*.mp4
 # immagini dei menu (pulsante Foto)
 Foto/
+# copia del sito dei PDF (repository a parte: menurosticcerie.github.io)
+pdf-sito/
