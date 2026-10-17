@@ -420,7 +420,12 @@ class BrowserCollector:
                     whole = page.locator(container).first.inner_text(timeout=3000)
                     first_line = next((line.strip() for line in self.last_text.splitlines() if line.strip()), "")
                     header = whole.split(first_line[:40])[0] if first_line and first_line[:40] in whole else whole[:150]
-                    self.last_posted = post_day(header)
+                    # la data scritta sulla pagina spesso è mascherata o abbreviata ("1 sett"): la
+                    # descrizione del link della data ("Giovedì 8 ottobre 2026 alle ore 14:26") è precisa
+                    labels = page.locator(container).first.evaluate(
+                        "el => [...el.querySelectorAll('a[aria-label]')].map(a => a.getAttribute('aria-label'))"
+                        ".filter(t => /\\b20\\d\\d\\b|\\bore\\b|\\bieri\\b|\\bfa\\b/i.test(t || '')).slice(0, 2).join('\\n')")
+                    self.last_posted = post_day(f"{labels}\n{header}" if labels else header)
                 except Exception:
                     pass
             if selector and not page.locator(selector).count():
@@ -1196,8 +1201,19 @@ DISH_WORDS = re.compile(
 
 
 def looks_like_dishes(text: str) -> bool:
-    """Il testo elenca dei piatti? Almeno tre nomi di piatti/ingredienti diversi."""
-    return len({plain(word) for word in DISH_WORDS.findall(text or "")}) >= 3
+    """Il testo elenca dei piatti? Almeno quattro nomi di piatti/ingredienti diversi, oppure tre
+    in un vero elenco (righe o voci brevi separate da a capo, virgole, punti elenco).
+    Tre parole sparse in una frase pubblicitaria non bastano: "Da Impasta i panzerotti fritti li
+    trovi di sera... Rosticceria - Focacceria" (post di Impasta dell'8/10) NON è un menu."""
+    if len({plain(word) for word in DISH_WORDS.findall(text or "")}) >= 4:
+        return True
+    items, words = 0, set()
+    for piece in re.split(r"[\n,;•●·▪–]|\s-\s|\.\s", text or ""):
+        size = len(re.findall(r"[A-Za-zÀ-ÿ']+", piece))
+        if 1 <= size <= 8 and DISH_WORDS.search(piece):
+            items += 1
+            words.update(plain(word) for word in DISH_WORDS.findall(piece))
+    return items >= 3 and len(words) >= 3
 POST_MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
                "settembre", "ottobre", "novembre", "dicembre"]
 
@@ -1252,7 +1268,8 @@ def story_age_day(text: str) -> date | None:
 def post_day(header: str) -> date | None:
     """Giorno di pubblicazione da quello che Facebook scrive accanto al nome nel post:
     "20 minuti fa", "6 ore fa", "circa un'ora fa", "ieri alle 18:30", "un giorno fa", "2 giorni fa",
-    "7 ottobre alle ore 12:00". Si guarda solo l'inizio del post (prima del testo)."""
+    "7 ottobre alle ore 12:00", "1 sett", "Giovedì 8 ottobre 2026 alle ore 14:26" (descrizione
+    del link della data, letta da BrowserCollector). Si guarda solo l'inizio del post (prima del testo)."""
     head = " ".join(header.split("\n")[:6]).lower()[:200]
     now = datetime.now()
     patterns = [
@@ -1260,6 +1277,11 @@ def post_day(header: str) -> date | None:
         (r"\b(\d+)\s*(?:h|ore|ora)\b", lambda n: now - timedelta(hours=n)),
         (r"\b(?:un['’]ora|circa un['’]ora)\b", lambda n: now - timedelta(hours=1)),
         (r"\bieri\b", lambda n: now - timedelta(days=1)),
+        # "1 sett", "2 settimane", "3 mesi", "1 anno": post vecchi rimasti in cima alla pagina
+        (r"\b(\d+)\s*(?:sett|settimana|settimane)\b", lambda n: now - timedelta(weeks=n)),
+        (r"\buna settimana fa\b", lambda n: now - timedelta(weeks=1)),
+        (r"\b(\d+)\s*(?:mese|mesi)\b", lambda n: now - timedelta(days=30 * n)),
+        (r"\b(\d+)\s*(?:anno|anni)\b", lambda n: now - timedelta(days=365 * n)),
         (r"\b(\d+)\s*(?:g|giorni)\b", lambda n: now - timedelta(days=n)),
         (r"\bun giorno fa\b", lambda n: now - timedelta(days=1)),
     ]
@@ -1453,6 +1475,13 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
             return Result(save_closure(folder, closed, image), date.today(), source.get("nome", "browser"), checked)
         return Result(save_closure(folder, closed, None, browser.last_text), date.today(),
                       source.get("nome", "browser"), checked)
+    # post vecchio (2 o più giorni fa) rimasto in cima alla pagina, es. una pubblicità dell'8/10
+    # letta il 17/10: non è mai il menu di oggi. Se la stessa foto era già stata salvata come
+    # menu, viene tolta (discard_wrong_menu)
+    old = browser.last_posted
+    if old and (date.today() - old).days >= 2:
+        discard_wrong_menu(shop, folder, image)
+        raise NotAMenu(f"post vecchio, pubblicato il {old:%d/%m}")
     # controllo approfondito (clic sul locale nel Monitor), secondo passaggio: si parte dall'idea
     # che il programma abbia sbagliato a scartare. Una storia/post DI OGGI con delle scritte viene
     # accettata anche se i controlli normali dicono "non sembra un menu"

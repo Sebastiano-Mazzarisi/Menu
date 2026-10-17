@@ -967,3 +967,20 @@ TESTATA PIÙ COMPATTA (16/10/2026)
 Il codice è in PAGE_TEMPLATE: drawHead (riga sotto il titolo), .towns e drawTowns
 (Comuni), blocco "Info" con renderStats.
 Copia precedente: backup\Menu_2026-10-16_prima-di-testata-compatta.py
+
+POST VECCHI E PUBBLICITÀ SCAMBIATI PER MENU (17/10/2026)
+Caso: alle 00:03 per Impasta è stata presa come "menu di oggi" una pubblicità dell'8/10
+(foto di panzerotti, testo "Da Impasta i panzerotti fritti li trovi di sera...").
+Correzioni (valgono per tutti i locali):
+- Data del post: oltre alla scritta accanto al nome (che Facebook spesso maschera o
+  abbrevia, es. "1 sett") si legge la descrizione del link della data
+  ("Giovedì 8 ottobre 2026 alle ore 14:26"). Riconosciute anche "sett", "settimane",
+  "mesi", "anni".
+- Un post pubblicato 2 o più giorni fa non è mai il menu di oggi: viene scartato e, se la
+  stessa foto era già stata salvata come menu, finisce in dati/scartati.
+- "Elenco di piatti": servono almeno 4 nomi di piatti/ingredienti diversi, oppure 3 in un
+  vero elenco (voci brevi separate da a capo, virgole o punti elenco). Tre parole sparse in
+  una frase pubblicitaria non bastano più. Provato su tutti i testi letti finora: i menu
+  veri restano riconosciuti.
+Codice: post_day, BrowserCollector (lettura data), browser_result, looks_like_dishes.
+Copia precedente: backup\Menu_2026-10-17_prima-di-post-vecchi.py
