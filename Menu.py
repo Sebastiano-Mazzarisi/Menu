@@ -3323,8 +3323,11 @@ def video_shop_frames(entry: dict[str, Any], number: int, total: int):
         yield data
 
 
-def video_title_frames(lines: list[tuple[str, int, bool, tuple]], seconds: float, logo_path: Path | None):
-    """Schermata d'apertura o di chiusura: logo di Menu e qualche riga centrata, con dissolvenze."""
+def video_title_frames(lines: list[tuple[str, int, bool, tuple]], seconds: float, logo_path: Path | None,
+                       fade_in: bool = True):
+    """Schermata d'apertura o di chiusura: logo di Menu e qualche riga centrata, con dissolvenze.
+    fade_in=False per l'apertura: il primo fotogramma è già pieno, così l'anteprima di Facebook
+    (che usa l'inizio del video) non è un rettangolo nero."""
     from PIL import Image, ImageDraw
     base = Image.new("RGB", (VIDEO_W, VIDEO_H), VIDEO_BG)
     draw = ImageDraw.Draw(base)
@@ -3341,7 +3344,7 @@ def video_title_frames(lines: list[tuple[str, int, bool, tuple]], seconds: float
     black = Image.new("RGB", base.size, VIDEO_BG)
     still = base.tobytes()
     for index in range(frames):
-        edge = min(index, frames - 1 - index)
+        edge = min(index, frames - 1 - index) if fade_in else frames - 1 - index
         yield still if edge >= 9 else Image.blend(black, base, edge / 9).tobytes()
 
 
@@ -3366,7 +3369,7 @@ def make_video(config: dict[str, Any]) -> Path | None:
     music = next((VIDEO_DIR / name for name in VIDEO_MUSIC_NAMES if (VIDEO_DIR / name).is_file()), None)
     if music:  # musica ripetuta se più corta del video, che entra e sfuma alla fine
         command += ["-stream_loop", "-1", "-i", str(music), "-map", "0:v", "-map", "1:a",
-                    "-af", f"afade=t=in:st=0:d=1.5,afade=t=out:st={max(0.0, seconds - 3.5):.2f}:d=3.5",
+                    "-af", f"afade=t=in:st=0:d=0.8,afade=t=out:st={max(0.0, seconds - 3.5):.2f}:d=3.5",
                     "-c:a", "aac", "-b:a", "160k", "-shortest"]
     command += ["-c:v", "libx264", "-preset", "slow", "-crf", "14", "-tune", "stillimage",
                 "-profile:v", "high", "-level", "4.1", "-maxrate", "16M", "-bufsize", "32M", "-g", str(VIDEO_FPS * 2),
@@ -3377,7 +3380,7 @@ def make_video(config: dict[str, Any]) -> Path | None:
     try:
         opening = [("I menu del giorno", 70, True, VIDEO_INK), (when, 52, False, VIDEO_ACCENT),
                    (f"{len(entries)} rosticcerie su {total}", 40, False, VIDEO_MUTED)]
-        for frame in video_title_frames(opening, VIDEO_OPEN_SECONDS, APP_LOGO):
+        for frame in video_title_frames(opening, VIDEO_OPEN_SECONDS, APP_LOGO, fade_in=False):
             process.stdin.write(frame)
         for number, entry in enumerate(entries, 1):
             print(f"  {number}/{len(entries)} {entry['nome']}")

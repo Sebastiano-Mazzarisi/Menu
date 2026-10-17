@@ -1142,3 +1142,7 @@ arrivare. Nuovo metodo: la pagina manda i dati come richiesta GET di un'"immagin
   vengono contati solo i dispositivi dell'amministratore. Il Panorama apre già ?v=57.
 Copie precedenti: backup\Menu_2026-10-17_prima-di-registro-get.py,
 backup\Registro_click_2026-10-17_prima-di-registra-get.gs
+
+VIDEO: NIENTE DISSOLVENZA ALL'INIZIO - 17/10/2026
+Il video parte già con la schermata d'apertura piena (prima compariva dal nero): Facebook usa
+l'inizio del video come anteprima, che altrimenti era un rettangolo nero.
