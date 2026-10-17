@@ -1101,3 +1101,29 @@ POST AUTOMATICO DEL GIORNO = VIDEO, APPENA CI SONO TUTTI I MENU - 17/10/2026
   (anche musica-video.mp3); se manca, il video è muto.
 Codice: all_menus_ready, summary_due(settings, config), publish_video_facebook, daily_summary.
 Copia precedente: backup\Menu_2026-10-17_prima-della-pubblicazione-video.py
+
+PULSANTE "PUBBLICA FB" DEL MONITOR (pubblicazione manuale) - 17/10/2026
+- "Pubblica FB" (quarta riga, accanto a "Video"): dopo una conferma pubblica SUBITO sulla Pagina
+  Facebook il video dei menu di quel momento con il testo del riassunto, in qualunque ora e anche
+  se oggi è già stato pubblicato un post. Comando: python Menu.py --pubblica-video
+- La pubblicazione automatica resta quella della mattina: appena ci sono tutti i menu, oppure alle
+  11:30 con quelli presenti. Se hai già pubblicato a mano prima, quella automatica di oggi non parte
+  (niente doppioni).
+Copie precedenti: backup\Menu_2026-10-17_prima-di-pubblica-fb.py, backup\Monitor_2026-10-17_prima-di-pubblica-fb.py
+
+VIDEO: QUALITÀ PIÙ ALTA, CHITARRA, 1 SECONDO IN PIÙ PER MENU - 17/10/2026
+- Ogni rosticceria ora dura 6 secondi (circa 4 con il menu fermo da leggere).
+- Qualità: codifica x264 "slow", crf 14, tune stillimage, fino a 16 Mbit/s (Facebook ricomprime,
+  quindi gli si dà un file ricco di dettagli: circa 15-20 MB). Le foto dei menu piccole vengono
+  ingrandite con ricampionamento Lanczos e una leggera nitidezza per le scritte.
+- Musica: chitarra acustica arpeggiata, tranquilla, composta apposta (Facebook\musica-video.m4a).
+- Il caricamento su Facebook dura qualche minuto in più (attesa massima 15 minuti).
+Copia precedente: backup\Menu_2026-10-17_prima-della-qualita-video.py
+
+NUOVA PUBBLICAZIONE NELLO STESSO GIORNO = SOSTITUISCE LA PRECEDENTE - 17/10/2026
+Se oggi c'è già un post (automatico o manuale) e premi "Pubblica FB", il nuovo video viene
+pubblicato e SUBITO DOPO i post precedenti di oggi vengono tolti dalla Pagina: resta solo l'ultimo.
+Se un post precedente non si riesce a cancellare resta in dati\riassunti\stato.json > "precedenti"
+e si riprova alla pubblicazione successiva dello stesso giorno. I post dei giorni prima non si toccano.
+Nota: dopo il caricamento Facebook "elabora" il video per qualche minuto prima di mostrarlo.
+Copia precedente: backup\Menu_2026-10-17_prima-di-sostituisci-post.py

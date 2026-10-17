@@ -3084,7 +3084,7 @@ def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
 VIDEO_DIR = ROOT / "Facebook"
 VIDEO_W, VIDEO_H, VIDEO_FPS = 1080, 1350, 30
 VIDEO_BG, VIDEO_INK, VIDEO_MUTED, VIDEO_ACCENT = (18, 25, 21), (245, 242, 235), (170, 180, 172), (232, 146, 30)
-VIDEO_SHOP_SECONDS = 5.0   # tempo per ogni rosticceria: comparsa logo, freccia, menu, pausa per leggere
+VIDEO_SHOP_SECONDS = 6.0   # tempo per ogni rosticceria: comparsa logo, freccia, menu, ~4 s fermo per leggere
 VIDEO_OPEN_SECONDS, VIDEO_CLOSE_SECONDS = 5.5, 6.0   # schermata iniziale e finale
 # musica di sottofondo: Facebook\musica-video.m4a (o .mp3), composta apposta per Menu, tranquilla e
 # senza diritti di terzi. Per cambiarla basta sostituire il file; se manca il video è muto.
@@ -3186,6 +3186,9 @@ def video_menu_card(entry: dict[str, Any], box: tuple[int, int]):
             photo = photo.convert("RGB")
             scale = min(box_w / photo.width, box_h / photo.height)
             photo = photo.resize((max(1, round(photo.width * scale)), max(1, round(photo.height * scale))), Image.LANCZOS)
+            if scale > 1.05:  # foto piccola ingrandita: un po' di nitidezza per le scritte
+                from PIL import ImageFilter
+                photo = photo.filter(ImageFilter.UnsharpMask(radius=max(1.0, scale * 0.7), percent=70, threshold=2))
         return video_rounded(photo, 22)
     card = Image.new("RGB", (box_w, box_h), (250, 247, 240))
     draw = ImageDraw.Draw(card)
@@ -3301,7 +3304,7 @@ def video_shop_frames(entry: dict[str, Any], number: int, total: int):
         if show > 0:
             scale = 0.94 + 0.06 * show
             size = (max(1, round(card.width * scale)), max(1, round(card.height * scale)))
-            piece = card.resize(size, Image.BILINEAR) if scale < 1 else card
+            piece = card.resize(size, Image.LANCZOS) if scale < 1 else card
             alpha = piece.split()[3].point(lambda v: round(v * show))
             frame.paste(piece, (card_x + (card.width - size[0]) // 2, card_y + (card.height - size[1]) // 2), alpha)
         # ultimi fotogrammi: dissolvenza verso lo sfondo
@@ -3358,8 +3361,10 @@ def make_video(config: dict[str, Any]) -> Path | None:
     if music:  # musica ripetuta se più corta del video, che entra e sfuma alla fine
         command += ["-stream_loop", "-1", "-i", str(music), "-map", "0:v", "-map", "1:a",
                     "-af", f"afade=t=in:st=0:d=1.5,afade=t=out:st={max(0.0, seconds - 3.5):.2f}:d=3.5",
-                    "-c:a", "aac", "-b:a", "128k", "-shortest"]
-    command += ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "160k", "-shortest"]
+    command += ["-c:v", "libx264", "-preset", "slow", "-crf", "14", "-tune", "stillimage",
+                "-profile:v", "high", "-level", "4.1", "-maxrate", "16M", "-bufsize", "32M", "-g", str(VIDEO_FPS * 2),
+                "-pix_fmt", "yuv420p", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
                 "-movflags", "+faststart", str(target)]
     print(f"Creo il video con {len(entries)} rosticcerie...")
     process = subprocess.Popen(command, stdin=subprocess.PIPE)
@@ -3673,14 +3678,16 @@ def make_summary(config: dict[str, Any]) -> tuple[Path, str] | None:
 
 
 def facebook_call(path: str, params: dict[str, str] | None = None, files: dict[str, Path] | None = None,
-                  version: str = "", base: str = "") -> dict[str, Any]:
+                  version: str = "", base: str = "", method: str = "") -> dict[str, Any]:
     """Chiamata all'interfaccia ufficiale di Facebook (Graph API). Con "files" è un invio multipart
     (foto). Gli errori di Facebook diventano RuntimeError con il messaggio di Facebook."""
     import urllib.error
     import urllib.parse
     url = f"{base or GRAPH}/{version + '/' if version else ''}{path}"
     params = params or {}
-    if files is None:  # lettura (GET)
+    if method == "DELETE":  # cancellazione di un post o di un video della Pagina
+        request = urllib.request.Request(url + "?" + urllib.parse.urlencode(params), method="DELETE")
+    elif files is None:  # lettura (GET)
         request = urllib.request.Request(url + ("?" + urllib.parse.urlencode(params) if params else ""))
     else:  # invio di una foto (POST multipart)
         boundary = "----menu" + hashlib.sha1(str(time.time()).encode()).hexdigest()[:16]
@@ -3695,7 +3702,7 @@ def facebook_call(path: str, params: dict[str, str] | None = None, files: dict[s
         request = urllib.request.Request(url, data=b"".join(chunks), method="POST",
                                          headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
     try:
-        with urllib.request.urlopen(request, timeout=300 if files else 90) as answer:
+        with urllib.request.urlopen(request, timeout=900 if files else 90) as answer:
             return json.loads(answer.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         try:
@@ -3735,6 +3742,21 @@ def publish_video_facebook(video: Path, text: str) -> str:
     return answer.get("id", "")
 
 
+def delete_facebook_posts(ids: list[str]) -> list[str]:
+    """Cancella dalla Pagina i post/video indicati (quelli di oggi sostituiti da una nuova
+    pubblicazione). Restituisce gli id che NON si sono potuti cancellare."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    left = []
+    for post in ids:
+        try:
+            facebook_call(post, {"access_token": link.get("token", "")}, version=link.get("versione", ""), method="DELETE")
+            print(f"Tolto dalla Pagina il post precedente di oggi ({post})")
+        except Exception as exc:
+            print(f"Post precedente {post} non cancellato: {exc}")
+            left.append(post)
+    return left
+
+
 def daily_summary(config: dict[str, Any], force: bool = False) -> None:
     """Riassunto del giorno: crea immagine e testo e (se collegato) li pubblica su Facebook.
     Lo stato di oggi è in dati/riassunti/stato.json, così il post non parte due volte."""
@@ -3745,6 +3767,7 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
     if state.get("pubblicato") and not force:
         print(f"Riassunto di oggi già pubblicato su Facebook (post {state['pubblicato']})")
         return
+    previous = state.get("pubblicato", "")  # post di oggi già sulla Pagina: verrà sostituito
     made = make_summary(config)
     if not made:
         state.update({"creato": False, "da_ripubblicare": True})
@@ -3766,12 +3789,17 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
             if read_json(FACEBOOK_CONFIG, {}).get("token"):
                 state["tentativi"] = int(state.get("tentativi", 0)) + 1
             if video:
+                print("Carico il video sulla Pagina Facebook (1-2 minuti, non chiudere la finestra)...")
                 state["pubblicato"] = publish_video_facebook(video, text)
                 print(f"Video dei menu pubblicato su Facebook (id {state['pubblicato']})")
             else:
                 state["pubblicato"] = publish_summary_facebook(image, text)
                 print(f"Riassunto pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
             state.pop("errore", None)
+            # una nuova pubblicazione nello stesso giorno (pulsante Pubblica FB) SOSTITUISCE quella di
+            # prima: i post precedenti di oggi vengono tolti dalla Pagina, così non ci sono doppioni
+            old = [post for post in state.get("precedenti", []) + [previous] if post and post != state["pubblicato"]]
+            state["precedenti"] = delete_facebook_posts(list(dict.fromkeys(old)))
         except LookupError as exc:
             state["errore"] = str(exc)
             print(f"Riassunto NON pubblicato: {exc}. Immagine e testo sono in dati/riassunti")
@@ -3882,6 +3910,9 @@ def main() -> None:
                              "(se oggi è già stato pubblicato non lo ripubblica).")
     parser.add_argument("--riassunto-prova", action="store_true",
                         help="Crea il riassunto di oggi e apre l'immagine, SENZA pubblicare su Facebook.")
+    parser.add_argument("--pubblica-video", action="store_true",
+                        help="Pubblica SUBITO sulla Pagina Facebook il video dei menu di questo momento con il testo "
+                             "del riassunto (pulsante \"Pubblica FB\" del Monitor), anche se oggi è già stato pubblicato.")
     parser.add_argument("--video", action="store_true",
                         help="Crea Facebook\\Video-AAAA-MM-GG.mp4 (verticale 4:5) con il logo e il menu di oggi di ogni "
                              "rosticceria, e lo apre (pulsante Video del Monitor).")
@@ -3923,6 +3954,16 @@ def main() -> None:
         made = make_summary(config)
         if made and sys.platform == "win32":
             os.startfile(made[0])
+        return
+    if args.pubblica_video:  # richiesta manuale (Monitor > Pubblica FB): menu di questo momento, subito
+        start_manual_log("pubblicazione manuale su Facebook")
+        if not take_lock():
+            print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
+            return
+        try:
+            daily_summary(config, force=True)
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
         return
     if args.riassunto:
         # come alle 11:30: prima un controllo COMPLETO (tutte le rosticcerie, anche quelle già
