@@ -3046,6 +3046,7 @@ SUMMARIES = DATA / "riassunti"
 SUMMARY_STATE = SUMMARIES / "stato.json"   # {"data": "AAAA-MM-GG", "creato": true, "pubblicato": "id del post", ...}
 FACEBOOK_CONFIG = DATA / "facebook.json"   # {"pagina_id", "pagina_nome", "token", ...} - resta solo sul PC (dati/ non va su GitHub)
 FACEBOOK_PAGE = "MenuRosticcerie"          # Pagina da collegare (nome utente o id)
+FACEBOOK_APP_ID = "923658737433113"        # app "Menu rosticcerie Pubblicazione" su Meta for Developers (non segreto)
 GRAPH = "https://graph.facebook.com"
 SUMMARY_WEEKDAYS = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
 # piatti "principali" da mettere per primi nel riassunto (primi e secondi prima dei contorni)
@@ -3356,15 +3357,42 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
 def facebook_connect() -> None:
     """Procedura guidata (Collega-Facebook.bat): dal codice provvisorio preso su Meta for Developers
     ricava il codice di accesso della Pagina, che non scade, e lo salva in dati/facebook.json."""
-    print("\nCOLLEGAMENTO UFFICIALE CON FACEBOOK (vedi Facebook\\Collegamento-Facebook.txt)\n")
-    app_id = input("1) ID app (numero): ").strip()
-    app_secret = input("2) Chiave segreta dell'app: ").strip()
-    short = input("3) Codice di accesso provvisorio (Strumento di esplorazione API Graph): ").strip()
-    if not (app_id and app_secret and short):
-        raise SystemExit("Servono tutti e tre i dati. Nessuna modifica fatta.")
-    print("\nScambio il codice provvisorio con uno di lunga durata...")
-    long = facebook_call("oauth/access_token", {"grant_type": "fb_exchange_token", "client_id": app_id,
-                                                "client_secret": app_secret, "fb_exchange_token": short})["access_token"]
+    print("\nCOLLEGAMENTO UFFICIALE CON FACEBOOK (vedi Facebook\\Collegamento-Facebook.txt)")
+    print("Per incollare in questa finestra: tasto destro del mouse oppure Ctrl+V, poi INVIO.\n")
+
+    def ask(question: str, valid, hint: str, default: str = "") -> str:
+        """Chiede un dato finché non ha il formato giusto (spazi e virgolette tolti)."""
+        while True:
+            value = re.sub(r"[\s\"']", "", input(question)) or default
+            if valid(value):
+                return value
+            print(f"   Non sembra giusto: {hint}. Riprova.\n")
+
+    app_id = ask(f"1) ID app [{FACEBOOK_APP_ID}] (INVIO per confermare): ", lambda v: v.isdigit(),
+                 "l'ID dell'app è fatto solo di cifre", FACEBOOK_APP_ID)
+    while True:
+        app_secret = ask("2) Chiave segreta dell'app (Impostazioni app > Di base > Mostra): ",
+                         lambda v: bool(re.fullmatch(r"[0-9a-f]{32}", v)),
+                         "la chiave segreta è di 32 caratteri, solo cifre e lettere da a ad f "
+                         "(premi \"Mostra\" e copia quella, non i pallini)")
+        short = ask("3) Codice di accesso provvisorio (Strumento di esplorazione, comincia con EAA): ",
+                    lambda v: v.startswith("EAA") and len(v) > 100,
+                    "il codice provvisorio comincia con EAA ed è molto lungo")
+        print("\nScambio il codice provvisorio con uno di lunga durata...")
+        try:
+            long = facebook_call("oauth/access_token", {"grant_type": "fb_exchange_token", "client_id": app_id,
+                                                        "client_secret": app_secret, "fb_exchange_token": short})["access_token"]
+            break
+        except RuntimeError as exc:
+            text = str(exc).lower()
+            if "client secret" in text:
+                print("   Facebook dice che la CHIAVE SEGRETA non è quella di questa app: ricopiala "
+                      "(Impostazioni app > Di base > Mostra) e reinserisci i dati.\n")
+            elif "session has expired" in text or "expired" in text or "190" in text:
+                print("   Il CODICE PROVVISORIO è scaduto (dura circa un'ora): premi di nuovo "
+                      "\"Generate Access Token\" e reinserisci i dati.\n")
+            else:
+                print(f"   {exc}\n   Reinserisci i dati.\n")
     pages = facebook_call("me/accounts", {"access_token": long, "fields": "id,name,username,access_token,tasks"}).get("data", [])
     if not pages:
         raise SystemExit("Nessuna Pagina trovata: nello Strumento di esplorazione scegli la Pagina "
