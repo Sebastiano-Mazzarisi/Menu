@@ -2474,7 +2474,10 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
      iPhone: Safari non può sapere se l'icona c'è già: c'è il bottone "Ce l'ho già sulla Home".
      Mai quando la pagina è aperta dall'icona sulla Home (display-mode standalone), mai su PC.
      Il bottone "+ Home" in alto apre la stessa guida quando si vuole (iPhone: solo iPhone; Android: solo
-     Android, con il bottone a un tocco se possibile; PC: tutte e due); è nascosto se si è già nella app. -->
+     Android, con il bottone a un tocco se possibile; PC: tutte e due); è nascosto se si è già nella app.
+     PC Windows (Chrome o Edge): in cima alla guida c'è "Installa Menu sul PC" che, con un clic, installa
+     Menu come app con la sua icona sul desktop e nel menu Start (come le icone della Home dei cellulari);
+     se il browser non lo permette (es. Firefox, o già installata) ci sono le istruzioni a parole. -->
 <style>
 #aiutoHome{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:9999;max-width:560px;margin:0 auto;
   background:#fff;color:#111;border:2px solid var(--accent);border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.35);
@@ -2487,11 +2490,12 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
 #aiutoHome .ok{margin:0 0 10px;width:100%;padding:13px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:inherit;font-weight:700;cursor:pointer}
 #aiutoHome .st{margin:12px 2px 6px;font-weight:800;font-size:16px}
 #aiutoHome .st:first-child{margin-top:0}
+#aiutoHome .pc{margin:0 2px 4px;font-size:15px}
 #aiutoHome .gia{margin-top:10px;width:100%;padding:11px;border:1.5px solid #bbb;border-radius:10px;background:#f4f6f1;color:#111;font:inherit;font-weight:700;cursor:pointer}
 </style>
 <div id="aiutoHome" role="dialog" aria-label="Aggiungi alla schermata Home">
   <button class="x" aria-label="Chiudi" onclick="aiutoHomeChiudi()">×</button>
-  <div class="t"><img src="icone/icona-180.png?v=@@IV@@" alt="">Metti "Menu" sulla Home</div>
+  <div class="t"><img src="icone/icona-180.png?v=@@IV@@" alt="">Metti "Menu" sulla Home o sul desktop</div>
   <div id="aiutoHomeTesto"></div>
   <button class="gia" onclick="aiutoHomeChiudi()">✔︎ Ce l'ho già sulla Home</button>
 </div>
@@ -2510,11 +2514,19 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
     if(ios){txt.innerHTML=guida('ios');return}
     if(android){txt.innerHTML=(rich?'<button class="ok" id="aiutoHomeOk">📲 Aggiungi alla schermata Home</button>':'')+guida('android');
       if(rich)document.getElementById('aiutoHomeOk').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted')aiutoHomeChiudi()})};return}
-    txt.innerHTML='<div class="st">iPhone</div>'+guida('ios')+'<div class="st">Android</div>'+guida('android')};
+    txt.innerHTML='<div class="st">Questo computer</div>'+(rich?'<button class="ok" id="aiutoHomePc">💻 Installa Menu sul PC</button>'
+      :'<p class="pc">Con <b>Chrome</b> o <b>Edge</b>: clicca l\'icona <b>Installa</b> a destra nella barra degli indirizzi '
+      +'(uno schermo con la freccia), oppure dal menu <b>⋮</b> / <b>…</b> scegli <b>Installa Menu</b> '
+      +'(Chrome: Trasmetti, salva e condividi; Edge: App). Menu avrà la sua icona sul desktop e nel menu Start.</p>')
+      +'<div class="st">iPhone</div>'+guida('ios')+'<div class="st">Android</div>'+guida('android');
+    if(rich)document.getElementById('aiutoHomePc').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted'){rich=null;aiutoHomeChiudi()}})}};
   /* bottone "+ Home" in alto: apre la guida in qualunque momento */
   window.aiutoHomeApri=function(){mostrato=true;riempi();box.classList.add('attivo');box.scrollTop=0};
   if(suHome){var hb=document.getElementById('homeBtn');if(hb)hb.style.display='none';try{localStorage.setItem(CH,'1')}catch(e){}return}
   var chiuso=false;try{chiuso=localStorage.getItem(CH)==='1'}catch(e){}
+  /* PC: la richiesta di installazione (Chrome/Edge) si tiene da parte per il bottone "Installa Menu sul PC" */
+  if(!(ios||android)){window.addEventListener('beforeinstallprompt',function(ev){ev.preventDefault();rich=ev;if(box.classList.contains('attivo'))riempi()});
+    window.addEventListener('appinstalled',function(){rich=null;aiutoHomeChiudi()})}
   /* Android: la richiesta di installazione si tiene sempre da parte, per il bottone "+ Home" */
   if(android&&chiuso)window.addEventListener('beforeinstallprompt',function(ev){ev.preventDefault();rich=ev});
   if(chiuso||!(ios||android))return;
