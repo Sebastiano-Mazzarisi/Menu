@@ -3891,13 +3891,15 @@ def publish_summary_facebook(image: Path, text: str) -> str:
 
 
 def short_link(url: str) -> str:
-    """Link corto per le didascalie (TinyURL, se non risponde is.gd), così nel testo non compare
+    """Link corto per le didascalie (is.gd, se non risponde v.gd), così nel testo non compare
     l'indirizzo lungo con nome e cognome. "" se nessuno dei due servizi risponde: allora la riga
     del PDF non viene scritta (MAI l'indirizzo lungo)."""
     import urllib.parse
     quoted = urllib.parse.quote(url, safe="")
-    services = (("https://tinyurl.com/api-create.php?url=" + quoted, "https://tinyurl.com/"),
-                ("https://is.gd/create.php?format=simple&url=" + quoted, "https://is.gd/"))
+    # niente TinyURL: i link creati senza account mostrano una pagina "Preview" con l'indirizzo
+    # completo (nome e cognome). is.gd e v.gd (stesso servizio) portano subito al PDF.
+    services = (("https://is.gd/create.php?format=simple&url=" + quoted, "https://is.gd/"),
+                ("https://v.gd/create.php?format=simple&url=" + quoted, "https://v.gd/"))
     for address, prefix in services:
         try:
             request = urllib.request.Request(address, headers={"User-Agent": "Mozilla/5.0 (Menu rosticcerie)"})

@@ -1198,11 +1198,12 @@ PDF PER LA STAMPA (POCO TONER), LINK CORTI SICURI, DIDASCALIE BREVI - 17/10/2026
   sotto il menu intero in scala di grigi con i neri schiariti del 40% (PDF_INK = 0.6 in Menu.py:
   1 = come l'originale). Le lavagne e gli sfondi scuri diventano grigio medio, le scritte restano
   leggibili; si stampa solo con il toner nero.
-- Link al PDF: accorciato con TinyURL (se non risponde, is.gd). Se nessuno dei due risponde la riga
+- Link al PDF: accorciato con is.gd (se non risponde, v.gd; NON TinyURL, che mostra una pagina
+  "Preview" con l'indirizzo completo). Se nessuno dei due risponde la riga
   del PDF NON viene scritta: l'indirizzo lungo con nome e cognome non compare mai.
 - Didascalia di ogni foto:
       Fantasia - Putignano
-      Menu-pdf: https://tinyurl.com/xxxx
+      Menu-pdf: https://is.gd/xxxx
       Menu-app: https://tinyurl.com/menurosticcerie
 - Sostituzione del post: le foto del post vecchio spariscono insieme al post; il messaggio
   "does not exist" non è più trattato come errore da riprovare.
