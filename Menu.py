@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import unicodedata
@@ -3073,6 +3074,320 @@ def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
 
 
 # ------------------------------------------------------------------------------------------------
+# VIDEO DEI MENU PER FACEBOOK (vedi LEGGIMI.txt > Video dei menu)
+# Pulsante "Video" del Monitor (o python Menu.py --video): crea Facebook\Video-AAAA-MM-GG.mp4,
+# formato verticale 4:5 (1080 x 1350, il più grande sul cellulare nel feed di Facebook).
+# Per ogni rosticceria con il menu di oggi: logo e nome in alto a sinistra, una freccia che parte
+# verso destra e scende sul menu, poi la foto del menu grande e leggibile. All'inizio la data,
+# alla fine il link corto. I menu solo testo (siti) diventano un cartoncino con i piatti.
+# ------------------------------------------------------------------------------------------------
+VIDEO_DIR = ROOT / "Facebook"
+VIDEO_W, VIDEO_H, VIDEO_FPS = 1080, 1350, 30
+VIDEO_BG, VIDEO_INK, VIDEO_MUTED, VIDEO_ACCENT = (18, 25, 21), (245, 242, 235), (170, 180, 172), (232, 146, 30)
+VIDEO_SHOP_SECONDS = 5.0   # tempo per ogni rosticceria: comparsa logo, freccia, menu, pausa per leggere
+VIDEO_OPEN_SECONDS, VIDEO_CLOSE_SECONDS = 5.5, 6.0   # schermata iniziale e finale
+# musica di sottofondo: Facebook\musica-video.m4a (o .mp3), composta apposta per Menu, tranquilla e
+# senza diritti di terzi. Per cambiarla basta sostituire il file; se manca il video è muto.
+VIDEO_MUSIC_NAMES = ("musica-video.m4a", "musica-video.mp3")
+
+
+def video_font(size: int, bold: bool = False):
+    """Carattere per le scritte del video: Segoe UI su Windows, altrimenti DejaVu o quello di Pillow."""
+    from PIL import ImageFont
+    names = (["segoeuib.ttf", "arialbd.ttf", "DejaVuSans-Bold.ttf"] if bold else
+             ["segoeui.ttf", "arial.ttf", "DejaVuSans.ttf"])
+    folders = [Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts", Path("/usr/share/fonts/truetype/dejavu")]
+    for name in names:
+        for folder in folders:
+            if (folder / name).is_file():
+                return ImageFont.truetype(str(folder / name), size)
+    return ImageFont.load_default()
+
+
+def video_ffmpeg() -> str | None:
+    """Programma ffmpeg per scrivere l'MP4: quello di imageio-ffmpeg (installato da solo la prima
+    volta con pip, circa 30 MB) oppure un ffmpeg già presente nel sistema."""
+    for attempt in range(2):
+        try:
+            import imageio_ffmpeg
+            return imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            if attempt == 0:
+                print("Installo imageio-ffmpeg (serve una sola volta per creare i video)...")
+                subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "imageio-ffmpeg"], check=False)
+    return shutil.which("ffmpeg")
+
+
+def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Rosticcerie con il menu di oggi, nello stesso ordine del riassunto (paesi con più locali
+    prima, poi per nome): per ognuna nome, paese, logo e foto del menu o righe dei piatti."""
+    shops = {shop["id"]: shop for shop in config.get("locali", [])}
+    today = date.today().isoformat()
+    towns: dict[str, int] = {}
+    for shop in shops.values():
+        towns[shop_town(shop)] = towns.get(shop_town(shop), 0) + 1
+    found = []
+    for item in read_json(STATE, {}).get("results", []):
+        shop = shops.get(item.get("id"))
+        if not shop or item.get("menu_date") != today:
+            continue
+        picture = ROOT / item["image"] if item.get("image") else None
+        lines: list[tuple[str, bool]] = []  # (testo, è un titolo di sezione)
+        for section in item.get("sections") or []:
+            title = section.get("titolo") or section.get("nome") or ""
+            if title:
+                lines.append((title, True))
+            for dish in section.get("piatti", []):
+                raw = (dish.get("nome") or "").strip()
+                text = raw.lstrip("●•·-* ").strip()
+                if text:
+                    # "PRIMI PIATTI", "MENÙ DI SABATO": intestazioni scritte come piatti (senza pallino)
+                    lines.append((text, raw == text and text.isupper() and len(text) <= 28))
+        if not (picture and picture.is_file()) and not lines:
+            continue
+        found.append({"nome": shop.get("nome", ""), "comune": shop_town(shop), "logo": shop_logo_source(shop),
+                      "foto": picture if picture and picture.is_file() else None, "righe": lines})
+    found.sort(key=lambda e: (-towns.get(e["comune"], 0), e["comune"], sort_key_name(e["nome"])))
+    return found
+
+
+def video_rounded(image, radius: int):
+    """Immagine con gli angoli arrotondati (maschera alfa)."""
+    from PIL import Image, ImageDraw
+    mask = Image.new("L", image.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, image.width - 1, image.height - 1), radius, fill=255)
+    image = image.convert("RGBA")
+    image.putalpha(mask)
+    return image
+
+
+def video_fit_text(draw, text: str, font_size: int, bold: bool, width: int):
+    """Carattere che fa stare il testo nella larghezza (rimpicciolisce fino a 60%), più il testo
+    eventualmente accorciato con "…"."""
+    size = font_size
+    while size > font_size * 0.6:
+        font = video_font(size, bold)
+        if draw.textlength(text, font=font) <= width:
+            return font, text
+        size -= 2
+    font = video_font(size, bold)
+    while text and draw.textlength(text + "…", font=font) > width:
+        text = text[:-1]
+    return font, text + "…"
+
+
+def video_menu_card(entry: dict[str, Any], box: tuple[int, int]):
+    """La foto del menu (intera, grande quanto possibile nel riquadro) o, per i menu solo testo,
+    un cartoncino chiaro con i piatti."""
+    from PIL import Image, ImageDraw
+    box_w, box_h = box
+    if entry["foto"]:
+        with Image.open(entry["foto"]) as photo:
+            photo = photo.convert("RGB")
+            scale = min(box_w / photo.width, box_h / photo.height)
+            photo = photo.resize((max(1, round(photo.width * scale)), max(1, round(photo.height * scale))), Image.LANCZOS)
+        return video_rounded(photo, 22)
+    card = Image.new("RGB", (box_w, box_h), (250, 247, 240))
+    draw = ImageDraw.Draw(card)
+    y, rows = 48, entry["righe"]
+    title_font, dish_font = video_font(38, bold=True), video_font(34)
+    for text, title in rows:
+        font = title_font if title else dish_font
+        if title and y > 48:
+            y += 16
+        limit = box_w - (120 if title else 150)
+        if draw.textlength(text, font=font) > limit:
+            while text and draw.textlength(text + "…", font=font) > limit:
+                text = text[:-1]
+            text = text.rstrip(" ,") + "…"
+        if y + 50 > box_h - 40:
+            draw.text((84, y), "…", font=font, fill=(90, 90, 90))
+            break
+        draw.text((60 if title else 84, y), text if title else "• " + text, font=font,
+                  fill=(180, 100, 10) if title else (30, 35, 32))
+        y += 52 if title else 46
+    return video_rounded(card, 22)
+
+
+def video_logo(entry: dict[str, Any], side: int):
+    """Logo quadrato su sfondo bianco con angoli arrotondati (o le iniziali se manca)."""
+    from PIL import Image, ImageDraw
+    square = Image.new("RGB", (side, side), "white")
+    if entry["logo"]:
+        try:
+            with Image.open(entry["logo"]) as logo:
+                logo = logo.convert("RGBA")
+                inner = round(side * 0.9)
+                scale = min(inner / logo.width, inner / logo.height)
+                logo = logo.resize((max(1, round(logo.width * scale)), max(1, round(logo.height * scale))), Image.LANCZOS)
+                square.paste(logo, ((side - logo.width) // 2, (side - logo.height) // 2), logo)
+        except Exception:
+            entry = dict(entry, logo=None)
+    if not entry["logo"]:
+        initials = "".join(word[0] for word in entry["nome"].split()[:2]).upper()
+        draw = ImageDraw.Draw(square)
+        font = video_font(side // 3, bold=True)
+        draw.text((side / 2, side / 2), initials, font=font, fill=VIDEO_BG, anchor="mm")
+    return video_rounded(square, 28)
+
+
+def video_ease(t: float) -> float:
+    """Da 0 a 1 con partenza e arrivo morbidi."""
+    t = max(0.0, min(1.0, t))
+    return t * t * (3 - 2 * t)
+
+
+def video_shop_frames(entry: dict[str, Any], number: int, total: int):
+    """Fotogrammi (bytes RGB) di una rosticceria: logo e nome, la freccia che parte verso destra e
+    scende sul menu, il menu che compare, poi fermo per poterlo leggere."""
+    from PIL import Image, ImageDraw
+    logo_side, logo_x, logo_y = 210, 56, 52
+    line_y = logo_y + logo_side // 2
+    menu_top, menu_bottom = 340, VIDEO_H - 96
+    arrow_x = VIDEO_W - 70  # dove la freccia piega verso il basso
+    base = Image.new("RGB", (VIDEO_W, VIDEO_H), VIDEO_BG)
+    draw = ImageDraw.Draw(base)
+    text_x, text_w = logo_x + logo_side + 36, arrow_x - (logo_x + logo_side + 36) - 30
+    name_font, name = video_fit_text(draw, entry["nome"], 62, True, text_w)
+    town_font = video_font(38)
+    footer = video_font(30)
+    draw.text((VIDEO_W / 2, VIDEO_H - 44), f"tinyurl.com/menurosticcerie   ·   {number}/{total}",
+              font=footer, fill=VIDEO_MUTED, anchor="mm")
+    logo = video_logo(entry, logo_side)
+    card = video_menu_card(entry, (VIDEO_W - 2 * 56, menu_bottom - menu_top))
+    card_x = (VIDEO_W - card.width) // 2
+    card_y = menu_top + (menu_bottom - menu_top - card.height) // 2
+    arrow_x = min(arrow_x, card_x + card.width - 60)  # piega sopra la foto, vicino al suo bordo destro
+    path_h = arrow_x - (logo_x + logo_side + 18)     # tratto orizzontale
+    path_v = card_y - 22 - line_y                    # tratto verticale fino al menu
+    frames = round(VIDEO_SHOP_SECONDS * VIDEO_FPS)
+    t_logo, t_arrow, t_menu = 0.45, 1.25, 1.75     # secondi: fine logo, fine freccia, fine comparsa menu
+    held = None
+    for index in range(frames):
+        t = index / VIDEO_FPS
+        if t > t_menu + 0.05 and held is not None and index < frames - 6:
+            yield held
+            continue
+        frame = base.copy()
+        draw = ImageDraw.Draw(frame)
+        appear = video_ease(t / t_logo)
+        # logo (sale di 30 px e compare) e nome con il paese
+        if appear > 0:
+            layer = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+            layer.paste(logo, (logo_x, logo_y + round(30 * (1 - appear))), logo)
+            text = ImageDraw.Draw(layer)
+            alpha = round(255 * appear)
+            text.text((text_x, line_y - 26), name, font=name_font, fill=VIDEO_INK + (alpha,), anchor="ls")
+            text.text((text_x, line_y + 60), entry["comune"], font=town_font, fill=VIDEO_MUTED + (alpha,), anchor="ls")
+            frame.paste(layer, (0, 0), layer)
+        # freccia: verso destra sotto il nome, poi giù fino al menu, con la punta
+        grow = video_ease((t - t_logo) / (t_arrow - t_logo)) * (path_h + path_v)
+        if grow > 0:
+            x0 = logo_x + logo_side + 18
+            if grow <= path_h:
+                end = (x0 + grow, line_y)
+                draw.line((x0, line_y, end[0], line_y), fill=VIDEO_ACCENT, width=10)
+                tip = [(end[0] + 26, end[1]), (end[0] - 4, end[1] - 18), (end[0] - 4, end[1] + 18)]
+            else:
+                down = grow - path_h
+                draw.line((x0, line_y, arrow_x, line_y), fill=VIDEO_ACCENT, width=10)
+                draw.line((arrow_x, line_y - 5, arrow_x, line_y + down), fill=VIDEO_ACCENT, width=10)
+                end = (arrow_x, line_y + down)
+                tip = [(end[0], end[1] + 26), (end[0] - 18, end[1] - 4), (end[0] + 18, end[1] - 4)]
+            draw.ellipse((x0 - 9, line_y - 9, x0 + 9, line_y + 9), fill=VIDEO_ACCENT)
+            draw.polygon(tip, fill=VIDEO_ACCENT)
+        # menu: compare crescendo leggermente
+        show = video_ease((t - t_arrow) / (t_menu - t_arrow))
+        if show > 0:
+            scale = 0.94 + 0.06 * show
+            size = (max(1, round(card.width * scale)), max(1, round(card.height * scale)))
+            piece = card.resize(size, Image.BILINEAR) if scale < 1 else card
+            alpha = piece.split()[3].point(lambda v: round(v * show))
+            frame.paste(piece, (card_x + (card.width - size[0]) // 2, card_y + (card.height - size[1]) // 2), alpha)
+        # ultimi fotogrammi: dissolvenza verso lo sfondo
+        fade = (index - (frames - 6)) / 6
+        if fade > 0:
+            frame = Image.blend(frame, Image.new("RGB", frame.size, VIDEO_BG), min(1, fade))
+        data = frame.tobytes()
+        if t > t_menu:
+            held = data
+        yield data
+
+
+def video_title_frames(lines: list[tuple[str, int, bool, tuple]], seconds: float, logo_path: Path | None):
+    """Schermata d'apertura o di chiusura: logo di Menu e qualche riga centrata, con dissolvenze."""
+    from PIL import Image, ImageDraw
+    base = Image.new("RGB", (VIDEO_W, VIDEO_H), VIDEO_BG)
+    draw = ImageDraw.Draw(base)
+    y = 330
+    if logo_path and logo_path.is_file():
+        logo = video_logo({"logo": logo_path, "nome": "Menu"}, 300)
+        base.paste(logo, ((VIDEO_W - 300) // 2, y), logo)
+        y += 380
+    for text, size, bold, color in lines:
+        font, text = video_fit_text(draw, text, size, bold, VIDEO_W - 120)
+        draw.text((VIDEO_W / 2, y), text, font=font, fill=color, anchor="mt")
+        y += round(size * 1.45)
+    frames = round(seconds * VIDEO_FPS)
+    black = Image.new("RGB", base.size, VIDEO_BG)
+    still = base.tobytes()
+    for index in range(frames):
+        edge = min(index, frames - 1 - index)
+        yield still if edge >= 9 else Image.blend(black, base, edge / 9).tobytes()
+
+
+def make_video(config: dict[str, Any]) -> Path | None:
+    """Crea Facebook\\Video-AAAA-MM-GG.mp4 con i menu di oggi (vedi il blocco qui sopra)."""
+    entries = video_shops(config)
+    if not entries:
+        print("Video non creato: nessuna rosticceria ha ancora il menu di oggi.")
+        return None
+    ffmpeg = video_ffmpeg()
+    if not ffmpeg:
+        print("Video non creato: manca ffmpeg (pip install imageio-ffmpeg).")
+        return None
+    VIDEO_DIR.mkdir(exist_ok=True)
+    day = date.today()
+    target = VIDEO_DIR / f"Video-{day.isoformat()}.mp4"
+    when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]}"
+    total = len(config.get("locali", []))
+    seconds = VIDEO_OPEN_SECONDS + VIDEO_CLOSE_SECONDS + len(entries) * VIDEO_SHOP_SECONDS
+    command = [ffmpeg, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+               "-s", f"{VIDEO_W}x{VIDEO_H}", "-r", str(VIDEO_FPS), "-i", "-"]
+    music = next((VIDEO_DIR / name for name in VIDEO_MUSIC_NAMES if (VIDEO_DIR / name).is_file()), None)
+    if music:  # musica ripetuta se più corta del video, che entra e sfuma alla fine
+        command += ["-stream_loop", "-1", "-i", str(music), "-map", "0:v", "-map", "1:a",
+                    "-af", f"afade=t=in:st=0:d=1.5,afade=t=out:st={max(0.0, seconds - 3.5):.2f}:d=3.5",
+                    "-c:a", "aac", "-b:a", "128k", "-shortest"]
+    command += ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart", str(target)]
+    print(f"Creo il video con {len(entries)} rosticcerie...")
+    process = subprocess.Popen(command, stdin=subprocess.PIPE)
+    try:
+        opening = [("I menu del giorno", 70, True, VIDEO_INK), (when, 52, False, VIDEO_ACCENT),
+                   (f"{len(entries)} rosticcerie su {total}", 40, False, VIDEO_MUTED)]
+        for frame in video_title_frames(opening, VIDEO_OPEN_SECONDS, APP_LOGO):
+            process.stdin.write(frame)
+        for number, entry in enumerate(entries, 1):
+            print(f"  {number}/{len(entries)} {entry['nome']}")
+            for frame in video_shop_frames(entry, number, len(entries)):
+                process.stdin.write(frame)
+        closing = [("Tutti i menu, ogni giorno", 60, True, VIDEO_INK),
+                   ("tinyurl.com/menurosticcerie", 50, True, VIDEO_ACCENT),
+                   ("Per ordinare chiama la rosticceria", 38, False, VIDEO_MUTED)]
+        for frame in video_title_frames(closing, VIDEO_CLOSE_SECONDS, APP_LOGO):
+            process.stdin.write(frame)
+    finally:
+        process.stdin.close()
+        process.wait()
+    if process.returncode != 0 or not target.is_file():
+        print("Video non creato: ffmpeg ha dato un errore.")
+        return None
+    print(f"Video pronto: {target} ({target.stat().st_size // 1024} KB)")
+    return target
+
+
+# ------------------------------------------------------------------------------------------------
 # RIASSUNTO DEL GIORNO PER FACEBOOK (vedi LEGGIMI.txt > Riassunto delle 11:30)
 # Ogni giorno, al primo giro automatico dalle "ora" in poi (predefinito 11:30), dopo aver
 # ricontrollato TUTTE le rosticcerie, Menu.py crea in dati/riassunti/ un'immagine (AAAA-MM-GG.jpg)
@@ -3095,24 +3410,35 @@ MAIN_DISHES = re.compile(
 
 
 def summary_settings(settings: dict[str, Any]) -> dict[str, Any]:
-    return {"attivo": True, "ora": "11:30", "facebook": True, **settings.get("riassunto", {})}
+    return {"attivo": True, "ora": "11:30", "facebook": True, "video": True, **settings.get("riassunto", {})}
+
+
+def all_menus_ready(config: dict[str, Any]) -> bool:
+    """Tutte le rosticcerie di locali.json hanno già il menu di oggi?"""
+    today = date.today().isoformat()
+    done = {item.get("id") for item in read_json(STATE, {}).get("results", []) if item.get("menu_date") == today}
+    shops = [shop["id"] for shop in config.get("locali", [])]
+    return bool(shops) and all(shop in done for shop in shops)
 
 
 # Prima di ogni riassunto pubblicato c'è SEMPRE un controllo completo di tutte le rosticcerie
 # (giro automatico delle 11:30 con args.tutti, oppure --riassunto): il post non parte con dati vecchi.
-def summary_due(settings: dict[str, Any]) -> bool:
-    """È ora di fare il riassunto di oggi? (dall'ora impostata in poi, una volta al giorno;
-    se la pubblicazione su Facebook non è riuscita si riprova ai giri successivi, al massimo 3 volte)."""
+def summary_due(settings: dict[str, Any], config: dict[str, Any] | None = None) -> bool:
+    """È ora di fare il riassunto di oggi? Una volta al giorno: APPENA tutte le rosticcerie hanno
+    il menu di oggi (se si passa config), altrimenti all'ora impostata (11:30) con la situazione
+    di quel momento. Se la pubblicazione su Facebook non è riuscita si riprova ai giri successivi
+    (al massimo 3 volte)."""
     plan = summary_settings(settings)
     if not plan["attivo"]:
         return False
-    hour, minute = (int(part) for part in str(plan["ora"]).split(":")[:2])
-    if datetime.now() < datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0):
-        return False
     state = read_json(SUMMARY_STATE, {})
-    if state.get("data") != date.today().isoformat():
+    if state.get("data") == date.today().isoformat() and not (
+            state.get("da_ripubblicare") and int(state.get("tentativi", 0)) < 3):
+        return False
+    hour, minute = (int(part) for part in str(plan["ora"]).split(":")[:2])
+    if datetime.now() >= datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0):
         return True
-    return bool(state.get("da_ripubblicare")) and int(state.get("tentativi", 0)) < 3
+    return config is not None and all_menus_ready(config)
 
 
 def clean_menu_text(text: str, shop: dict[str, Any], settings: dict[str, Any]) -> str:
@@ -3347,12 +3673,12 @@ def make_summary(config: dict[str, Any]) -> tuple[Path, str] | None:
 
 
 def facebook_call(path: str, params: dict[str, str] | None = None, files: dict[str, Path] | None = None,
-                  version: str = "") -> dict[str, Any]:
+                  version: str = "", base: str = "") -> dict[str, Any]:
     """Chiamata all'interfaccia ufficiale di Facebook (Graph API). Con "files" è un invio multipart
     (foto). Gli errori di Facebook diventano RuntimeError con il messaggio di Facebook."""
     import urllib.error
     import urllib.parse
-    url = f"{GRAPH}/{version + '/' if version else ''}{path}"
+    url = f"{base or GRAPH}/{version + '/' if version else ''}{path}"
     params = params or {}
     if files is None:  # lettura (GET)
         request = urllib.request.Request(url + ("?" + urllib.parse.urlencode(params) if params else ""))
@@ -3363,12 +3689,13 @@ def facebook_call(path: str, params: dict[str, str] | None = None, files: dict[s
             chunks.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode())
         for key, file in files.items():
             chunks.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"; filename="{file.name}"\r\n'
-                          f'Content-Type: image/jpeg\r\n\r\n'.encode() + file.read_bytes() + b"\r\n")
+                          f'Content-Type: {"video/mp4" if file.suffix.lower() == ".mp4" else "image/jpeg"}\r\n\r\n'.encode()
+                          + file.read_bytes() + b"\r\n")
         chunks.append(f"--{boundary}--\r\n".encode())
         request = urllib.request.Request(url, data=b"".join(chunks), method="POST",
                                          headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
     try:
-        with urllib.request.urlopen(request, timeout=90) as answer:
+        with urllib.request.urlopen(request, timeout=300 if files else 90) as answer:
             return json.loads(answer.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         try:
@@ -3396,6 +3723,18 @@ def publish_summary_facebook(image: Path, text: str) -> str:
     return answer.get("post_id") or answer.get("id", "")
 
 
+def publish_video_facebook(video: Path, text: str) -> str:
+    """Pubblica il video con il testo sulla Pagina (graph-video). Restituisce l'id del video."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
+    answer = facebook_call(f"{link['pagina_id']}/videos", {"description": text, "published": "true",
+                                                           "access_token": link["token"]},
+                           files={"source": video}, version=link.get("versione", ""),
+                           base=GRAPH.replace("://graph.", "://graph-video."))
+    return answer.get("id", "")
+
+
 def daily_summary(config: dict[str, Any], force: bool = False) -> None:
     """Riassunto del giorno: crea immagine e testo e (se collegato) li pubblica su Facebook.
     Lo stato di oggi è in dati/riassunti/stato.json, così il post non parte due volte."""
@@ -3413,13 +3752,26 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
         return
     image, text = made
     state.update({"creato": True, "immagine": image.name, "ora": datetime.now().strftime("%H:%M"), "da_ripubblicare": False})
+    # il post è il VIDEO dei menu (logo, freccia, menu, musica) con il testo; se il video non si
+    # riesce a creare si pubblica l'immagine riassuntiva come prima
+    video = None
+    if plan.get("video", True):
+        try:
+            video = make_video(config)
+        except Exception as exc:
+            print(f"Video non creato ({exc}): pubblico l'immagine")
+    state["video"] = video.name if video else ""
     if plan.get("facebook", True):
         try:
             if read_json(FACEBOOK_CONFIG, {}).get("token"):
                 state["tentativi"] = int(state.get("tentativi", 0)) + 1
-            state["pubblicato"] = publish_summary_facebook(image, text)
+            if video:
+                state["pubblicato"] = publish_video_facebook(video, text)
+                print(f"Video dei menu pubblicato su Facebook (id {state['pubblicato']})")
+            else:
+                state["pubblicato"] = publish_summary_facebook(image, text)
+                print(f"Riassunto pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
             state.pop("errore", None)
-            print(f"Riassunto pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
         except LookupError as exc:
             state["errore"] = str(exc)
             print(f"Riassunto NON pubblicato: {exc}. Immagine e testo sono in dati/riassunti")
@@ -3530,6 +3882,9 @@ def main() -> None:
                              "(se oggi è già stato pubblicato non lo ripubblica).")
     parser.add_argument("--riassunto-prova", action="store_true",
                         help="Crea il riassunto di oggi e apre l'immagine, SENZA pubblicare su Facebook.")
+    parser.add_argument("--video", action="store_true",
+                        help="Crea Facebook\\Video-AAAA-MM-GG.mp4 (verticale 4:5) con il logo e il menu di oggi di ogni "
+                             "rosticceria, e lo apre (pulsante Video del Monitor).")
     parser.add_argument("--facebook-collega", action="store_true",
                         help="Collegamento ufficiale con la Pagina Facebook (Collega-Facebook.bat).")
     parser.add_argument("--facebook-prova", action="store_true",
@@ -3558,6 +3913,11 @@ def main() -> None:
         return
     if args.facebook_prova:
         facebook_check()
+        return
+    if args.video:  # video dei menu di oggi per la Pagina Facebook
+        made = make_video(config)
+        if made and sys.platform == "win32":
+            os.startfile(made)
         return
     if args.riassunto_prova:  # solo per vedere il post: non tocca lo stato, il post delle 11:30 parte lo stesso
         made = make_summary(config)
@@ -3610,12 +3970,15 @@ def main() -> None:
         args.pubblica, args.solo_html, args.visibile, args.aggiungi, args.login = True, False, False, False, False
         # riassunto del giorno (dalle 11:30): prima si ricontrollano TUTTE le rosticcerie, anche quelle
         # già aggiornate, così nel post ci sono i menu più recenti; poi immagine, testo e Facebook
+        # all'ora del riassunto si ricontrollano TUTTE le rosticcerie; prima di quell'ora il post parte
+        # appena il giro appena fatto trova il menu di tutte (dati già freschi, nessun ricontrollo)
         summary = summary_due(config.get("impostazioni", {}))
         args.tutti = summary
         try:
             run(args, config)
-            if summary:
-                daily_summary(read_json(CONFIG, config))
+            fresh = read_json(CONFIG, config)
+            if summary or summary_due(fresh.get("impostazioni", {}), fresh):
+                daily_summary(fresh)
         except BaseException as exc:  # nel log, non in una finestra che nessuno vede
             import traceback
             print(f"ERRORE: {exc!r}\n{traceback.format_exc()}")

@@ -1071,3 +1071,33 @@ Il 17/10 un click fatto da un telefono reale non arrivava al foglio, mentre dal 
   "Conta questo dispositivo" toglie il segno amministratore (come ?v=0), poi va ricaricata la pagina.
 - Se la prova non arriva al foglio: Apps Script > Esecuzioni, cercare doPost all'ora della prova.
 Copia precedente: backup\Menu_2026-10-17_prima-di-debug-click.py
+
+VIDEO DEI MENU (pulsante "Video" del Monitor) - 17/10/2026
+Crea Facebook\Video-AAAA-MM-GG.mp4, verticale 4:5 (1080 x 1350: il formato più grande sul
+cellulare nel feed di Facebook), circa 70 secondi con 13 rosticcerie, e lo apre.
+- Apertura (2,5 s): logo di Menu, "I menu del giorno", data, quante rosticcerie.
+- Per ogni rosticceria con il menu di oggi (5 s, stesso ordine del riassunto): logo e nome con il
+  paese in alto, una freccia arancione che parte verso destra e scende sul menu, poi la foto del
+  menu grande e intera, ferma per poterla leggere. I menu solo testo (Bollenti piatti, Pane & Co)
+  diventano un cartoncino chiaro con titoli e piatti. In basso il link e il numero (es. 3/13).
+- Chiusura (3 s): "Tutti i menu, ogni giorno", tinyurl.com/menurosticcerie.
+Comando: python Menu.py --video. Le rosticcerie senza il menu di oggi non compaiono.
+La prima volta installa da solo imageio-ffmpeg (circa 30 MB, serve a scrivere l'MP4).
+I video non vengono messi su GitHub (.gitignore: Facebook/Video-*.mp4): si caricano a mano sulla
+Pagina (Crea post > Foto/video).
+Codice: blocco "VIDEO DEI MENU PER FACEBOOK" in Menu.py (make_video, video_*); Monitor: video().
+Copie precedenti: backup\Menu_2026-10-17_prima-del-video.py, backup\Monitor_2026-10-17_prima-del-video.py
+
+POST AUTOMATICO DEL GIORNO = VIDEO, APPENA CI SONO TUTTI I MENU - 17/10/2026
+- Quando: il post del giorno parte APPENA un giro automatico trova il menu di oggi di TUTTE le
+  rosticcerie (anche prima delle 11:30). Se alle 11:30 ne manca ancora qualcuna, parte alle 11:30
+  con la situazione di quel momento (prima un ricontrollo completo, come prima). Una volta al giorno.
+- Cosa: il VIDEO dei menu (vedi "Video dei menu") con il testo del riassunto come descrizione.
+  Se il video non si riesce a creare, si pubblica l'immagine riassuntiva come prima.
+  Per tornare all'immagine: locali.json > impostazioni > riassunto > "video": false.
+- Video: schermata iniziale 5,5 s e finale 6 s (3 secondi in più ciascuna); musica di sottofondo
+  tranquilla da Facebook\musica-video.m4a (composta apposta per Menu, nessun diritto di terzi),
+  che entra piano e sfuma alla fine. Per cambiarla basta mettere un altro file con lo stesso nome
+  (anche musica-video.mp3); se manca, il video è muto.
+Codice: all_menus_ready, summary_due(settings, config), publish_video_facebook, daily_summary.
+Copia precedente: backup\Menu_2026-10-17_prima-della-pubblicazione-video.py

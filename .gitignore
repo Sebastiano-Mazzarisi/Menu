@@ -8,3 +8,5 @@ dati/
 __pycache__/
 *.pyc
 backup/
+# video dei menu (pesanti, da caricare a mano su Facebook)
+Facebook/Video-*.mp4
