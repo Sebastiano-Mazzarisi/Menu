@@ -1894,7 +1894,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 
 /* ---------- testata ---------- */
 .top{position:sticky;top:0;z-index:10;padding-top:env(safe-area-inset-top,0px);background:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-.top-in{max-width:1180px;margin:auto;padding:12px 16px 0;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}
+.top-in{max-width:1180px;margin:auto;padding:12px 16px 0;display:grid;grid-template-columns:auto 1fr auto auto auto;gap:12px;align-items:center}
+@media (max-width:420px){.top-in{gap:6px;padding-left:10px;padding-right:10px}.homebtn{padding:0 7px!important;font-size:13px!important;height:34px!important}.fbbtn{padding:0 9px!important;font-size:13px!important;height:34px!important}#reload{width:32px;height:40px}.brand{margin-left:6px}}
 /* logo di Menu: riquadro bianco con la stessa misura e gli stessi angoli dei loghi dei locali (56 px),
    con 6 px di margine bianco intorno al logo intero, allineato a loro
    (10 px = il margine interno delle schede) */
@@ -1912,6 +1913,10 @@ h1 .wd{font-weight:600;color:var(--muted)}
 .homebtn{height:38px;padding:0 11px;border-radius:10px;background:var(--accent);color:var(--surface);font-weight:800;font-size:15px;white-space:nowrap}
 .homebtn:hover{filter:brightness(1.08)}
 @media (max-width:420px){.homebtn{padding:0 8px;font-size:14px;height:36px}}
+/* "FB": apre la pagina Facebook "Menu rosticcerie" (sul telefono di solito nell'app Facebook) */
+.fbbtn{display:inline-flex;align-items:center;justify-content:center;height:38px;padding:0 10px;border-radius:10px;background:#1877F2;color:#fff;font-weight:800;font-size:15px;text-decoration:none;white-space:nowrap;flex:none}
+.fbbtn:hover{filter:brightness(1.08)}
+@media (max-width:420px){.fbbtn{padding:0 8px;font-size:14px;height:36px}}
 /* i bottoni dei Comuni vanno a capo se non entrano nella larghezza */
 .towns{max-width:1180px;margin:auto;display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px}
 .towns::-webkit-scrollbar{display:none}
@@ -2062,6 +2067,7 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
     <button class="brand" id="brand" aria-label="Menu"><img src="icone/@@TITLE_LOGO@@?v=@@TV@@" alt="Menu"></button>
     <div class="day" id="day" title="Tocca per ricaricare"><h1 id="title">@@TITLE@@</h1><p id="sub"></p></div>
     <button type="button" class="homebtn" id="homeBtn" onclick="aiutoHomeApri()" title="Come mettere Menu sulla schermata Home">+ Home</button>
+    <a class="fbbtn" id="fbBtn" href="@@FB_URL@@" target="_blank" rel="noopener" title="Pagina Facebook Menu rosticcerie" aria-label="Pagina Facebook Menu rosticcerie">FB</a>
     <button class="iconbtn" id="reload" aria-label="Aggiorna" title="Aggiorna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
   </div>
   <nav class="towns" id="towns" aria-label="Comuni"></nav>
@@ -2575,7 +2581,7 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
     document = PAGE_TEMPLATE
     # @@PAYLOAD@@ per ultimo: i dati (nomi, menu) non vengono mai toccati dalle altre sostituzioni
     for key, value in (("@@WEB_URL@@", WEB_URL), ("@@IV@@", iv), ("@@TV@@", tv), ("@@TITLE_LOGO@@", TITLE_LOGO),
-                       ("@@SONG@@", song), ("@@TITLE@@", html.escape(today_text)), ("@@PAYLOAD@@", payload)):
+                       ("@@SONG@@", song), ("@@FB_URL@@", f"https://www.facebook.com/{FACEBOOK_PAGE}"), ("@@TITLE@@", html.escape(today_text)), ("@@PAYLOAD@@", payload)):
         document = document.replace(key, value)
     OUTPUT.write_text(document, encoding="utf-8")
     WEB_PAGE.write_text(document, encoding="utf-8")

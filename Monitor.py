@@ -35,6 +35,7 @@ TASK = "Menu"
 CONSOLE_TITLE = "Menu - controllo manuale"
 CONSOLE_SECONDS = 60  # la finestra DOS del controllo manuale si chiude da sola dopo questi secondi
 WEB_URL = "https://sebastiano-mazzarisi.github.io/Menu/"
+FACEBOOK_URL = "https://www.facebook.com/MenuRosticcerie"  # pagina Facebook "Menu rosticcerie"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 BG, FG, MUTED = "#0b1220", "#e2e8f0", "#94a3b8"
@@ -459,11 +460,12 @@ class Monitor(tk.Tk):
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
         self.buttons_frame = buttons  # la sua larghezza decide dove va a capo la scritta dell'esito
-        # pulsanti su tre righe (3 + 3 + 2), tutti larghi uguale: la finestra resta stretta
+        # pulsanti su tre righe (3 + 3 + 3), tutti larghi uguale: la finestra resta stretta
         layout = (("Controlla", self.check, 0, 0), ("Ricontrolla", self.recheck, 0, 1),
                   ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
                   ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2),
-                  ("Panorama", self.overview, 2, 0), ("Pubblica", self.publish, 2, 1))
+                  ("Panorama", self.overview, 2, 0), ("Pubblica", self.publish, 2, 1),
+                  ("FB", self.open_facebook, 2, 2))
         # pulsanti che avviano un giro di Menu.py: spenti (grigi, non cliccabili) mentre un controllo
         # è in corso, perché un secondo giro dovrebbe solo aspettare che finisca il primo
         self.run_buttons: list[tk.Button] = []
@@ -755,6 +757,7 @@ class Monitor(tk.Tk):
             self.toggle_task: schedule_help,
             self.overview: "Crea e apre un PDF con, per ogni locale, la scheda del sito e la fonte "
                            "(post o storia) come appare adesso. Richiede qualche minuto.",
+            self.open_facebook: "Apre nel browser la pagina Facebook \"Menu rosticcerie\" (post del giorno, riassunto delle 11:30).",
             self.publish: "Rifà la pagina con i menu già scaricati e la pubblica subito online, "
                           "senza ricontrollare Facebook, Instagram e i siti.",
         }
@@ -878,6 +881,10 @@ class Monitor(tk.Tk):
         """Pubblica: rifà la pagina con i menu già scaricati sul PC (senza andare su Facebook,
         Instagram e siti) e la pubblica subito su GitHub Pages."""
         self.run_now("--solo-html")
+
+    def open_facebook(self) -> None:
+        """FB: apre la pagina Facebook "Menu rosticcerie" nel browser predefinito."""
+        webbrowser.open(FACEBOOK_URL)
 
     def open_site(self) -> None:
         """Sito: se il sito è già aperto (scheda "Menu" di Chrome/Edge, o l'app "Menu") lo porta in

@@ -1045,3 +1045,14 @@ la sincronizza, l'antivirus, il programma che l'ha letta). Prima questo fermava 
 doppioni, vecchi Panorama) si cancellano con remove_file(): riprova per circa 3 secondi e,
 se il file è ancora occupato, lo lascia lì e va avanti scrivendo solo una riga di avviso.
 Copia precedente: backup\Menu_2026-10-17_prima-dei-file-occupati.py
+
+PULSANTE "FB" (pagina Facebook "Menu rosticcerie") - 17/10/2026
+- Sito: nella testata, accanto a "+ Home", un pulsante blu "FB" apre
+  https://www.facebook.com/MenuRosticcerie (sul telefono di solito si apre l'app Facebook).
+  L'indirizzo viene da FACEBOOK_PAGE in Menu.py (segnaposto @@FB_URL@@ nella pagina).
+  Sui telefoni (larghezza fino a 420 px) i pulsanti della testata sono un po' più piccoli,
+  così data, "+ Home", "FB" e Aggiorna stanno su una riga anche su uno schermo da 360 px.
+- Monitor: nuovo pulsante "FB" (terza riga, accanto a Pubblica) con il suo fumetto; apre la
+  stessa pagina nel browser predefinito (FACEBOOK_URL in Monitor.py).
+Copie precedenti: backup\Menu_2026-10-17_prima-del-pulsante-FB.py,
+backup\Monitor_2026-10-17_prima-del-pulsante-FB.py
