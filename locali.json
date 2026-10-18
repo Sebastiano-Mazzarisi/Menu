@@ -45,6 +45,7 @@
     {
       "id": "impastamo",
       "nome": "Impastamò",
+      "riposo": ["lunedì"],
       "telefono": "392-536.15.36",
       "indirizzo": "Via Conversano 34, 70017 Putignano (BA)",
       "comune": "Putignano",
