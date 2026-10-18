@@ -1333,3 +1333,17 @@ pubblica sul sito senza nome e cognome https://menurosticcerie.github.io/ :
   Monitor e il video per Facebook); i fotogrammi vanno a ffmpeg come immagini ferme con la loro
   durata: si crea in pochi secondi.
 - A mano, subito: python Menu.py --completo
+
+
+------------------------------------------------------------------------------------------------
+ORDINE ALFABETICO E SUONI A VOLUME DIMEZZATO (18/10/2026)
+------------------------------------------------------------------------------------------------
+- Foto, post di Facebook, PDF e video mettono i locali in ORDINE ALFABETICO (prima erano
+  raggruppati per paese).
+- Beep del PC quando arrivano novità: stessi tre beep di prima ma a metà volume
+  (BEEP_VOLUME = 0.5 in Menu.py; il suono è costruito come WAV perché winsound.Beep non ha
+  il volume). Prova: python Menu.py --prova-beep
+- Notifica sul cellulare (Bark): nuovo suono trebeep-piano.caf = trebeep.caf a metà volume.
+  UNA VOLTA SOLA va caricato nell'app Bark: Suoni > carica suono > Sfoglia > Dropbox > Prog >
+  Menu > trebeep-piano.caf. Finché non è caricato, la notifica arriva con il suono standard.
+  (PHONE_SOUND in Menu.py; "trebeep" per tornare al vecchio.) Prova: python Menu.py --prova-notifica

@@ -3037,20 +3037,41 @@ def menu_fingerprints(results: list[dict[str, Any]]) -> dict[str, str]:
     return prints
 
 
+BEEP_VOLUME = 0.5  # volume dei beep del PC (1 = pieno come il vecchio winsound.Beep, 0.5 = metà)
+
+
 def beep_three_times() -> None:
-    """Tre beep bassi a un secondo di distanza (solo Windows)."""
+    """Tre beep bassi a un secondo di distanza (solo Windows), a VOLUME DIMEZZATO.
+    winsound.Beep non permette di scegliere il volume: il suono viene costruito qui come WAV
+    (onda quadra a 250 Hz come il vecchio Beep, 0,4 s di suono e 0,6 s di pausa) e suonato da memoria."""
     try:
-        import time
+        import struct
         import winsound
     except ImportError:
         return
+    rate, tone, pause, freq = 22050, 0.4, 0.6, 250
+    peak = int(32767 * BEEP_VOLUME)
+    samples = []
     for index in range(3):
-        winsound.Beep(250, 400)  # 250 Hz = tono basso, 0,4 secondi
+        count = int(rate * tone)
+        for k in range(count):
+            edge = min(1.0, k / 200, (count - k) / 200)  # attacco e chiusura morbidi: niente "clic"
+            samples.append(int(peak * edge * (1 if (k * freq * 2 // rate) % 2 == 0 else -1)))
         if index < 2:
-            time.sleep(0.6)       # 0,4 + 0,6 = un beep ogni secondo
+            samples += [0] * int(rate * pause)
+    data = struct.pack(f"<{len(samples)}h", *samples)
+    wav = (b"RIFF" + struct.pack("<I", 36 + len(data)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
+           + b"data" + struct.pack("<I", len(data)) + data)
+    try:
+        winsound.PlaySound(wav, winsound.SND_MEMORY)
+    except Exception:
+        pass
 
 
 PHONE_CONFIG = DATA / "notifica.json"  # {"bark": "https://api.day.app/CHIAVE"} - resta solo sul PC
+# suono della notifica: trebeep-piano.caf = gli stessi tre beep di trebeep.caf a VOLUME DIMEZZATO
+# (va caricato una volta nell'app Bark: Suoni > carica suono). Per tornare al vecchio: "trebeep".
+PHONE_SOUND = "trebeep-piano"
 
 
 def notify_phone(message: str) -> None:
@@ -3063,7 +3084,7 @@ def notify_phone(message: str) -> None:
         return
     if not base.startswith("http"):
         base = f"https://api.day.app/{base}"  # basta anche la sola chiave
-    payload = {"title": "Menu", "body": message, "sound": "trebeep", "group": "Menu", "url": WEB_URL}
+    payload = {"title": "Menu", "body": message, "sound": PHONE_SOUND, "group": "Menu", "url": WEB_URL}
     try:
         request = urllib.request.Request(base, data=json.dumps(payload).encode("utf-8"), method="POST",
                                          headers={"Content-Type": "application/json; charset=utf-8"})
@@ -3215,8 +3236,8 @@ def video_ffmpeg() -> str | None:
 
 
 def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
-    """Rosticcerie con il menu di oggi, nello stesso ordine del riassunto (paesi con più locali
-    prima, poi per nome): per ognuna nome, paese, logo e foto del menu o righe dei piatti."""
+    """Rosticcerie con il menu di oggi in ORDINE ALFABETICO (foto, post di Facebook, PDF e video):
+    per ognuna nome, paese, logo e foto del menu o righe dei piatti."""
     shops = {shop["id"]: shop for shop in config.get("locali", [])}
     today = date.today().isoformat()
     towns: dict[str, int] = {}
@@ -3243,7 +3264,7 @@ def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         found.append({"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop), "logo": shop_logo_source(shop),
                       "foto": picture if picture and picture.is_file() else None, "righe": lines})
-    found.sort(key=lambda e: (-towns.get(e["comune"], 0), e["comune"], sort_key_name(e["nome"])))
+    found.sort(key=lambda e: sort_key_name(e["nome"]))  # ordine alfabetico, come nell'app, nel PDF e nel video
     # per le prove: locali.json > impostazioni > riassunto > "solo_primi": 3 = solo le prime 3
     # rosticcerie in foto, PDF, video e post (togliere la riga per tornare a tutte)
     limit = int(config.get("impostazioni", {}).get("riassunto", {}).get("solo_primi", 0) or 0)
