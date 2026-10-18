@@ -1279,3 +1279,19 @@ Sul PC, il bottone "+ Home" in alto nella pagina apre la guida con in cima "Ques
   condividi > Installa) o … (Edge: App > Installa).
 Quando Menu è aperto come app il bottone "+ Home" sparisce. Per toglierla: tasto destro
 sull'icona > Disinstalla. L'icona è la stessa dei cellulari (icone/icona-512.png).
+
+
+------------------------------------------------------------------------------------------------
+GIORNO DI RIPOSO: CARTELLO "CHIUSO" E GRUPPO "CHIUSI LA DOMENICA"
+------------------------------------------------------------------------------------------------
+Per un locale che ha un giorno di chiusura fisso si scrive in locali.json, nel suo blocco:
+    "riposo": ["domenica"]        (anche più giorni: ["domenica", "lunedì"])
+Oggi impostati: Fantasia = domenica, Aufer = lunedì, Eclettico = martedì (Eclettico imparato
+da solo leggendo i suoi post: dati/riposi.json).
+In quel giorno Menu.py:
+- NON cerca il menu (né su Facebook né altrove): sicuramente non c'è;
+- crea il cartello AAAA-MM-GG_riposo.jpg (logo, nome, CHIUSO in grande, "Oggi è domenica,
+  giorno di riposo settimanale", "Riapre lunedì 19") e lo mostra al posto del menu;
+- nella pagina il locale va in fondo, nel gruppo rosso "Chiusi la domenica" (o "Chiusi il
+  lunedì"...; "Chiusi oggi" se c'è anche un avviso di chiusura per ferie).
+Il giorno dopo il cartello viene tolto e si torna a cercare il menu normalmente.

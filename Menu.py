@@ -1135,21 +1135,60 @@ def rest_days(shop: dict[str, Any]) -> set[int]:
     return configured | set(read_json(REST_STATE, {}).get(shop["id"], []))
 
 
-def rest_day_result(shop: dict[str, Any], folder: Path, checked: str) -> Result:
-    """Oggi è il giorno di riposo: la scheda mostra l'avviso al posto del menu."""
+def rest_day_sign(shop: dict[str, Any], target: Path) -> None:
+    """Cartello "CHIUSO" (1080x1350, si legge bene sul cellulare) mostrato al posto del menu nel
+    giorno di riposo: logo e nome del locale, CHIUSO in grande, il giorno e quando riapre."""
+    from PIL import Image, ImageDraw
     today = date.today()
-    path = folder / f"{today.isoformat()}_riposo.json"
+    days = rest_days(shop)
+    reopen = next((today + timedelta(days=k) for k in range(1, 8) if (today + timedelta(days=k)).weekday() not in days), None)
+    width, height = 1080, 1350
+    image = Image.new("RGB", (width, height), (255, 253, 247))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((40, 40, width - 40, height - 40), radius=48, outline=(200, 40, 40), width=14)
+    logo = video_logo({"logo": shop_logo_source(shop), "nome": shop["nome"]}, 260).convert("RGBA")
+    image.paste(logo, ((width - 260) // 2, 120), logo)
+    font, name = video_fit_text(draw, shop["nome"], 74, True, width - 160)
+    draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
+    draw.text((width / 2, 545), shop_town(shop), font=video_font(44), fill=(110, 110, 110), anchor="mt")
+    draw.text((width / 2, 740), "CHIUSO", font=video_font(190, bold=True), fill=(200, 40, 40), anchor="mm")
+    draw.text((width / 2, 900), f"Oggi è {DAY_NAMES[today.weekday()]}", font=video_font(58, bold=True),
+              fill=(40, 40, 40), anchor="mt")
+    draw.text((width / 2, 980), "giorno di riposo settimanale", font=video_font(46),
+              fill=(90, 90, 90), anchor="mt")
+    if reopen:
+        draw.text((width / 2, 1100), f"Riapre {DAY_NAMES[reopen.weekday()]} {reopen.day}", font=video_font(52, bold=True),
+                  fill=(30, 120, 60), anchor="mt")
+    draw.text((width / 2, height - 110), "tinyurl.com/menurosticcerie", font=video_font(34), fill=(130, 130, 130), anchor="mm")
+    image.save(target, quality=92, optimize=True)
+
+
+def rest_day_result(shop: dict[str, Any], folder: Path, checked: str) -> Result:
+    """Oggi è il giorno di riposo: la scheda mostra il cartello "CHIUSO" al posto del menu e il menu
+    non viene cercato (né su Facebook né altrove: sicuramente non c'è)."""
+    today = date.today()
+    path = folder / f"{today.isoformat()}_riposo.jpg"
     if not path.exists():
-        text = f"Oggi, {DAY_NAMES[today.weekday()]}, {shop['nome']} è chiuso per il riposo settimanale."
-        save_json(path, {"data": today.isoformat(), "fonte": "riposo", "sezioni": [
-            {"titolo": "Giorno di riposo", "piatti": [{"nome": text, "prezzo": "", "descrizione": ""}]}]})
+        for old in folder.glob(f"{today.isoformat()}_riposo.*"):  # vecchio avviso solo testo
+            remove_file(old)
+        rest_day_sign(shop, path)
+        print(f"  {shop['nome']} - oggi è chiuso (riposo settimanale): cartello CHIUSO, menu non cercato")
     return Result(path, today, "riposo settimanale", checked)
+
+
+def clear_old_rest_signs(folder: Path) -> None:
+    """Nei giorni di apertura toglie i cartelli dei riposi passati: la scheda torna al menu."""
+    today = date.today().isoformat()
+    for old in folder.glob("*_riposo.*"):
+        if not old.name.startswith(today):
+            remove_file(old)
 
 
 def closure_note(path: Path | None) -> str:
     """"Chiuso fino al 07/10" se il file è un avviso di chiusura salvato da closure_period."""
     if path and path.stem.endswith("_riposo"):
-        return f"Chiuso il {DAY_NAMES[image_date(path).weekday()]} (riposo settimanale)"
+        day = image_date(path).weekday()
+        return f"Chiuso {'la' if day == 6 else 'il'} {DAY_NAMES[day]} (riposo settimanale)"
     match = re.search(r"_chiusura_fino_(\d{4})(\d{2})(\d{2})", path.stem) if path else None
     return f"Chiuso fino al {match.group(3)}/{match.group(2)}" if match else ""
 
@@ -1663,6 +1702,7 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
         skip_if_today = None  # controllo approfondito: si ricontrolla tutto online
     if date.today().weekday() in rest_days(shop):
         return rest_day_result(shop, folder, checked)
+    clear_old_rest_signs(folder)
     if online and skip_if_today is not None:
         latest = newest_image(folder)
         if latest and latest.stem.endswith("_storia") and not image_is_sharp(latest.read_bytes()):
@@ -1935,6 +1975,9 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
 .group h2{margin:0 0 10px;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
 .group h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
 .group.late h2 .dot{background:var(--warn)}
+.group.closed h2 .dot{background:#c62828}
+.group.closed .card .note{color:#c62828}
+.group.closed .card .logo{filter:grayscale(.6);opacity:.75}
 .list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
 .card{display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center;width:100%;text-align:left;padding:10px 12px 10px 10px;border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow);transition:transform .15s ease}
 .card:hover{transform:translateY(-2px)}
@@ -2169,7 +2212,11 @@ let renderStats=null; /* disegna i numeri dell'amministratore (vedi in fondo) */
 let ORDER=[];
 function drawList(){const m=document.getElementById('main');m.querySelectorAll('.group,.foot,.empty-list').forEach(e=>e.remove());
   const vis=DATA.shops.map((s,i)=>i).filter(i=>TOWN==='Tutti'||(DATA.shops[i].comune||'Altro')===TOWN).sort((a,b)=>col.compare(DATA.shops[a].nome,DATA.shops[b].nome));
-  const groups=[['Menu di oggi',vis.filter(isOk),''],['Non ancora aggiornati',vis.filter(i=>!isOk(i)),'late']];
+  /* chiusi oggi (riposo settimanale o avviso di chiusura): gruppo a parte in fondo, con il cartello */
+  const chiuso=i=>isOk(i)&&/^Chiuso/.test(DATA.results[i].nota||''),chiusi=vis.filter(chiuso);
+  const gg=GG[new Date(TODAY+'T12:00').getDay()];
+  const tChiusi=chiusi.length&&chiusi.every(i=>/riposo/.test(DATA.results[i].nota))?'Chiusi '+(gg==='domenica'?'la ':'il ')+gg:'Chiusi oggi';
+  const groups=[['Menu di oggi',vis.filter(i=>isOk(i)&&!chiuso(i)),''],['Non ancora aggiornati',vis.filter(i=>!isOk(i)),'late'],[tChiusi,chiusi,'closed']];
   ORDER=groups.flatMap(g=>g[1]);
   const info=m.querySelector('.infocard');
   groups.forEach(([title,ids,cls])=>{if(!ids.length)return;const g=document.createElement('section');g.className='group '+cls;

@@ -15,6 +15,7 @@
     {
       "id": "fantasia",
       "nome": "Fantasia",
+      "riposo": ["domenica"],
       "telefono": "080-405.41.39",
       "indirizzo": "Via Nicola Losavio 10, 70017 Putignano (BA)",
       "comune": "Putignano",
