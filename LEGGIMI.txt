@@ -1309,3 +1309,27 @@ data di oggi, "Appena pubblicato compare qui" e il telefono per ordinare.
 Il cartello è disegnato dalla pagina stessa (funzione waitSign nel PAGE_TEMPLATE di Menu.py),
 quindi la data è sempre quella del giorno anche se la pagina resta aperta dopo mezzanotte.
 Appena il menu di oggi arriva, al suo posto compare il menu.
+
+
+------------------------------------------------------------------------------------------------
+MENU COMPLETO OGNI 30 MINUTI: PDF DI OGNI LOCALE, PDF UNICO, VIDEO
+------------------------------------------------------------------------------------------------
+A ogni giro automatico (ogni 30 minuti, dalle 8 alle 20), dopo aver aggiornato i menu, Menu.py
+pubblica sul sito senza nome e cognome https://menurosticcerie.github.io/ :
+  <id>.pdf    PDF A4 di ogni locale: il menu di oggi, oppure il cartello CHIUSO (riposo
+              settimanale), oppure il cartello IN ATTESA (aperto ma menu non ancora pubblicato)
+  menu.pdf    PDF unico con TUTTI i locali in ordine alfabetico
+              -> https://menurosticcerie.github.io/menu.pdf  (pulsante "call to action" della
+                 Pagina Facebook: l'indirizzo non cambia mai, si imposta una volta sola)
+  video.mp4   video 4:5 con le stesse pagine in ordine alfabetico, apertura e chiusura,
+              STACCHI NETTI (niente dissolvenze, niente fade-in/fade-out), chitarra in sottofondo
+  video.html  pagina per il cellulare con il video e il bottone "Tutti i menu in PDF"
+              -> https://menurosticcerie.github.io/video.html  (link nel post fissato in alto)
+- Si rifà tutto SOLO se qualcosa è cambiato (nuovo menu, nuovo giorno, locali.json, Menu.py):
+  l'impronta è in dati/completo.json. Altrimenti nel log: "niente di nuovo da pubblicare".
+- Il repository del sito dei PDF tiene UNA sola versione (commit unico sostituito a ogni invio),
+  così non cresce di centinaia di MB al giorno.
+- Il video ora è sempre con TUTTI i locali in ordine alfabetico (anche il pulsante Video del
+  Monitor e il video per Facebook); i fotogrammi vanno a ffmpeg come immagini ferme con la loro
+  durata: si crea in pochi secondi.
+- A mano, subito: python Menu.py --completo
