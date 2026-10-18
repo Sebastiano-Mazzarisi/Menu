@@ -128,6 +128,7 @@
     {
       "id": "bollenti-piatti",
       "nome": "Bollenti piatti",
+      "riposo": ["domenica"],
       "telefono": "334-318.58.44",
       "indirizzo": "Via Noci 48-50, 70017 Putignano (BA)",
       "comune": "Putignano",
