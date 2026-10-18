@@ -1286,7 +1286,8 @@ GIORNO DI RIPOSO: CARTELLO "CHIUSO" E GRUPPO "CHIUSI LA DOMENICA"
 ------------------------------------------------------------------------------------------------
 Per un locale che ha un giorno di chiusura fisso si scrive in locali.json, nel suo blocco:
     "riposo": ["domenica"]        (anche più giorni: ["domenica", "lunedì"])
-Oggi impostati: Fantasia = domenica, Aufer = lunedì, Eclettico = martedì (Eclettico imparato
+Oggi impostati: Fantasia, Cibària e Le delizie di Michela = domenica; Aufer = lunedì;
+Eclettico = martedì (Eclettico imparato
 da solo leggendo i suoi post: dati/riposi.json).
 In quel giorno Menu.py:
 - NON cerca il menu (né su Facebook né altrove): sicuramente non c'è;
@@ -1295,3 +1296,4 @@ In quel giorno Menu.py:
 - nella pagina il locale va in fondo, nel gruppo rosso "Chiusi la domenica" (o "Chiusi il
   lunedì"...; "Chiusi oggi" se c'è anche un avviso di chiusura per ferie).
 Il giorno dopo il cartello viene tolto e si torna a cercare il menu normalmente.
+- nel riquadro della lista, sotto il nome, c'è la scritta rossa in grassetto "Chiusura settimanale".

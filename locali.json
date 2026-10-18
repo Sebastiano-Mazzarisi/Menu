@@ -30,6 +30,7 @@
     {
       "id": "cibaria",
       "nome": "Cibària",
+      "riposo": ["domenica"],
       "telefono": "080-645.07.99",
       "indirizzo": "Via Estramurale a Levante 11, 70017 Putignano (BA)",
       "comune": "Putignano",
@@ -58,6 +59,7 @@
     {
       "id": "michela",
       "nome": "Le delizie di Michela",
+      "riposo": ["domenica"],
       "telefono": "080-521.42.33",
       "indirizzo": "Corso Umberto I 87, 70017 Putignano (BA)",
       "comune": "Putignano",
@@ -139,6 +141,7 @@
     {
       "id": "santantonio",
       "nome": "Forno Sant'Antonio",
+      "riposo": ["domenica"],
       "telefono": "080-493.14.98",
       "indirizzo": "Via Tripoli 28 - Putignano",
       "comune": "Putignano",
