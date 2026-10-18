@@ -1297,3 +1297,15 @@ In quel giorno Menu.py:
   lunedì"...; "Chiusi oggi" se c'è anche un avviso di chiusura per ferie).
 Il giorno dopo il cartello viene tolto e si torna a cercare il menu normalmente.
 - nel riquadro della lista, sotto il nome, c'è la scritta rossa in grassetto "Chiusura settimanale".
+
+
+------------------------------------------------------------------------------------------------
+CARTELLO "IN ATTESA DEL MENÙ DI OGGI"
+------------------------------------------------------------------------------------------------
+Per i locali aperti oggi il cui menu non c'è ancora (gruppo "Non ancora aggiornati"), toccando
+il riquadro non si vede più il menu vecchio ma un cartello dello stesso formato del cartello
+CHIUSO (1080x1350, cornice arancione): logo, nome, paese, "IN ATTESA del menù di oggi", la
+data di oggi, "Appena pubblicato compare qui" e il telefono per ordinare.
+Il cartello è disegnato dalla pagina stessa (funzione waitSign nel PAGE_TEMPLATE di Menu.py),
+quindi la data è sempre quella del giorno anche se la pagina resta aperta dopo mezzanotte.
+Appena il menu di oggi arriva, al suo posto compare il menu.

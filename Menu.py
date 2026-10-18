@@ -2268,6 +2268,31 @@ function cleanSections(secs){const out=[];let cur=null;const cap=t=>t.charAt(0).
 /* ---------- scheda del menu (Panorama usa openCard(i), #detail .sheet e #name) ---------- */
 const dlg=document.getElementById('detail'),stage=document.getElementById('stage');let cur=0;
 const imgUrl=r=>r.image+'?v='+(r.v||DATA.v);
+/* cartello "In attesa del menù di oggi" per i locali aperti oggi il cui menu non c'è ancora:
+   stesso formato del cartello CHIUSO (1080x1350, cornice, logo, nome, scritta grande), disegnato
+   qui nella pagina con la data di oggi; al posto del menu vecchio */
+const SIGNS={};
+function waitSign(s){const key=s.nome+'|'+TODAY;if(SIGNS[key])return SIGNS[key];
+  return SIGNS[key]=new Promise(ok=>{const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+    const F='"Atkinson Hyperlegible",system-ui,"Segoe UI",sans-serif',col='#c77a0a';
+    const fit=(t,size,bold,max)=>{do{x.font=(bold?'800 ':'400 ')+size+'px '+F;size-=2}while(x.measureText(t).width>max&&size>20)};
+    const draw=logo=>{x.fillStyle='#fffdf7';x.fillRect(0,0,W,H);x.strokeStyle=col;x.lineWidth=14;x.beginPath();
+      if(x.roundRect)x.roundRect(47,47,W-94,H-94,48);else x.rect(47,47,W-94,H-94);x.stroke();
+      x.textAlign='center';x.textBaseline='middle';
+      if(logo){x.save();x.beginPath();if(x.roundRect)x.roundRect(410,120,260,260,40);else x.rect(410,120,260,260);x.clip();x.fillStyle='#fff';x.fillRect(410,120,260,260);
+        const k=Math.min(260/logo.width,260/logo.height),w=logo.width*k,h=logo.height*k;x.drawImage(logo,540-w/2,250-h/2,w,h);x.restore()}
+      else{x.fillStyle='#fff';x.fillRect(410,120,260,260);x.fillStyle='#222';fit(s.nome.slice(0,1).toUpperCase(),120,true,200);x.fillText(s.nome.slice(0,1).toUpperCase(),540,250)}
+      x.fillStyle='#282828';fit(s.nome,74,true,W-160);x.fillText(s.nome,540,485);
+      x.fillStyle='#6e6e6e';fit(s.comune||'',44,false,W-160);x.fillText(s.comune||'',540,570);
+      x.fillStyle=col;fit('IN ATTESA',150,true,W-160);x.fillText('IN ATTESA',540,730);
+      x.fillStyle='#282828';fit('del menù di oggi',64,true,W-160);x.fillText('del menù di oggi',540,850);
+      const d=new Date(TODAY+'T12:00'),g=GG[d.getDay()];x.fillStyle='#5a5a5a';fit(g[0].toUpperCase()+g.slice(1)+' '+d.getDate()+' '+MM[d.getMonth()],46,false,W-160);
+      x.fillText(g[0].toUpperCase()+g.slice(1)+' '+d.getDate()+' '+MM[d.getMonth()],540,935);
+      x.fillStyle='#1e783c';fit('Appena pubblicato compare qui',48,true,W-160);x.fillText('Appena pubblicato compare qui',540,1060);
+      if(s.telefono){x.fillStyle='#5a5a5a';fit('Per ordinare: '+s.telefono,40,false,W-160);x.fillText('Per ordinare: '+s.telefono,540,1135)}
+      x.fillStyle='#828282';fit('tinyurl.com/menurosticcerie',34,false,W-160);x.fillText('tinyurl.com/menurosticcerie',540,H-110);
+      ok(c.toDataURL('image/jpeg',.9))};
+    if(!s.logo){draw(null);return}const l=new Image();l.onload=()=>draw(l);l.onerror=()=>draw(null);l.src=s.logo})}
 function openCard(i,dir){cur=i;const s=DATA.shops[i],r=DATA.results[i];logClick(s.nome);
   document.getElementById('dLogo').src=s.logo||'';document.getElementById('dLogo').style.visibility=s.logo?'':'hidden';
   document.getElementById('name').textContent=s.nome;
@@ -2275,7 +2300,11 @@ function openCard(i,dir){cur=i;const s=DATA.shops[i],r=DATA.results[i];logClick(
   const lab=dateLabel(r);ad.firstChild.textContent=r.menu_date&&lab!=='Oggi'?lab+' · '+longDate(r.menu_date):lab;ad.append(s.indirizzo_breve||s.indirizzo||'');
   const meta=document.getElementById('meta');meta.textContent=r.nota||'';meta.hidden=!r.nota;
   stage.innerHTML='';stage.className='fit';stage.scrollTop=0;stage.scrollLeft=0;
-  if(r.image){const im=new Image();im.alt='Menu di '+s.nome;im.src=imgUrl(r);
+  const attesa=!isOk(i);
+  if(attesa){const im=new Image();im.alt=s.nome+': in attesa del menù di oggi';stage.append(im);
+    waitSign(s).then(u=>{if(cur===i)im.src=u});
+    im.onclick=()=>{const z=stage.classList.toggle('zoom');stage.classList.toggle('fit',!z)}}
+  else if(r.image){const im=new Image();im.alt='Menu di '+s.nome;im.src=imgUrl(r);
     im.onclick=()=>{const z=stage.classList.toggle('zoom');stage.classList.toggle('fit',!z);if(z)requestAnimationFrame(()=>{stage.scrollLeft=(stage.scrollWidth-stage.clientWidth)/2;stage.scrollTop=(stage.scrollHeight-stage.clientHeight)/3})};
     stage.append(im);const h=document.createElement('div');h.className='hint';h.textContent='Tocca la foto per ingrandire';stage.append(h);setTimeout(()=>{h.style.opacity=0},1800)}
   else if((r.sections||[]).length){const t=document.createElement('div');t.className='txt';
@@ -2290,13 +2319,13 @@ function openCard(i,dir){cur=i;const s=DATA.shops[i],r=DATA.results[i];logClick(
   /* "Testo" solo dove serve: c'è un menu e il locale non ha "testo": {"attivo": false} (scritti a mano) */
   /* finché è in prova il pulsante si vede solo all'amministratore (?v=57 / admin.html); con
      "testo_per_tutti": true in locali.json > impostazioni lo vedono tutti */
-  const nt=document.getElementById('notes');nt.hidden=!(ADMIN||DATA.testo_per_tutti)||(s.testo||{}).attivo===false||!(r.image||(r.sections||[]).length);
+  const nt=document.getElementById('notes');nt.hidden=attesa||!(ADMIN||DATA.testo_per_tutti)||(s.testo||{}).attivo===false||!(r.image||(r.sections||[]).length);
   document.getElementById('sourceL').textContent=/instagram\./.test(s.url||'')?'Instagram':/facebook\./.test(s.url||'')?'Facebook':'Sito';
   const k=ORDER.indexOf(i);document.getElementById('pos').textContent=k>=0?(k+1)+' di '+ORDER.length:'';
   if(!dlg.open){dpPlace();dlg.showModal()}
   if(dir&&stage.animate)stage.animate([{opacity:.3,transform:'translateX('+(dir*24)+'px)'},{opacity:1,transform:'none'}],{duration:200,easing:'ease-out'});
   /* le foto vicine si scaricano in anticipo: passando alla successiva compaiono subito */
-  [-1,1].forEach(d=>{if(k<0)return;const j=ORDER[(k+d+ORDER.length)%ORDER.length],n=DATA.results[j];if(n&&n.image){const p=new Image();p.src=imgUrl(n)}});
+  [-1,1].forEach(d=>{if(k<0)return;const j=ORDER[(k+d+ORDER.length)%ORDER.length],n=DATA.results[j];if(n&&n.image&&isOk(j)){const p=new Image();p.src=imgUrl(n)}});
   if(tdlg&&!tdlg.hidden){if(document.getElementById('notes').hidden)closeText();else openText()}}
 /* scheda precedente / successiva in modo circolare: frecce in basso, tasti ← → e, sul telefono,
    scorrimento del dito a destra o a sinistra (non con la foto ingrandita) */
