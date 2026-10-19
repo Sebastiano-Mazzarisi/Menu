@@ -1347,3 +1347,16 @@ ORDINE ALFABETICO E SUONI A VOLUME DIMEZZATO (18/10/2026)
   UNA VOLTA SOLA va caricato nell'app Bark: Suoni > carica suono > Sfoglia > Dropbox > Prog >
   Menu > trebeep-piano.caf. Finché non è caricato, la notifica arriva con il suono standard.
   (PHONE_SOUND in Menu.py; "trebeep" per tornare al vecchio.) Prova: python Menu.py --prova-notifica
+
+
+------------------------------------------------------------------------------------------------
+19/10/2026 - CORRETTO: "PDF NON pubblicati ... src refspec main does not match any"
+------------------------------------------------------------------------------------------------
+- Il sito dei PDF (cartella pdf-sito) era rimasto su un ramo a metà ("nuova-versione") e "main"
+  non esisteva più: l'invio falliva. Ora il commit unico si fa con i comandi di base di git
+  (write-tree / commit-tree / update-ref) senza cambiare ramo: niente stati a metà, e un ramo
+  rimasto storto (come questo) si ripara da solo al primo invio. Nome/email dei commit fissi
+  ("Menu"), un blocco index.lock vecchio di oltre 5 minuti viene tolto.
+- Foto del giorno (Foto\AAAA-MM-GG): prima di crearle si tolgono quelle di un giro precedente
+  dello stesso giorno. Prima, se un locale in più cambiava la numerazione (es. "05 Impasta" e
+  "06 Impasta"), le vecchie restavano e nel post finivano doppie (post con 20 foto invece di 12).

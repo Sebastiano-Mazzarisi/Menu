@@ -3492,8 +3492,10 @@ def publish_pdf_site() -> bool:
     site, repo = pdf_site()
 
     def git(*args: str, cwd: Path = PDF_SITE_DIR) -> subprocess.CompletedProcess:
-        return subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True, encoding="utf-8",
-                              errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        # nome e email fissi per i commit: non dipendono dalla configurazione di git sul PC
+        return subprocess.run(["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost", *args], cwd=cwd,
+                              text=True, capture_output=True, encoding="utf-8", errors="replace",
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
     if not (PDF_SITE_DIR / ".git").exists():
         files = {f.name: f.read_bytes() for f in PDF_SITE_DIR.glob("*.pdf")} if PDF_SITE_DIR.exists() else {}
@@ -3513,16 +3515,32 @@ def publish_pdf_site() -> bool:
                          '<title>Menu rosticcerie</title><p style="font:18px sans-serif;margin:2em">Menu del giorno '
                          'delle rosticcerie: <a href="https://tinyurl.com/menurosticcerie">apri l\'app</a></p>',
                          encoding="utf-8")
-    git("add", "-A")
-    branch = git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip() or "main"
-    if git("status", "--porcelain").stdout.strip():
-        # UNA sola versione nel repository: PDF e video cambiano ogni 30 minuti e tenerne la storia
-        # lo farebbe crescere di centinaia di MB al giorno. Si rifà un commit unico e lo si sostituisce.
-        git("checkout", "--orphan", "nuova-versione")
-        git("add", "-A")
-        git("commit", "-m", f"Menu {datetime.now():%Y-%m-%d %H:%M}")
-        git("branch", "-D", branch)
-        git("branch", "-m", branch)
+    # UNA sola versione nel repository: PDF e video cambiano ogni 30 minuti e tenerne la storia lo
+    # farebbe crescere di centinaia di MB al giorno. Il commit unico (senza "genitore") si costruisce
+    # con i comandi di base di git (write-tree / commit-tree / update-ref): niente cambi di ramo, quindi
+    # nessuno stato a metà se qualcosa si interrompe; un ramo rimasto storto si ripara da solo.
+    branch = "main"
+    lock = PDF_SITE_DIR / ".git" / "index.lock"
+    if lock.exists() and time.time() - lock.stat().st_mtime > 300:
+        remove_file(lock)  # blocco rimasto da un giro interrotto
+    git("symbolic-ref", "HEAD", f"refs/heads/{branch}")
+    added = git("add", "-A")
+    tree = git("write-tree").stdout.strip()
+    current = git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{tree}}").stdout.strip()
+    if added.returncode != 0 or not tree:
+        print(f"PDF NON pubblicati: git add non riuscito: {(added.stderr or added.stdout).strip()[:200]}")
+        return False
+    if tree != current:
+        made = git("commit-tree", tree, "-m", f"Menu {datetime.now():%Y-%m-%d %H:%M}")
+        commit = made.stdout.strip()
+        if made.returncode != 0 or not commit:
+            print(f"PDF NON pubblicati: commit non riuscito: {(made.stderr or made.stdout).strip()[:200]}")
+            return False
+        git("update-ref", f"refs/heads/{branch}", commit)
+        git("reset", "--quiet")  # indice allineato al nuovo commit
+        for other in git("for-each-ref", "--format=%(refname:short)", "refs/heads").stdout.split():
+            if other != branch:
+                git("branch", "-D", other)  # es. "nuova-versione" rimasto dalla versione precedente
         git("reflog", "expire", "--expire=now", "--all")
         git("gc", "--prune=now", "--quiet")
     pushed = git("push", "--force", "origin", branch)
@@ -3637,6 +3655,8 @@ def make_photos(config: dict[str, Any]) -> Path | None:
     day = date.today()
     folder = PHOTOS / day.isoformat()
     folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.glob("*.jpg"):  # foto di un giro precedente di oggi: con un locale in più o in
+        remove_file(old)              # meno i numeri cambiano e nel post sarebbero finite due volte
     pdf_folder = PDF_SITE_DIR
     pdf_folder.mkdir(parents=True, exist_ok=True)
     site = pdf_site(config.get("impostazioni", {}))[0]
