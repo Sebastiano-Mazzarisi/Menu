@@ -1157,7 +1157,9 @@ def rest_day_sign_image(shop: dict[str, Any]):
     image.paste(logo, ((width - 260) // 2, 120), logo)
     font, name = video_fit_text(draw, shop["nome"], 74, True, width - 160)
     draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
-    sign_address(draw, width / 2, 540, full_address(shop), width - 160)
+    box = sign_address(draw, width / 2, 540, full_address(shop), width - 160)
+    if shop.get("indirizzo"):
+        add_link(image, box, maps_link(shop.get("nome", ""), shop["indirizzo"]))
     draw.text((width / 2, 740), "CHIUSO", font=video_font(190, bold=True), fill=(200, 40, 40), anchor="mm")
     draw.text((width / 2, 900), f"Oggi è {DAY_NAMES[today.weekday()]}", font=video_font(58, bold=True),
               fill=(40, 40, 40), anchor="mt")
@@ -2797,18 +2799,103 @@ def full_address(shop: dict) -> str:
 def sign_address(draw, x: float, y: float, address: str, width: int) -> None:
     """Indirizzo sotto il nome nei cartelli CHIUSO / IN ATTESA (centrato in x, dall'alto in y):
     su una riga se ci sta (carattere da 44 a 36), altrimenti su due righe spezzate alla prima
-    virgola ("Via Estramurale a Levante 11" / "70017 Putignano (BA)")."""
+    virgola ("Via Estramurale a Levante 11" / "70017 Putignano (BA)"). Restituisce il riquadro
+    occupato (per il link alla mappa nel PDF)."""
     color = (110, 110, 110)
     for size in range(44, 35, -2):
         font = video_font(size)
         if draw.textlength(address, font=font) <= width:
             draw.text((x, y), address, font=font, fill=color, anchor="mt")
-            return
+            return draw.textbbox((x, y), address, font=font, anchor="mt")
     first, _, second = address.partition(",")
     lines = [first.strip(), second.strip()] if second.strip() else [address]
+    boxes = []
     for number, line in enumerate(lines):
         font, line = video_fit_text(draw, line, 38, False, width)
         draw.text((x, y + number * 48), line, font=font, fill=color, anchor="mt")
+        boxes.append(draw.textbbox((x, y + number * 48), line, font=font, anchor="mt"))
+    return (min(b[0] for b in boxes), boxes[0][1], max(b[2] for b in boxes), boxes[-1][3])
+
+
+def maps_link(name: str, address: str) -> str:
+    """Link dell'indirizzo nei PDF: pagina mappa.html del sito dei PDF, che apre Apple Maps su
+    iPhone/iPad/Mac e Google Maps su tutti gli altri (Android, Windows...). Vedi MAP_PAGE_HTML."""
+    from urllib.parse import quote
+    query = ", ".join(part for part in (re.sub(r"\s*\(.*?\)", "", name or "").strip(), (address or "").strip()) if part)
+    return f"{pdf_site()[0]}mappa.html?q={quote(query)}"
+
+
+def tel_link(phone: str) -> str:
+    """"tel:0804054139" dal numero scritto in locali.json ("080-405.41.39"): solo cifre e +."""
+    first = re.split(r"\s*(?:/|,|;|\bo\b)\s*", (phone or "").strip())[0]
+    digits = re.sub(r"[^+\d]", "", first)
+    return f"tel:{digits}" if digits else ""
+
+
+def add_link(image, box, uri: str) -> None:
+    """Ricorda sull'immagine una zona cliccabile (x0, y0, x1, y1 in pixel) da mettere nel PDF."""
+    if uri and box:
+        image.info.setdefault("links", []).append((tuple(round(v) for v in box), uri))
+
+
+def move_links(links, scale: float, dx: float, dy: float):
+    """Zone cliccabili di un'immagine rimpicciolita (scale) e incollata in (dx, dy)."""
+    return [((x0 * scale + dx, y0 * scale + dy, x1 * scale + dx, y1 * scale + dy), uri)
+            for (x0, y0, x1, y1), uri in links]
+
+
+def save_pdf(images, target: Path, dpi: int = 150) -> None:
+    """PDF con una pagina per immagine (JPEG) e i link cliccabili ricordati con add_link
+    (indirizzo -> mappa, telefono -> chiamata). Scritto a mano, senza librerie in più: Pillow
+    salva i PDF ma non sa mettere i link."""
+    import io
+    images = list(images)
+    objects: list[bytes] = []
+    kids = []
+    for image in images:
+        buffer = io.BytesIO()
+        image.convert("RGB").save(buffer, "JPEG", quality=92)
+        jpeg = buffer.getvalue()
+        w, h = image.width * 72 / dpi, image.height * 72 / dpi
+        k = 72 / dpi
+        annots = []
+        for (x0, y0, x1, y1), uri in image.info.get("links", []):
+            safe = uri.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+            annots.append(f"<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [{x0 * k - 4:.1f} {h - y1 * k - 4:.1f} "
+                          f"{x1 * k + 4:.1f} {h - y0 * k + 4:.1f}] /A << /S /URI /URI ({safe}) >> >>")
+        image_id, content_id, page_id = len(objects) + 3, len(objects) + 4, len(objects) + 5
+        objects.append(f"<< /Type /XObject /Subtype /Image /Width {image.width} /Height {image.height} "
+                       f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(jpeg)} >>\nstream\n"
+                       .encode() + jpeg + b"\nendstream")
+        content = f"q {w:.2f} 0 0 {h:.2f} 0 0 cm /Im0 Do Q".encode()
+        objects.append(f"<< /Length {len(content)} >>\nstream\n".encode() + content + b"\nendstream")
+        objects.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w:.2f} {h:.2f}] /Contents {content_id} 0 R "
+                       f"/Resources << /XObject << /Im0 {image_id} 0 R >> >> /Annots [{' '.join(annots)}] >>".encode())
+        kids.append(f"{page_id} 0 R")
+    objects = [b"<< /Type /Catalog /Pages 2 0 R >>",
+               f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {len(kids)} >>".encode()] + objects
+    out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = []
+    for number, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n".encode() + body + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    out += b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets)
+    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    target.write_bytes(bytes(out))
+
+
+# pagina del sito dei PDF aperta toccando un indirizzo: Apple Maps su iPhone/iPad/Mac, Google Maps altrove
+MAP_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Mappa</title></head>
+<body style="font:18px system-ui,sans-serif;margin:2em"><p id="m">Apro la mappa…</p><script>
+var q=new URLSearchParams(location.search).get('q')||'';
+var apple=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+var url=apple?'https://maps.apple.com/?q='+encodeURIComponent(q):'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
+document.getElementById('m').innerHTML='<a href="'+url+'">Apri la mappa</a>';location.replace(url);
+</script></body></html>
+"""
 
 
 def make_shop_logos(shops: list[dict[str, Any]]) -> dict[str, str]:
@@ -3292,7 +3379,8 @@ def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
         if not (picture and picture.is_file()) and not lines:
             continue
         found.append({"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop),
-                      "indirizzo": full_address(shop), "logo": shop_logo_source(shop),
+                      "indirizzo": full_address(shop), "telefono": shop.get("telefono", ""),
+                      "logo": shop_logo_source(shop),
                       "foto": picture if picture and picture.is_file() else None, "righe": lines})
     found.sort(key=lambda e: sort_key_name(e["nome"]))  # ordine alfabetico, come nell'app, nel PDF e nel video
     # per le prove: locali.json > impostazioni > riassunto > "solo_primi": 3 = solo le prime 3
@@ -3381,14 +3469,18 @@ def wait_sign_image(shop: dict[str, Any]):
     image.paste(logo, ((width - 260) // 2, 120), logo)
     font, name = video_fit_text(draw, shop.get("nome", ""), 74, True, width - 160)
     draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
-    sign_address(draw, width / 2, 540, full_address(shop), width - 160)
+    box = sign_address(draw, width / 2, 540, full_address(shop), width - 160)
+    if shop.get("indirizzo"):
+        add_link(image, box, maps_link(shop.get("nome", ""), shop["indirizzo"]))
     draw.text((width / 2, 730), "IN ATTESA", font=video_font(150, bold=True), fill=color, anchor="mm")
     draw.text((width / 2, 850), "del menù di oggi", font=video_font(64, bold=True), fill=(40, 40, 40), anchor="mm")
     draw.text((width / 2, 935), f"{SUMMARY_WEEKDAYS[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}",
               font=video_font(46), fill=(90, 90, 90), anchor="mm")
     draw.text((width / 2, 1060), "Appena pubblicato compare qui", font=video_font(48, bold=True), fill=(30, 120, 60), anchor="mm")
     if shop.get("telefono"):
-        draw.text((width / 2, 1135), f"Per ordinare: {shop['telefono']}", font=video_font(40), fill=(90, 90, 90), anchor="mm")
+        text, small = f"Per ordinare: {shop['telefono']}", video_font(40)
+        draw.text((width / 2, 1135), text, font=small, fill=(90, 90, 90), anchor="mm")
+        add_link(image, draw.textbbox((width / 2, 1135), text, font=small, anchor="mm"), tel_link(shop["telefono"]))
     draw.text((width / 2, height - 110), "tinyurl.com/menurosticcerie", font=video_font(34), fill=(130, 130, 130), anchor="mm")
     return image
 
@@ -3409,20 +3501,24 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
     pages = []
     for number, shop in enumerate(shops, 1):
         entry = ready.get(shop["id"]) or {"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop),
-                                          "indirizzo": full_address(shop),
+                                          "indirizzo": full_address(shop), "telefono": shop.get("telefono", ""),
                                           "logo": shop_logo_source(shop), "foto": None, "righe": []}
         footer = f"tinyurl.com/menurosticcerie   ·   {number}/{len(shops)}"
         if entry.get("foto") and Path(entry["foto"]).stem.endswith("_riposo"):
-            kind, sign = "chiuso", rest_day_sign_image(shop).resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
+            kind, sign = "chiuso", rest_day_sign_image(shop)
         elif shop["id"] in ready:
             kind, sign = "menu", None
         else:
-            kind, sign = "attesa", wait_sign_image(shop).resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
+            kind, sign = "attesa", wait_sign_image(shop)
         if sign is not None:  # cartello: a tutto schermo nel video, al centro della pagina A4
+            links = sign.info.get("links", [])
+            sign = sign.convert("RGB").resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
             a4 = Image.new("RGB", (1240, 1754), "white")
             scale = min(1100 / sign.width, 1614 / sign.height)
             fitted = sign.resize((round(sign.width * scale), round(sign.height * scale)), Image.LANCZOS)
-            a4.paste(fitted, ((1240 - fitted.width) // 2, (1754 - fitted.height) // 2))
+            dx, dy = (1240 - fitted.width) // 2, (1754 - fitted.height) // 2
+            a4.paste(fitted, (dx, dy))
+            a4.info["links"] = move_links(links, scale * VIDEO_W / 1080, dx, dy)  # cartelli disegnati a 1080x1350
             pages.append({"entry": entry, "tipo": kind, "video": sign, "a4": a4})
             continue
         menu = photo_menu(entry)
@@ -3596,13 +3692,23 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     page.paste(logo, (margin, margin), logo)
     text_x = margin + logo_side + round(28 * k)
     # tre righe alla destra del logo: nome, "Menu di ...", indirizzo completo
-    name_font, name = video_fit_text(draw, entry["nome"], round(48 * k), True, page_w - text_x - margin)
+    # riga 1: nome a sinistra, telefono a destra con lo stesso carattere (cliccabile nel PDF)
+    phone = (entry.get("telefono") or "").strip()
+    phone_room = draw.textlength(phone, font=video_font(round(48 * k), True)) + round(40 * k) if phone else 0
+    name_font, name = video_fit_text(draw, entry["nome"], round(48 * k), True, page_w - text_x - margin - phone_room)
     draw.text((text_x, margin + round(44 * k)), name, font=name_font, fill=(40, 40, 40), anchor="ls")
+    if phone:
+        draw.text((page_w - margin, margin + round(44 * k)), phone, font=name_font, fill=(40, 40, 40), anchor="rs")
+        add_link(page, draw.textbbox((page_w - margin, margin + round(44 * k)), phone, font=name_font, anchor="rs"),
+                 tel_link(phone))
     draw.text((text_x, margin + round(83 * k)), f"Menu di {when.lower()}",
               font=video_font(round(31 * k)), fill=(110, 110, 110), anchor="ls")
     address = entry.get("indirizzo") or entry.get("comune", "")
     address_font, address = video_fit_text(draw, address, round(28 * k), False, page_w - text_x - margin)
     draw.text((text_x, margin + round(117 * k)), address, font=address_font, fill=(110, 110, 110), anchor="ls")
+    if entry.get("indirizzo"):
+        add_link(page, draw.textbbox((text_x, margin + round(117 * k)), address, font=address_font, anchor="ls"),
+                 maps_link(entry.get("nome", ""), entry["indirizzo"]))
     top = margin + logo_side + round(30 * k)
     draw.line((margin, top - round(14 * k), page_w - margin, top - round(14 * k)), fill=(200, 200, 200), width=2)
     bottom = page_h - margin - round(30 * k)
@@ -3617,7 +3723,7 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
 
 def photo_pdf(entry: dict[str, Any], menu, when: str, target: Path) -> None:
     """PDF A4 verticale (150 dpi) con la pagina del menu (vedi photo_page)."""
-    photo_page(entry, menu, when).save(target, "PDF", resolution=150)
+    save_pdf([photo_page(entry, menu, when)], target)
 
 
 def photo_menu(entry: dict[str, Any], width: int = 1000):
@@ -3784,9 +3890,9 @@ def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
     PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Menu completo: PDF di {len(pages)} locali, PDF unico e video...")
     for page in pages:
-        page["a4"].save(PDF_SITE_DIR / f"{page['entry']['id']}.pdf", "PDF", resolution=150)
-    first, *others = [page["a4"] for page in pages]
-    first.save(PDF_SITE_DIR / COMPLETE_PDF, "PDF", resolution=150, save_all=True, append_images=others)
+        save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
+    save_pdf([page["a4"] for page in pages], PDF_SITE_DIR / COMPLETE_PDF)
+    (PDF_SITE_DIR / "mappa.html").write_text(MAP_PAGE_HTML, encoding="utf-8")  # link degli indirizzi
     video = make_video(config, PDF_SITE_DIR / COMPLETE_VIDEO, pages)
     day = date.today()
     when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]}"

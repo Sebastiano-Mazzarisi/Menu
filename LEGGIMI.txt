@@ -1376,6 +1376,25 @@ ORDINE ALFABETICO E SUONI A VOLUME DIMEZZATO (18/10/2026)
 - Il cartello CHIUSO usato in PDF e video viene ridisegnato ogni volta (non più letto dalla
   foto salvata al mattino), così ha sempre l'aspetto aggiornato.
 - Per cambiare l'indirizzo mostrato basta correggere "indirizzo" in locali.json.
+- Per rifare SUBITO PDF e video senza aspettare il giro automatico: doppio clic su
+  Rifai-PDF-e-video.bat (esegue python Menu.py --completo).
 Codice: full_address, sign_address, rest_day_sign_image, wait_sign_image, photo_page.
 Nota: il cartello IN ATTESA disegnato dalla pagina web dell'app (waitSign) mostra ancora il Comune.
 Copia precedente: backup\Menu_2026-10-20_prima-indirizzo-completo.py
+
+
+------------------------------------------------------------------------------------------------
+20/10/2026 - NEI PDF INDIRIZZO E TELEFONO CLICCABILI
+------------------------------------------------------------------------------------------------
+- Pagina del menu: nella prima riga, a destra del nome, c'è il numero di telefono con lo stesso
+  carattere del nome (se il nome è lungo si rimpicciolisce lui, il numero resta intero).
+- Nei PDF (menu.pdf e <id>.pdf, anche nei cartelli CHIUSO e IN ATTESA):
+    * toccando l'INDIRIZZO si apre la mappa: Apple Maps su iPhone/iPad/Mac, Google Maps su
+      Android e PC. Il link porta alla pagina https://menurosticcerie.github.io/mappa.html?q=...
+      che sceglie la mappa giusta (MAP_PAGE_HTML in Menu.py, pubblicata con i PDF);
+    * toccando il TELEFONO parte la chiamata (link tel:, solo cifre del numero di locali.json).
+    Nel cartello IN ATTESA è cliccabile anche "Per ordinare: <telefono>".
+- Pillow non sa mettere link nei PDF: i PDF ora sono scritti da save_pdf (nessuna libreria in
+  più da installare). Il video non cambia, salvo il telefono nella prima riga.
+Codice: maps_link, tel_link, add_link, move_links, save_pdf, MAP_PAGE_HTML, photo_page.
+Copia precedente: backup\Menu_2026-10-20_prima-dei-link.py
