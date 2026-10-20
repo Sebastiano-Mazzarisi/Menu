@@ -1360,3 +1360,22 @@ ORDINE ALFABETICO E SUONI A VOLUME DIMEZZATO (18/10/2026)
 - Foto del giorno (Foto\AAAA-MM-GG): prima di crearle si tolgono quelle di un giro precedente
   dello stesso giorno. Prima, se un locale in più cambiava la numerazione (es. "05 Impasta" e
   "06 Impasta"), le vecchie restavano e nel post finivano doppie (post con 20 foto invece di 12).
+
+
+------------------------------------------------------------------------------------------------
+20/10/2026 - INDIRIZZO COMPLETO NEI PDF (E NEL VIDEO)
+------------------------------------------------------------------------------------------------
+- Cartelli CHIUSO e IN ATTESA: sotto il nome del locale c'è l'indirizzo completo preso da
+  locali.json > "indirizzo" (es. "Via Nicola Losavio 10, 70017 Putignano (BA)") al posto del
+  solo Comune. Se è troppo lungo per una riga va su due righe, spezzato alla prima virgola.
+  Se "indirizzo" manca resta il Comune.
+- Pagina del menu (PDF A4 e video): alla destra del logo ci sono tre righe:
+    1) nome del locale
+    2) "Menu di martedì 20 ottobre 2026" (senza più il Comune davanti)
+    3) indirizzo completo
+- Il cartello CHIUSO usato in PDF e video viene ridisegnato ogni volta (non più letto dalla
+  foto salvata al mattino), così ha sempre l'aspetto aggiornato.
+- Per cambiare l'indirizzo mostrato basta correggere "indirizzo" in locali.json.
+Codice: full_address, sign_address, rest_day_sign_image, wait_sign_image, photo_page.
+Nota: il cartello IN ATTESA disegnato dalla pagina web dell'app (waitSign) mostra ancora il Comune.
+Copia precedente: backup\Menu_2026-10-20_prima-indirizzo-completo.py

@@ -1137,8 +1137,14 @@ def rest_days(shop: dict[str, Any]) -> set[int]:
 
 
 def rest_day_sign(shop: dict[str, Any], target: Path) -> None:
+    """Salva il cartello "CHIUSO" (vedi rest_day_sign_image) come foto del menu del giorno di riposo."""
+    rest_day_sign_image(shop).save(target, quality=92, optimize=True)
+
+
+def rest_day_sign_image(shop: dict[str, Any]):
     """Cartello "CHIUSO" (1080x1350, si legge bene sul cellulare) mostrato al posto del menu nel
-    giorno di riposo: logo e nome del locale, CHIUSO in grande, il giorno e quando riapre."""
+    giorno di riposo: logo, nome e indirizzo completo del locale, CHIUSO in grande, il giorno e
+    quando riapre. Viene ridisegnato anche per PDF e video, così ha sempre l'aspetto attuale."""
     from PIL import Image, ImageDraw
     today = date.today()
     days = rest_days(shop)
@@ -1151,7 +1157,7 @@ def rest_day_sign(shop: dict[str, Any], target: Path) -> None:
     image.paste(logo, ((width - 260) // 2, 120), logo)
     font, name = video_fit_text(draw, shop["nome"], 74, True, width - 160)
     draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
-    draw.text((width / 2, 545), shop_town(shop), font=video_font(44), fill=(110, 110, 110), anchor="mt")
+    sign_address(draw, width / 2, 540, full_address(shop), width - 160)
     draw.text((width / 2, 740), "CHIUSO", font=video_font(190, bold=True), fill=(200, 40, 40), anchor="mm")
     draw.text((width / 2, 900), f"Oggi è {DAY_NAMES[today.weekday()]}", font=video_font(58, bold=True),
               fill=(40, 40, 40), anchor="mt")
@@ -1161,7 +1167,7 @@ def rest_day_sign(shop: dict[str, Any], target: Path) -> None:
         draw.text((width / 2, 1100), f"Riapre {DAY_NAMES[reopen.weekday()]} {reopen.day}", font=video_font(52, bold=True),
                   fill=(30, 120, 60), anchor="mt")
     draw.text((width / 2, height - 110), "tinyurl.com/menurosticcerie", font=video_font(34), fill=(130, 130, 130), anchor="mm")
-    image.save(target, quality=92, optimize=True)
+    return image
 
 
 def rest_day_result(shop: dict[str, Any], folder: Path, checked: str) -> Result:
@@ -2782,6 +2788,29 @@ def shop_town(shop: dict) -> str:
     return ""
 
 
+def full_address(shop: dict) -> str:
+    """Indirizzo completo del locale (campo "indirizzo" di locali.json, es. "Via Nicola Losavio 10,
+    70017 Putignano (BA)") mostrato in PDF, video e cartelli CHIUSO / IN ATTESA; se manca, il Comune."""
+    return (shop.get("indirizzo") or "").strip() or shop_town(shop)
+
+
+def sign_address(draw, x: float, y: float, address: str, width: int) -> None:
+    """Indirizzo sotto il nome nei cartelli CHIUSO / IN ATTESA (centrato in x, dall'alto in y):
+    su una riga se ci sta (carattere da 44 a 36), altrimenti su due righe spezzate alla prima
+    virgola ("Via Estramurale a Levante 11" / "70017 Putignano (BA)")."""
+    color = (110, 110, 110)
+    for size in range(44, 35, -2):
+        font = video_font(size)
+        if draw.textlength(address, font=font) <= width:
+            draw.text((x, y), address, font=font, fill=color, anchor="mt")
+            return
+    first, _, second = address.partition(",")
+    lines = [first.strip(), second.strip()] if second.strip() else [address]
+    for number, line in enumerate(lines):
+        font, line = video_fit_text(draw, line, 38, False, width)
+        draw.text((x, y + number * 48), line, font=font, fill=color, anchor="mt")
+
+
 def make_shop_logos(shops: list[dict[str, Any]]) -> dict[str, str]:
     """Miniature quadrate dei loghi in icone/logo-<id>.jpg (leggere: pochi KB l'una), rifatte
     solo quando il logo cambia. Il logo intero viene centrato nel quadrato (non tagliato), con
@@ -3262,7 +3291,8 @@ def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
                     lines.append((text, raw == text and text.isupper() and len(text) <= 28))
         if not (picture and picture.is_file()) and not lines:
             continue
-        found.append({"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop), "logo": shop_logo_source(shop),
+        found.append({"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop),
+                      "indirizzo": full_address(shop), "logo": shop_logo_source(shop),
                       "foto": picture if picture and picture.is_file() else None, "righe": lines})
     found.sort(key=lambda e: sort_key_name(e["nome"]))  # ordine alfabetico, come nell'app, nel PDF e nel video
     # per le prove: locali.json > impostazioni > riassunto > "solo_primi": 3 = solo le prime 3
@@ -3351,7 +3381,7 @@ def wait_sign_image(shop: dict[str, Any]):
     image.paste(logo, ((width - 260) // 2, 120), logo)
     font, name = video_fit_text(draw, shop.get("nome", ""), 74, True, width - 160)
     draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
-    draw.text((width / 2, 545), shop_town(shop), font=video_font(44), fill=(110, 110, 110), anchor="mt")
+    sign_address(draw, width / 2, 540, full_address(shop), width - 160)
     draw.text((width / 2, 730), "IN ATTESA", font=video_font(150, bold=True), fill=color, anchor="mm")
     draw.text((width / 2, 850), "del menù di oggi", font=video_font(64, bold=True), fill=(40, 40, 40), anchor="mm")
     draw.text((width / 2, 935), f"{SUMMARY_WEEKDAYS[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}",
@@ -3379,12 +3409,11 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
     pages = []
     for number, shop in enumerate(shops, 1):
         entry = ready.get(shop["id"]) or {"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop),
+                                          "indirizzo": full_address(shop),
                                           "logo": shop_logo_source(shop), "foto": None, "righe": []}
         footer = f"tinyurl.com/menurosticcerie   ·   {number}/{len(shops)}"
         if entry.get("foto") and Path(entry["foto"]).stem.endswith("_riposo"):
-            kind = "chiuso"
-            with Image.open(entry["foto"]) as sign:
-                sign = sign.convert("RGB").resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
+            kind, sign = "chiuso", rest_day_sign_image(shop).resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
         elif shop["id"] in ready:
             kind, sign = "menu", None
         else:
@@ -3553,7 +3582,8 @@ def publish_pdf_site() -> bool:
 
 def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (1240, 1754),
                footer: str = "Tutti i menu di oggi: tinyurl.com/menurosticcerie"):
-    """Pagina bianca del menu (la stessa del PDF): in alto logo piccolo, nome, paese e data; sotto il
+    """Pagina bianca del menu (la stessa del PDF): in alto logo piccolo e, alla sua destra, nome,
+    data e indirizzo completo (tre righe); sotto il
     menu intero, il più grande possibile, con i colori originali; in fondo una riga grigia.
     size=(1240, 1754) = A4 a 150 dpi per il PDF; (1080, 1350) = fotogramma 4:5 del video."""
     from PIL import Image, ImageDraw
@@ -3565,10 +3595,14 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     logo = video_logo(entry, logo_side).convert("RGBA")
     page.paste(logo, (margin, margin), logo)
     text_x = margin + logo_side + round(28 * k)
-    name_font, name = video_fit_text(draw, entry["nome"], round(50 * k), True, page_w - text_x - margin)
-    draw.text((text_x, margin + round(52 * k)), name, font=name_font, fill=(40, 40, 40), anchor="ls")
-    draw.text((text_x, margin + round(100 * k)), f"{entry['comune']} · Menu di {when.lower()}",
-              font=video_font(round(32 * k)), fill=(110, 110, 110), anchor="ls")
+    # tre righe alla destra del logo: nome, "Menu di ...", indirizzo completo
+    name_font, name = video_fit_text(draw, entry["nome"], round(48 * k), True, page_w - text_x - margin)
+    draw.text((text_x, margin + round(44 * k)), name, font=name_font, fill=(40, 40, 40), anchor="ls")
+    draw.text((text_x, margin + round(83 * k)), f"Menu di {when.lower()}",
+              font=video_font(round(31 * k)), fill=(110, 110, 110), anchor="ls")
+    address = entry.get("indirizzo") or entry.get("comune", "")
+    address_font, address = video_fit_text(draw, address, round(28 * k), False, page_w - text_x - margin)
+    draw.text((text_x, margin + round(117 * k)), address, font=address_font, fill=(110, 110, 110), anchor="ls")
     top = margin + logo_side + round(30 * k)
     draw.line((margin, top - round(14 * k), page_w - margin, top - round(14 * k)), fill=(200, 200, 200), width=2)
     bottom = page_h - margin - round(30 * k)
