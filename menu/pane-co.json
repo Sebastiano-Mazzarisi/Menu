@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-19",
+  "data": "2026-10-20",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -18,11 +18,6 @@
         {
           "nome": "Bietole al vapore",
           "prezzo": "€5.00",
-          "descrizione": ""
-        },
-        {
-          "nome": "Funghi pleurotus con bresaola, rucola e grana",
-          "prezzo": "€6.00",
           "descrizione": ""
         },
         {
@@ -61,8 +56,13 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Penne all'amatriciana",
+          "nome": "Rigatoni alla carbonara",
           "prezzo": "€6.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Risotto con asparagi e zafferano",
+          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
@@ -71,19 +71,14 @@
           "descrizione": ""
         },
         {
-          "nome": "Risotto con funghi porcini e zafferano",
+          "nome": "Cavatelli al grano arso con fave, zucchina e gamberetti",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con ragù di baccalà",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Zuppa di ceci",
+          "nome": "Zuppa del casale",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Con orzo, ceci, farro, lenticchie, fagioli borlotti e cannellini Con o senza pasta"
         }
       ]
     },
@@ -91,14 +86,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di merluzzo gratinato con zucchina",
+          "nome": "Filetto di merluzzo gratinato",
           "prezzo": "€8.50",
-          "descrizione": "Con pomodorino"
+          "descrizione": ""
         },
         {
-          "nome": "Bocconcini di petto di pollo con piselli",
+          "nome": "Scaloppe di pollo al limone",
           "prezzo": "€7.50",
-          "descrizione": ""
+          "descrizione": "2 pezzi"
         }
       ]
     }
