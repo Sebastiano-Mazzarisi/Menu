@@ -56,29 +56,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Rigatoni alla carbonara",
+          "nome": "Pasta e patate con provola alla napoletana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con asparagi e zafferano",
-          "prezzo": "€7.50",
+          "nome": "Gnocchi con gorgonzola e noci",
+          "prezzo": "€8.00",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con vellutata di cavolfiore e capocollo croccante",
+          "nome": "Orecchiette con pancetta, funghi e ciliegino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con fave, zucchina e gamberetti",
+          "nome": "Risotto con cernia, zucchina e datterino giallo",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa del casale",
+          "nome": "Zuppa di ceci",
           "prezzo": "€6.00",
-          "descrizione": "Con orzo, ceci, farro, lenticchie, fagioli borlotti e cannellini Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -86,14 +86,19 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di merluzzo gratinato",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
           "nome": "Scaloppe di pollo al limone",
           "prezzo": "€7.50",
           "descrizione": "2 pezzi"
+        },
+        {
+          "nome": "Trancio di pesce spada alla pizzaiola",
+          "prezzo": "€8.50",
+          "descrizione": "Con pomodorini, origano e olive"
+        },
+        {
+          "nome": "Bombette di capocollo all'ortolana",
+          "prezzo": "€7.50",
+          "descrizione": "5 pezzi"
         }
       ]
     }
