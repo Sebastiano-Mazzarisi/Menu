@@ -1144,7 +1144,7 @@ def rest_day_sign(shop: dict[str, Any], target: Path) -> None:
 def rest_day_sign_image(shop: dict[str, Any]):
     """Cartello "CHIUSO" (1080x1350, si legge bene sul cellulare) mostrato al posto del menu nel
     giorno di riposo: logo, nome e indirizzo completo del locale, CHIUSO in grande, il giorno e
-    quando riapre. Viene ridisegnato anche per PDF e video, così ha sempre l'aspetto attuale."""
+    quando riapre. Viene ridisegnato anche per i PDF, così ha sempre l'aspetto attuale."""
     from PIL import Image, ImageDraw
     today = date.today()
     days = rest_days(shop)
@@ -2792,7 +2792,7 @@ def shop_town(shop: dict) -> str:
 
 def full_address(shop: dict) -> str:
     """Indirizzo completo del locale (campo "indirizzo" di locali.json, es. "Via Nicola Losavio 10,
-    70017 Putignano (BA)") mostrato in PDF, video e cartelli CHIUSO / IN ATTESA; se manca, il Comune."""
+    70017 Putignano (BA)") mostrato nei PDF e nei cartelli CHIUSO / IN ATTESA; se manca, il Comune."""
     return (shop.get("indirizzo") or "").strip() or shop_town(shop)
 
 
@@ -3307,25 +3307,15 @@ def make_overview(config: dict[str, Any], browser: "BrowserCollector") -> Path:
 
 
 # ------------------------------------------------------------------------------------------------
-# VIDEO DEI MENU PER FACEBOOK (vedi LEGGIMI.txt > Video dei menu)
-# Pulsante "Video" del Monitor (o python Menu.py --video): crea Facebook\Video-AAAA-MM-GG.mp4,
-# formato verticale 4:5 (1080 x 1350, il più grande sul cellulare nel feed di Facebook).
-# Per ogni rosticceria con il menu di oggi: logo e nome in alto a sinistra, una freccia che parte
-# verso destra e scende sul menu, poi la foto del menu grande e leggibile. All'inizio la data,
-# alla fine il link corto. I menu solo testo (siti) diventano un cartoncino con i piatti.
+# PAGINE DEI MENU PER I PDF: caratteri, loghi, cartelli CHIUSO / IN ATTESA (1080 x 1350).
+# I nomi "video_..." sono rimasti dal vecchio video dei menu, tolto il 20/10/2026.
 # ------------------------------------------------------------------------------------------------
-VIDEO_DIR = ROOT / "Facebook"
-VIDEO_W, VIDEO_H, VIDEO_FPS = 1080, 1350, 30
-VIDEO_BG, VIDEO_INK, VIDEO_MUTED, VIDEO_ACCENT = (18, 25, 21), (245, 242, 235), (170, 180, 172), (232, 146, 30)
-VIDEO_SHOP_SECONDS = 7.0   # tempo per ogni rosticceria: la pagina del menu (come il PDF) ferma per leggerla
-VIDEO_OPEN_SECONDS, VIDEO_CLOSE_SECONDS = 5.5, 6.0   # schermata iniziale e finale
-# musica di sottofondo: Facebook\musica-video.m4a (o .mp3), composta apposta per Menu, tranquilla e
-# senza diritti di terzi. Per cambiarla basta sostituire il file; se manca il video è muto.
-VIDEO_MUSIC_NAMES = ("musica-video.m4a", "musica-video.mp3")
+VIDEO_W, VIDEO_H = 1080, 1350
+VIDEO_BG, VIDEO_INK, VIDEO_MUTED = (18, 25, 21), (245, 242, 235), (170, 180, 172)
 
 
 def video_font(size: int, bold: bool = False):
-    """Carattere per le scritte del video: Segoe UI su Windows, altrimenti DejaVu o quello di Pillow."""
+    """Carattere per le scritte dei PDF: Segoe UI su Windows, altrimenti DejaVu o quello di Pillow."""
     from PIL import ImageFont
     names = (["segoeuib.ttf", "arialbd.ttf", "DejaVuSans-Bold.ttf"] if bold else
              ["segoeui.ttf", "arial.ttf", "DejaVuSans.ttf"])
@@ -3337,22 +3327,8 @@ def video_font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
-def video_ffmpeg() -> str | None:
-    """Programma ffmpeg per scrivere l'MP4: quello di imageio-ffmpeg (installato da solo la prima
-    volta con pip, circa 30 MB) oppure un ffmpeg già presente nel sistema."""
-    for attempt in range(2):
-        try:
-            import imageio_ffmpeg
-            return imageio_ffmpeg.get_ffmpeg_exe()
-        except Exception:
-            if attempt == 0:
-                print("Installo imageio-ffmpeg (serve una sola volta per creare i video)...")
-                subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "imageio-ffmpeg"], check=False)
-    return shutil.which("ffmpeg")
-
-
 def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
-    """Rosticcerie con il menu di oggi in ORDINE ALFABETICO (foto, post di Facebook, PDF e video):
+    """Rosticcerie con il menu di oggi in ORDINE ALFABETICO (per i PDF):
     per ognuna nome, paese, logo e foto del menu o righe dei piatti."""
     shops = {shop["id"]: shop for shop in config.get("locali", [])}
     today = date.today().isoformat()
@@ -3382,9 +3358,9 @@ def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
                       "indirizzo": full_address(shop), "telefono": shop.get("telefono", ""),
                       "logo": shop_logo_source(shop),
                       "foto": picture if picture and picture.is_file() else None, "righe": lines})
-    found.sort(key=lambda e: sort_key_name(e["nome"]))  # ordine alfabetico, come nell'app, nel PDF e nel video
+    found.sort(key=lambda e: sort_key_name(e["nome"]))  # ordine alfabetico, come nell'app e nel PDF
     # per le prove: locali.json > impostazioni > riassunto > "solo_primi": 3 = solo le prime 3
-    # rosticcerie in foto, PDF, video e post (togliere la riga per tornare a tutte)
+    # rosticcerie nei PDF (togliere la riga per tornare a tutte)
     limit = int(config.get("impostazioni", {}).get("riassunto", {}).get("solo_primi", 0) or 0)
     if limit > 0:
         print(f"PROVA: solo le prime {limit} rosticcerie (impostazioni > riassunto > solo_primi)")
@@ -3439,23 +3415,6 @@ def video_logo(entry: dict[str, Any], side: int):
     return video_rounded(square, 28)
 
 
-def video_title_image(lines: list[tuple[str, int, bool, tuple]], logo_path: Path | None):
-    """Schermata d'apertura o di chiusura, bianca come le pagine dei menu: logo di Menu e righe centrate."""
-    from PIL import Image, ImageDraw
-    base = Image.new("RGB", (VIDEO_W, VIDEO_H), "white")
-    draw = ImageDraw.Draw(base)
-    y = 330
-    if logo_path and logo_path.is_file():
-        logo = video_logo({"logo": logo_path, "nome": "Menu"}, 300).convert("RGBA")
-        base.paste(logo, ((VIDEO_W - 300) // 2, y), logo)
-        y += 380
-    for text, size, bold, color in lines:
-        font, text = video_fit_text(draw, text, size, bold, VIDEO_W - 120)
-        draw.text((VIDEO_W / 2, y), text, font=font, fill=color, anchor="mt")
-        y += round(size * 1.45)
-    return base
-
-
 def wait_sign_image(shop: dict[str, Any]):
     """Cartello "IN ATTESA del menù di oggi" (1080x1350), uguale a quello disegnato dalla pagina
     (waitSign nel PAGE_TEMPLATE): per i locali aperti oggi il cui menu non c'è ancora."""
@@ -3489,7 +3448,7 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
     """TUTTI i locali di locali.json in ordine alfabetico, ognuno con la sua pagina di oggi:
     "menu" (il menu di oggi), "chiuso" (cartello CHIUSO del riposo settimanale) o "attesa"
     (cartello IN ATTESA: aperto oggi ma il menu non c'è ancora).
-    Ogni elemento: {"entry", "tipo", "video" (immagine 1080x1350), "a4" (immagine A4 a 150 dpi)}."""
+    Ogni elemento: {"entry", "tipo", "a4" (immagine A4 a 150 dpi, con i link per save_pdf)}."""
     from PIL import Image
     day = date.today()
     when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]} {day.year}"
@@ -3503,14 +3462,13 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
         entry = ready.get(shop["id"]) or {"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop),
                                           "indirizzo": full_address(shop), "telefono": shop.get("telefono", ""),
                                           "logo": shop_logo_source(shop), "foto": None, "righe": []}
-        footer = f"tinyurl.com/menurosticcerie   ·   {number}/{len(shops)}"
         if entry.get("foto") and Path(entry["foto"]).stem.endswith("_riposo"):
             kind, sign = "chiuso", rest_day_sign_image(shop)
         elif shop["id"] in ready:
             kind, sign = "menu", None
         else:
             kind, sign = "attesa", wait_sign_image(shop)
-        if sign is not None:  # cartello: a tutto schermo nel video, al centro della pagina A4
+        if sign is not None:  # cartello: al centro della pagina A4
             links = sign.info.get("links", [])
             sign = sign.convert("RGB").resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
             a4 = Image.new("RGB", (1240, 1754), "white")
@@ -3519,85 +3477,15 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
             dx, dy = (1240 - fitted.width) // 2, (1754 - fitted.height) // 2
             a4.paste(fitted, (dx, dy))
             a4.info["links"] = move_links(links, scale * VIDEO_W / 1080, dx, dy)  # cartelli disegnati a 1080x1350
-            pages.append({"entry": entry, "tipo": kind, "video": sign, "a4": a4})
+            pages.append({"entry": entry, "tipo": kind, "a4": a4})
             continue
-        menu = photo_menu(entry)
-        pages.append({"entry": entry, "tipo": kind, "a4": photo_page(entry, menu, when),
-                      "video": photo_page(entry, menu, when, (VIDEO_W, VIDEO_H), footer)})
+        pages.append({"entry": entry, "tipo": kind, "a4": photo_page(entry, photo_menu(entry), when)})
     return pages
 
 
-def make_video(config: dict[str, Any], target: Path | None = None, pages: list[dict[str, Any]] | None = None) -> Path | None:
-    """Video 4:5 (1080x1350) con la pagina di OGNI locale in ordine alfabetico (menu, CHIUSO o
-    IN ATTESA), tra una schermata d'apertura e una di chiusura. Stacchi netti: niente dissolvenze,
-    niente fade-in né fade-out (il primo fotogramma è già pieno: anteprima di Facebook non nera).
-    Le immagini ferme vanno a ffmpeg come elenco con le durate (concat): veloce anche ogni 30 minuti.
-    Predefinito: Facebook\\Video-AAAA-MM-GG.mp4."""
-    pages = all_shop_pages(config) if pages is None else pages
-    if not pages:
-        print("Video non creato: nessun locale in locali.json.")
-        return None
-    ffmpeg = video_ffmpeg()
-    if not ffmpeg:
-        print("Video non creato: manca ffmpeg (pip install imageio-ffmpeg).")
-        return None
-    day = date.today()
-    if target is None:
-        VIDEO_DIR.mkdir(exist_ok=True)
-        target = VIDEO_DIR / f"Video-{day.isoformat()}.mp4"
-    when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]}"
-    ready = sum(1 for page in pages if page["tipo"] == "menu")
-    ink, accent, muted = (40, 40, 40), (200, 110, 10), (110, 110, 110)
-    stills = [(video_title_image([("I menu del giorno", 70, True, ink), (when, 52, False, accent),
-                                  (f"{ready} menu pubblicati su {len(pages)} rosticcerie", 40, False, muted)], APP_LOGO), VIDEO_OPEN_SECONDS)]
-    stills += [(page["video"], VIDEO_SHOP_SECONDS) for page in pages]
-    stills.append((video_title_image([("Tutti i menu, ogni giorno", 60, True, ink),
-                                      ("tinyurl.com/menurosticcerie", 50, True, accent),
-                                      ("Per ordinare chiama la rosticceria", 38, False, muted)], APP_LOGO), VIDEO_CLOSE_SECONDS))
-    seconds = sum(length for _, length in stills)
-    work = Path(tempfile.mkdtemp(prefix="menu-video-"))
-    try:
-        lines = []
-        for index, (image, length) in enumerate(stills):
-            name = f"{index:03d}.png"
-            image.convert("RGB").save(work / name)
-            lines += [f"file '{name}'", f"duration {length:.2f}"]
-        lines.append(f"file '{len(stills) - 1:03d}.png'")  # l'ultima va ripetuta perché valga la sua durata
-        (work / "elenco.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-        command = [ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(work / "elenco.txt")]
-        music = next((VIDEO_DIR / name for name in VIDEO_MUSIC_NAMES if (VIDEO_DIR / name).is_file()), None)
-        if music:  # chitarra ripetuta se più corta; abbassata dolcemente solo negli ultimi 2 secondi
-            command += ["-stream_loop", "-1", "-i", str(music), "-map", "0:v", "-map", "1:a",
-                        "-af", f"afade=t=out:st={max(0.0, seconds - 2):.2f}:d=2", "-c:a", "aac", "-b:a", "128k"]
-        command += ["-t", f"{seconds:.2f}", "-vf", f"fps={VIDEO_FPS},format=yuv420p",
-                    "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-tune", "stillimage",
-                    "-profile:v", "high", "-level", "4.1", "-g", str(VIDEO_FPS * 10),
-                    "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
-                    "-movflags", "+faststart", str(target)]
-        print(f"Creo il video con {len(pages)} locali ({ready} con il menu di oggi)...")
-        done = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    finally:
-        shutil.rmtree(work, ignore_errors=True)
-    if done.returncode != 0 or not target.is_file():
-        print(f"Video non creato: ffmpeg ha dato un errore. {(done.stderr or '').strip()[:300]}")
-        return None
-    print(f"Video pronto: {target} ({target.stat().st_size // 1024} KB)")
-    return target
-
-
-
 # ------------------------------------------------------------------------------------------------
-# FOTO DEI MENU (pulsante "Foto" del Monitor, o python Menu.py --foto)
-# Per ogni rosticceria con il menu di oggi crea un'immagine verticale da leggere sul cellulare
-# (larga 1080): in alto logo, nome, paese e data; subito sotto il menu INTERO (la foto del locale
-# senza tagli, ingrandita e resa più nitida, oppure i piatti riscritti per intero se il menu è
-# solo testo); in fondo il link. Le salva in Foto\AAAA-MM-GG\NN Nome.jpg (le vecchie restano).
+# SITO DEI PDF (le foto singole dei menu per Facebook non si fanno più dal 20/10/2026)
 # ------------------------------------------------------------------------------------------------
-PHOTOS = ROOT / "Foto"
-# PDF A4 di ogni menu, PUBBLICATI con il sito (pdf/<id>.pdf, sovrascritti ogni volta) per il link
-# sotto ogni foto del post Facebook: tinyurl.com/menurosticcerie#pdf-<id> (vedi photo_captions)
-PDFS = ROOT / "pdf"   # vecchia cartella dei PDF nel sito Menu (non più usata: viene svuotata)
 # PDF dei menu su un sito SENZA nome e cognome: l'organizzazione GitHub "menurosticcerie" con il
 # repository "menurosticcerie.github.io" -> https://menurosticcerie.github.io/<id>.pdf
 # (nome dell'organizzazione modificabile in locali.json > impostazioni > "sito_pdf").
@@ -3640,7 +3528,7 @@ def publish_pdf_site() -> bool:
                          '<title>Menu rosticcerie</title><p style="font:18px sans-serif;margin:2em">Menu del giorno '
                          'delle rosticcerie: <a href="https://tinyurl.com/menurosticcerie">apri l\'app</a></p>',
                          encoding="utf-8")
-    # UNA sola versione nel repository: PDF e video cambiano ogni 30 minuti e tenerne la storia lo
+    # UNA sola versione nel repository: i PDF cambiano ogni 30 minuti e tenerne la storia lo
     # farebbe crescere di centinaia di MB al giorno. Il commit unico (senza "genitore") si costruisce
     # con i comandi di base di git (write-tree / commit-tree / update-ref): niente cambi di ramo, quindi
     # nessuno stato a metà se qualcosa si interrompe; un ramo rimasto storto si ripara da solo.
@@ -3681,7 +3569,7 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     """Pagina bianca del menu (la stessa del PDF): in alto logo piccolo e, alla sua destra, nome,
     data e indirizzo completo (tre righe); sotto il
     menu intero, il più grande possibile, con i colori originali; in fondo una riga grigia.
-    size=(1240, 1754) = A4 a 150 dpi per il PDF; (1080, 1350) = fotogramma 4:5 del video."""
+    size=(1240, 1754) = A4 a 150 dpi per il PDF."""
     from PIL import Image, ImageDraw
     page_w, page_h = size
     k = page_w / 1240                       # tutto in proporzione alla larghezza dell'A4
@@ -3721,19 +3609,9 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     return page
 
 
-def photo_pdf(entry: dict[str, Any], menu, when: str, target: Path) -> None:
-    """PDF A4 verticale (150 dpi) con la pagina del menu (vedi photo_page)."""
-    save_pdf([photo_page(entry, menu, when)], target)
-
-
 def photo_menu(entry: dict[str, Any], width: int = 1000):
     """Il menu della rosticceria come immagine: la foto intera o, se è solo testo, i piatti riscritti."""
     return photo_menu_picture(entry, width) if entry["foto"] else photo_menu_text(entry, width)
-
-
-def prune_pdfs() -> None:
-    """Svuota la vecchia cartella pdf del sito Menu: i PDF ora stanno sul sito senza nome e cognome."""
-    shutil.rmtree(PDFS, ignore_errors=True)
 
 
 def photo_wrap(draw, text: str, font, width: int) -> list[str]:
@@ -3785,69 +3663,31 @@ def photo_menu_picture(entry: dict[str, Any], width: int):
     return video_rounded(photo, 24)
 
 
-def make_photos(config: dict[str, Any]) -> Path | None:
-    """Crea Foto\\AAAA-MM-GG\\NN Nome.jpg per ogni rosticceria con il menu di oggi. Restituisce la cartella."""
-    from PIL import Image, ImageDraw
-    entries = video_shops(config)
-    if not entries:
-        print("Foto non create: nessuna rosticceria ha ancora il menu di oggi.")
-        return None
-    day = date.today()
-    folder = PHOTOS / day.isoformat()
-    folder.mkdir(parents=True, exist_ok=True)
-    for old in folder.glob("*.jpg"):  # foto di un giro precedente di oggi: con un locale in più o in
-        remove_file(old)              # meno i numeri cambiano e nel post sarebbero finite due volte
-    pdf_folder = PDF_SITE_DIR
-    pdf_folder.mkdir(parents=True, exist_ok=True)
-    site = pdf_site(config.get("impostazioni", {}))[0]
-    captions = []
-    when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]} {day.year}"
-    width, margin, logo_side = 1080, 40, 170
-    for number, entry in enumerate(entries, 1):
-        menu = photo_menu(entry, width - 2 * margin)
-        head = 2 * 44 + logo_side
-        height = max(1350, head + menu.height + 110)
-        image = Image.new("RGB", (width, height), VIDEO_BG)
-        draw = ImageDraw.Draw(image)
-        logo = video_logo(entry, logo_side)
-        image.paste(logo, (margin, 44), logo)
-        text_x, text_w = margin + logo_side + 32, width - (margin + logo_side + 32) - margin
-        name_font, name = video_fit_text(draw, entry["nome"], 64, True, text_w)
-        draw.text((text_x, 44 + 70), name, font=name_font, fill=VIDEO_INK, anchor="ls")
-        draw.text((text_x, 44 + 122), entry["comune"], font=video_font(40), fill=VIDEO_MUTED, anchor="ls")
-        draw.text((text_x, 44 + 166), f"Menu di {when.lower()}", font=video_font(36, bold=True), fill=VIDEO_ACCENT, anchor="ls")
-        image.paste(menu, (margin, head), menu)
-        draw.text((width / 2, height - 48), "tinyurl.com/menurosticcerie", font=video_font(32), fill=VIDEO_MUTED, anchor="mm")
-        safe = re.sub(r'[\\/:*?"<>|]', "", entry["nome"]).strip()
-        target = folder / f"{number:02d} {safe}.jpg"
-        image.save(target, quality=92, optimize=True, subsampling=0)
-        photo_pdf(entry, menu, when, pdf_folder / f"{entry['id']}.pdf")
-        captions.append({"file": target.name, "nome": entry["nome"], "comune": entry["comune"],
-                         "id": entry["id"], "pdf": f"{site}{entry['id']}.pdf"})
-        print(f"  {number}/{len(entries)} {target.name} ({width}x{height}) + PDF A4")
-    save_json(folder / "didascalie.json", captions)
-    prune_pdfs()
-    print(f"Foto pronte in {folder} (PDF in {pdf_folder}, online dopo la pubblicazione del sito)")
-    return folder
-
-
 # ------------------------------------------------------------------------------------------------
 # MENU COMPLETO OGNI 30 MINUTI (a ogni giro automatico, dopo l'aggiornamento dei menu)
 # Sul sito senza nome e cognome (https://menurosticcerie.github.io/, cartella pdf-sito):
 #   <id>.pdf   = PDF A4 di ogni locale (menu di oggi, cartello CHIUSO o cartello IN ATTESA)
 #   menu.pdf   = PDF unico con TUTTI i locali in ordine alfabetico  -> pulsante "call to action"
 #                della Pagina Facebook (indirizzo fisso, si imposta una volta sola)
-#   video.mp4  = video 4:5 con le stesse pagine, stacchi netti      -> link nel post fissato in alto
-#   video.html = pagina col video da aprire dal cellulare (anche index.html)
+#   index.html = apre subito menu.pdf (chi va su https://menurosticcerie.github.io/ trova il PDF)
+#   mappa.html = apre Apple Maps o Google Maps quando si tocca un indirizzo nel PDF
+# Il video dei menu NON si fa più (dal 20/10/2026): il PDF con tutti i locali è più comodo.
 # Si rifà tutto solo se qualcosa è cambiato (impronta in dati/completo.json): niente lavoro e
 # niente invii inutili. Il repository tiene una sola versione (vedi publish_pdf_site).
 # ------------------------------------------------------------------------------------------------
 COMPLETE_STATE = DATA / "completo.json"
-COMPLETE_PDF, COMPLETE_VIDEO = "menu.pdf", "video.mp4"
+COMPLETE_PDF = "menu.pdf"
+OLD_VIDEO_FILES = ("video.mp4", "video.html")  # del vecchio video: tolti dal sito dei PDF
+INDEX_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Menu rosticcerie</title>
+<meta http-equiv="refresh" content="0; url=menu.pdf"></head>
+<body style="font:18px system-ui,sans-serif;margin:2em"><p><a href="menu.pdf">Tutti i menu di oggi (PDF)</a></p>
+<p><a href="https://tinyurl.com/menurosticcerie">Apri l'app Menu</a></p></body></html>
+"""
 
 
 def complete_fingerprint(config: dict[str, Any]) -> str:
-    """Impronta di quello che finisce in PDF e video: giorno, locali, menu di oggi, versione di Menu.py."""
+    """Impronta di quello che finisce nei PDF: giorno, locali, menu di oggi, versione di Menu.py."""
     today = date.today().isoformat()
     parts: list[Any] = [today, file_hash(Path(__file__))]
     for shop in config.get("locali", []):
@@ -3860,50 +3700,31 @@ def complete_fingerprint(config: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(parts, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()[:16]
 
 
-def complete_page_html(stamp: str, when: str) -> str:
-    """Pagina col video (video.html e index.html del sito dei PDF), pensata per il cellulare."""
-    return f'''<!doctype html><html lang="it"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Menu rosticcerie - video</title>
-<meta property="og:title" content="I menu del giorno delle rosticcerie"><meta property="og:type" content="video.other">
-<style>body{{margin:0;background:#121915;color:#f5f2eb;font:17px/1.4 system-ui,"Segoe UI",sans-serif;text-align:center}}
-main{{max-width:560px;margin:0 auto;padding:14px}}h1{{font-size:21px;margin:6px 0 2px}}p{{margin:4px 0 12px;color:#aab4ac}}
-video{{width:100%;aspect-ratio:4/5;background:#000;border-radius:14px}}
-a.b{{display:block;margin:12px 0;padding:14px;border-radius:12px;background:#e8921e;color:#111;font-weight:800;text-decoration:none}}
-a.c{{color:#e8921e}}</style></head><body><main>
-<h1>I menu del giorno</h1><p>{when} · aggiornato alle {datetime.now():%H:%M}</p>
-<video controls playsinline preload="metadata" src="{COMPLETE_VIDEO}?v={stamp}"></video>
-<a class="b" href="{COMPLETE_PDF}?v={stamp}">📄 Tutti i menu in PDF</a>
-<p><a class="c" href="https://tinyurl.com/menurosticcerie">Apri l'app Menu</a></p></main></body></html>
-'''
-
-
 def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
-    """PDF di ogni locale, PDF completo, video e pagina del video sul sito dei PDF (vedi sopra)."""
+    """PDF di ogni locale e PDF completo sul sito dei PDF (vedi sopra)."""
     stamp = complete_fingerprint(config)
     if not force and read_json(COMPLETE_STATE, {}).get("impronta") == stamp \
-            and (PDF_SITE_DIR / COMPLETE_PDF).is_file() and (PDF_SITE_DIR / COMPLETE_VIDEO).is_file():
-        print("Menu completo (PDF e video): niente di nuovo da pubblicare.")
+            and (PDF_SITE_DIR / COMPLETE_PDF).is_file():
+        print("Menu completo (PDF): niente di nuovo da pubblicare.")
         return True
     pages = all_shop_pages(config)
     if not pages:
         return False
     PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Menu completo: PDF di {len(pages)} locali, PDF unico e video...")
+    print(f"Menu completo: PDF di {len(pages)} locali e PDF unico...")
     for page in pages:
         save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
     save_pdf([page["a4"] for page in pages], PDF_SITE_DIR / COMPLETE_PDF)
     (PDF_SITE_DIR / "mappa.html").write_text(MAP_PAGE_HTML, encoding="utf-8")  # link degli indirizzi
-    video = make_video(config, PDF_SITE_DIR / COMPLETE_VIDEO, pages)
-    day = date.today()
-    when = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]}"
-    for name in ("video.html", "index.html"):
-        (PDF_SITE_DIR / name).write_text(complete_page_html(stamp, when), encoding="utf-8")
+    (PDF_SITE_DIR / "index.html").write_text(INDEX_PAGE_HTML, encoding="utf-8")
+    for name in OLD_VIDEO_FILES:
+        remove_file(PDF_SITE_DIR / name)
     if not publish_pdf_site():
         return False
     save_json(COMPLETE_STATE, {"impronta": stamp, "ora": datetime.now().isoformat(timespec="seconds"),
-                               "locali": len(pages), "video": bool(video)})
+                               "locali": len(pages)})
     site = pdf_site(config.get("impostazioni", {}))[0]
-    print(f"Menu completo pubblicato: {site}{COMPLETE_PDF} e {site}video.html")
+    print(f"Menu completo pubblicato: {site}{COMPLETE_PDF}")
     return True
 
 
@@ -3930,9 +3751,8 @@ MAIN_DISHES = re.compile(
 
 
 def summary_settings(settings: dict[str, Any]) -> dict[str, Any]:
-    # "formato": "foto" = post con le immagini del pulsante Foto (una per rosticceria),
-    # "video" = il video dei menu, "immagine" = l'immagine riassuntiva unica
-    return {"attivo": True, "ora": "11:30", "facebook": True, "formato": "foto", **settings.get("riassunto", {})}
+    # il post è sempre l'immagine riassuntiva (la vecchia voce "formato" non serve più)
+    return {"attivo": True, "ora": "11:30", "facebook": True, **settings.get("riassunto", {})}
 
 
 def all_menus_ready(config: dict[str, Any]) -> bool:
@@ -4095,7 +3915,9 @@ def summary_text(data: dict[str, Any]) -> str:
             towns.append(tag)
     return (f"🍽️ Che si mangia oggi? Ecco i menu di {title}!\n\n{count}\n\n" + "\n".join(lines)
             + (f"\n\n⏳ In arrivo: {waiting}" if waiting else "")
-            + f"\n\n👉 Tutti i menu completi, con foto e numeri per prenotare: {SHORT_URL}\n\n"
+            + "\n\n📄 Tutti i menu completi in un PDF, con indirizzi e numeri per prenotare: tocca «Scopri di più» "
+            + f"sulla Pagina oppure {pdf_site()[0]}{COMPLETE_PDF}"
+            + f"\n👉 App Menu: {SHORT_URL}\n\n"
             + " ".join(towns + ["#menudelgiorno", "#rosticceria"]))
 
 
@@ -4247,106 +4069,6 @@ def publish_summary_facebook(image: Path, text: str) -> str:
     return answer.get("post_id") or answer.get("id", "")
 
 
-def short_link(url: str) -> str:
-    """Link corto per le didascalie dei PDF, SENZA TinyURL (crea pagine "Preview" con l'indirizzo
-    completo) e senza is.gd (rifiuta i link). Prova da.gd, poi cleanuri.com; "" se nessuno risponde."""
-    import urllib.parse
-    headers = {"User-Agent": "Mozilla/5.0 (Menu rosticcerie)"}
-    try:  # da.gd: GET, risponde con il link corto in chiaro
-        request = urllib.request.Request("https://da.gd/s?url=" + urllib.parse.quote(url, safe=""), headers=headers)
-        with urllib.request.urlopen(request, timeout=20) as answer:
-            short = answer.read().decode("utf-8").strip()
-        if short.startswith("https://da.gd/"):
-            return short
-        print(f"  link corto non creato da da.gd: {short[:80]}")
-    except Exception as exc:
-        print(f"  link corto non creato da da.gd: {exc}")
-    try:  # cleanuri.com: POST, risponde in JSON {"result_url": ...}
-        data = urllib.parse.urlencode({"url": url}).encode()
-        request = urllib.request.Request("https://cleanuri.com/api/v1/shorten", data=data, headers=headers)
-        with urllib.request.urlopen(request, timeout=20) as answer:
-            short = json.loads(answer.read().decode("utf-8")).get("result_url", "")
-        if short.startswith("https://cleanuri.com/"):
-            return short
-        print(f"  link corto non creato da cleanuri: {short[:80]}")
-    except Exception as exc:
-        print(f"  link corto non creato da cleanuri: {exc}")
-    return ""
-
-
-def wait_online(url: str, seconds: int = 240) -> bool:
-    """Aspetta che GitHub Pages pubblichi il file appena inviato (di solito 1-2 minuti)."""
-    deadline = time.time() + seconds
-    while time.time() < deadline:
-        try:
-            with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=20) as answer:
-                if answer.status == 200:
-                    return True
-        except Exception:
-            pass
-        time.sleep(10)
-    return False
-
-
-def photo_captions(folder: Path, pictures: list[Path]) -> list[str]:
-    """Didascalia di ogni foto del post: nome e paese, link al PDF A4 del menu, link alla webapp.
-    Prima pubblica il sito (così i PDF sono online) e aspetta che il primo PDF risponda."""
-    data = {item["file"]: item for item in read_json(folder / "didascalie.json", [])}
-    if not data:
-        return [""] * len(pictures)
-    online = publish_pdf_site()
-    if online:
-        print("Attendo che i PDF siano online...")
-        online = wait_online(next(iter(data.values()))["pdf"])
-    captions = []
-    for picture in pictures:
-        item = data.get(picture.name)
-        if not item:
-            captions.append("")
-            continue
-        # link diretto al PDF sul sito senza nome e cognome (https://menurosticcerie.github.io/<id>.pdf),
-        # nessun servizio di link corti; se il sito dei PDF non è pronto, solo nome e paese
-        lines = [f"{item['nome']} - {item['comune']}"]
-        if online:
-            lines.append(f"Pdf: {item['pdf']}")
-        captions.append("\n".join(lines))
-    return captions
-
-
-def publish_photos_facebook(pictures: list[Path], text: str, captions: list[str] | None = None) -> tuple[str, list[str]]:
-    """Post con più foto: carica ogni immagine come foto NON pubblicata, poi un unico post della
-    Pagina con il testo e tutte le foto allegate. Restituisce (id del post, id delle foto)."""
-    link = read_json(FACEBOOK_CONFIG, {})
-    if not link.get("token") or not link.get("pagina_id"):
-        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
-    token, version, page = link["token"], link.get("versione", ""), link["pagina_id"]
-    ids: list[str] = []
-    for number, picture in enumerate(pictures, 1):
-        print(f"  carico la foto {number}/{len(pictures)}: {picture.name}")
-        params = {"published": "false", "access_token": token}
-        if captions and captions[number - 1]:
-            params["caption"] = captions[number - 1]  # didascalia della singola foto (link cliccabili)
-        answer = facebook_call(f"{page}/photos", params, files={"source": picture}, version=version)
-        ids.append(answer.get("id", ""))
-    params = {"message": text, "published": "true", "access_token": token}
-    for index, photo in enumerate(ids):
-        params[f"attached_media[{index}]"] = json.dumps({"media_fbid": photo})
-    answer = facebook_call(f"{page}/feed", params, files={}, version=version)
-    return answer.get("id", ""), ids
-
-
-def publish_video_facebook(video: Path, text: str) -> str:
-    """Pubblica il video con il testo sulla Pagina (graph-video). Restituisce l'id del video."""
-    link = read_json(FACEBOOK_CONFIG, {})
-    if not link.get("token") or not link.get("pagina_id"):
-        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
-    answer = facebook_call(f"{link['pagina_id']}/videos", {"description": text, "published": "true",
-                                                           "access_token": link["token"]},
-                           files={"source": video}, version=link.get("versione", ""),
-                           base=GRAPH.replace("://graph.", "://graph-video."))
-    return answer.get("id", "")
-
-
 def delete_facebook_posts(ids: list[str]) -> list[str]:
     """Cancella dalla Pagina i post/video indicati (quelli di oggi sostituiti da una nuova
     pubblicazione). Restituisce gli id che NON si sono potuti cancellare."""
@@ -4355,13 +4077,82 @@ def delete_facebook_posts(ids: list[str]) -> list[str]:
     for post in ids:
         try:
             facebook_call(post, {"access_token": link.get("token", "")}, version=link.get("versione", ""), method="DELETE")
-            print(f"Tolto dalla Pagina il post precedente di oggi ({post})")
+            print(f"Tolto dalla Pagina: {post}")
         except Exception as exc:
             if "does not exist" in str(exc):
                 continue  # già tolto (es. le foto di un post cancellato spariscono con il post)
             print(f"Post precedente {post} non cancellato: {exc}")
             left.append(post)
     return left
+
+
+def clean_facebook_posts() -> None:
+    """Pulisci-Facebook.bat (python Menu.py --pulisci-facebook), da usare una volta: dal 20/10/2026
+    sulla Pagina non vanno più le foto dei singoli menu né il video. Elenca i post della Pagina con
+    PIÙ foto (le foto dei menu dei locali), con un VIDEO o con il link al vecchio video.html e,
+    dopo la conferma, li cancella insieme alle loro foto/video. Restano i post con una foto sola
+    (immagine riassuntiva, post di presentazione), i post di solo testo e quelli il cui inizio è
+    tra i testi di presentazione di Facebook\\Testi.txt."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        print("Collegamento Facebook non ancora fatto: prima Collega-Facebook.bat")
+        return
+    token, version = link["token"], link.get("versione", "")
+    testi = ROOT / "Facebook" / "Testi.txt"
+    intro = [line.strip()[:40] for line in (testi.read_text(encoding="utf-8").splitlines() if testi.is_file() else [])
+             if len(line.strip()) >= 12]  # righe dei post di presentazione: quei post restano sempre
+    fields = "id,created_time,message,status_type,attachments{media_type,url,target,subattachments{target,media_type}}"
+    posts: list[dict[str, Any]] = []
+    try:
+        answer = facebook_call(f"{link['pagina_id']}/posts", {"fields": fields, "limit": "50", "access_token": token},
+                               version=version)
+        for _ in range(40):  # al massimo 2000 post
+            posts += answer.get("data", [])
+            after = answer.get("paging", {}).get("cursors", {}).get("after")
+            if not after or not answer.get("paging", {}).get("next"):
+                break
+            answer = facebook_call(f"{link['pagina_id']}/posts", {"fields": fields, "limit": "50", "after": after,
+                                                                  "access_token": token}, version=version)
+    except RuntimeError as exc:
+        print(f"Non riesco a leggere i post della Pagina: {exc}")
+        return
+    remove, keep = [], []
+    for post in posts:
+        message = post.get("message") or ""
+        first = next((line.strip() for line in message.splitlines() if line.strip()), "")
+        media = []  # (tipo, id) di foto e video del post
+        for item in post.get("attachments", {}).get("data", []):
+            subs = item.get("subattachments", {}).get("data", [])
+            for sub in subs or [item]:
+                if sub.get("target", {}).get("id"):
+                    media.append((sub.get("media_type") or item.get("media_type") or "", sub["target"]["id"]))
+        links = " ".join([message] + [item.get("url") or "" for item in post.get("attachments", {}).get("data", [])])
+        is_video = any("video" in kind for kind, _ in media) or "video" in (post.get("status_type") or "")
+        many_photos = sum(1 for kind, _ in media if kind in ("photo", "album")) > 1
+        presentation = any(first[:40] == line for line in intro)
+        target = keep if presentation or not (is_video or many_photos or "video.html" in links) else remove
+        target.append((post, first, media))
+    def show(rows):
+        for post, first, media in rows:
+            print(f"  {post.get('created_time', '')[:16].replace('T', ' ')}  "
+                  f"{len(media)} foto/video  {first[:70] or '(senza testo)'}")
+    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}):")
+    show(keep)
+    print(f"\nDA CANCELLARE - foto dei menu dei locali o video ({len(remove)}):")
+    show(remove)
+    if not remove:
+        print("\nNiente da cancellare.")
+        return
+    if input(f"\nCancello dalla Pagina questi {len(remove)} post con le loro foto/video? Scrivi s e premi Invio: ").strip().lower() != "s":
+        print("Non ho cancellato niente.")
+        return
+    gone = 0
+    for post, first, media in remove:
+        for _, media_id in media:  # foto e video caricati per il post (altrimenti restano negli album)
+            delete_facebook_posts([media_id])
+        if not delete_facebook_posts([post["id"]]):
+            gone += 1
+    print(f"\nCancellati {gone} post su {len(remove)}.")
 
 
 def daily_summary(config: dict[str, Any], force: bool = False) -> None:
@@ -4382,41 +4173,18 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
         return
     image, text = made
     state.update({"creato": True, "immagine": image.name, "ora": datetime.now().strftime("%H:%M"), "da_ripubblicare": False})
-    # il post è il VIDEO dei menu (logo, freccia, menu, musica) con il testo; se il video non si
-    # riesce a creare si pubblica l'immagine riassuntiva come prima
-    # cosa pubblicare (impostazioni > riassunto > "formato"): le FOTO dei menu (predefinito, una per
-    # rosticceria, come il pulsante Foto), il video, oppure l'immagine riassuntiva unica. Se le foto o
-    # il video non si riescono a creare si pubblica l'immagine riassuntiva.
-    form = plan.get("formato") or ("video" if plan.get("video") else "foto")
-    video, pictures = None, []
-    try:
-        if form == "foto":
-            folder = make_photos(config)
-            pictures = sorted(folder.glob("*.jpg")) if folder else []
-        elif form == "video":
-            video = make_video(config)
-    except Exception as exc:
-        print(f"{form.capitalize()} non create ({exc}): pubblico l'immagine riassuntiva")
-    previous_photos = state.get("foto_ids", [])  # foto del post di oggi già sulla Pagina
-    state["video"] = video.name if video else ""
-    state["foto"] = len(pictures)
+    # il post è SEMPRE l'immagine riassuntiva con il testo (dal 20/10/2026 niente più foto singole
+    # dei menu né video: i menu completi sono nel PDF del pulsante "Scopri di più" della Pagina)
+    previous_photos = state.get("foto_ids", [])  # foto di un vecchio post di oggi con le foto dei menu
+    for old_key in ("video", "foto"):
+        state.pop(old_key, None)
     state["foto_ids"] = []
     if plan.get("facebook", True):
         try:
             if read_json(FACEBOOK_CONFIG, {}).get("token"):
                 state["tentativi"] = int(state.get("tentativi", 0)) + 1
-            if pictures:
-                print(f"Pubblico sulla Pagina Facebook il post con {len(pictures)} foto dei menu...")
-                captions = photo_captions(pictures[0].parent, pictures)
-                state["pubblicato"], state["foto_ids"] = publish_photos_facebook(pictures, text, captions)
-                print(f"Post con le foto dei menu pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
-            elif video:
-                print("Carico il video sulla Pagina Facebook (1-2 minuti, non chiudere la finestra)...")
-                state["pubblicato"] = publish_video_facebook(video, text)
-                print(f"Video dei menu pubblicato su Facebook (id {state['pubblicato']})")
-            else:
-                state["pubblicato"] = publish_summary_facebook(image, text)
-                print(f"Riassunto pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
+            state["pubblicato"] = publish_summary_facebook(image, text)
+            print(f"Riassunto pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
             state.pop("errore", None)
             # una nuova pubblicazione nello stesso giorno (pulsante Pubblica FB) SOSTITUISCE quella di
             # prima: i post precedenti di oggi vengono tolti dalla Pagina, così non ci sono doppioni
@@ -4534,18 +4302,15 @@ def main() -> None:
                              "(se oggi è già stato pubblicato non lo ripubblica).")
     parser.add_argument("--riassunto-prova", action="store_true",
                         help="Crea il riassunto di oggi e apre l'immagine, SENZA pubblicare su Facebook.")
-    parser.add_argument("--pubblica-video", action="store_true",
-                        help="Pubblica SUBITO sulla Pagina Facebook il post con le foto dei menu di questo momento e il testo "
+    parser.add_argument("--pubblica-fb", "--pubblica-video", dest="pubblica_fb", action="store_true",
+                        help="Pubblica SUBITO sulla Pagina Facebook l'immagine riassuntiva di questo momento con il testo "
                              "del riassunto (pulsante \"Pubblica FB\" del Monitor), anche se oggi è già stato pubblicato.")
-    parser.add_argument("--foto", action="store_true",
-                        help="Crea in Foto\\AAAA-MM-GG un'immagine per rosticceria (logo, nome, data e menu intero "
-                             "da leggere) e apre la cartella (pulsante Foto del Monitor).")
-    parser.add_argument("--video", action="store_true",
-                        help="Crea Facebook\\Video-AAAA-MM-GG.mp4 (verticale 4:5) con il logo e il menu di oggi di ogni "
-                             "rosticceria, e lo apre (pulsante Video del Monitor).")
     parser.add_argument("--completo", action="store_true",
-                        help="Rifà subito PDF di ogni locale, PDF completo (menu.pdf) e video (video.mp4) e li "
-                             "pubblica sul sito dei PDF (lo fa da solo ogni 30 minuti se qualcosa cambia).")
+                        help="Rifà subito PDF di ogni locale e PDF completo (menu.pdf) e li pubblica sul sito "
+                             "dei PDF (lo fa da solo ogni 30 minuti se qualcosa cambia).")
+    parser.add_argument("--pulisci-facebook", action="store_true",
+                        help="Elenca i vecchi post della Pagina con le foto o il video dei menu e, dopo la conferma, "
+                             "li cancella (con le loro foto). I post di presentazione restano (Pulisci-Facebook.bat).")
     parser.add_argument("--facebook-collega", action="store_true",
                         help="Collegamento ufficiale con la Pagina Facebook (Collega-Facebook.bat).")
     parser.add_argument("--facebook-prova", action="store_true",
@@ -4575,25 +4340,18 @@ def main() -> None:
     if args.facebook_prova:
         facebook_check()
         return
-    if args.foto:  # immagini dei menu di oggi da leggere / condividere
-        made = make_photos(config)
-        if made and sys.platform == "win32":
-            os.startfile(made)
-        return
-    if args.completo:  # PDF e video completi subito, anche se nulla è cambiato
+    if args.completo:  # PDF completi subito, anche se nulla è cambiato
         publish_complete(config, force=True)
         return
-    if args.video:  # video dei menu di oggi per la Pagina Facebook
-        made = make_video(config)
-        if made and sys.platform == "win32":
-            os.startfile(made)
+    if args.pulisci_facebook:  # una tantum: toglie dalla Pagina i vecchi post con foto e video dei menu
+        clean_facebook_posts()
         return
     if args.riassunto_prova:  # solo per vedere il post: non tocca lo stato, il post delle 11:30 parte lo stesso
         made = make_summary(config)
         if made and sys.platform == "win32":
             os.startfile(made[0])
         return
-    if args.pubblica_video:  # richiesta manuale (Monitor > Pubblica FB): menu di questo momento, subito
+    if args.pubblica_fb:  # richiesta manuale (Monitor > Pubblica FB): riassunto di questo momento, subito
         start_manual_log("pubblicazione manuale su Facebook")
         if not take_lock():
             print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
@@ -4656,7 +4414,7 @@ def main() -> None:
         try:
             run(args, config)
             fresh = read_json(CONFIG, config)
-            try:  # PDF di ogni locale, PDF completo e video sul sito (solo se qualcosa è cambiato)
+            try:  # PDF di ogni locale e PDF completo sul sito (solo se qualcosa è cambiato)
                 publish_complete(fresh)
             except Exception as exc:
                 import traceback

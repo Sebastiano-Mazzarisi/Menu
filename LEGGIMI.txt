@@ -1376,8 +1376,8 @@ ORDINE ALFABETICO E SUONI A VOLUME DIMEZZATO (18/10/2026)
 - Il cartello CHIUSO usato in PDF e video viene ridisegnato ogni volta (non più letto dalla
   foto salvata al mattino), così ha sempre l'aspetto aggiornato.
 - Per cambiare l'indirizzo mostrato basta correggere "indirizzo" in locali.json.
-- Per rifare SUBITO PDF e video senza aspettare il giro automatico: doppio clic su
-  Rifai-PDF-e-video.bat (esegue python Menu.py --completo).
+- Per rifare SUBITO i PDF senza aspettare il giro automatico: doppio clic su Rifai-PDF.bat
+  (esegue python Menu.py --completo).
 Codice: full_address, sign_address, rest_day_sign_image, wait_sign_image, photo_page.
 Nota: il cartello IN ATTESA disegnato dalla pagina web dell'app (waitSign) mostra ancora il Comune.
 Copia precedente: backup\Menu_2026-10-20_prima-indirizzo-completo.py
@@ -1398,3 +1398,33 @@ Copia precedente: backup\Menu_2026-10-20_prima-indirizzo-completo.py
   più da installare). Il video non cambia, salvo il telefono nella prima riga.
 Codice: maps_link, tel_link, add_link, move_links, save_pdf, MAP_PAGE_HTML, photo_page.
 Copia precedente: backup\Menu_2026-10-20_prima-dei-link.py
+
+
+------------------------------------------------------------------------------------------------
+20/10/2026 - BASTA FOTO SINGOLE E VIDEO: SOLO IL PDF CON TUTTI I LOCALI
+------------------------------------------------------------------------------------------------
+Chi segue la Pagina tocca "Scopri di più" (pulsante della Pagina, indicato anche dalla
+copertina Facebook\Copertina-freccia.jpg) e vede https://menurosticcerie.github.io/menu.pdf con
+tutti i locali, aggiornato all'ultimo giro. Quindi:
+- NIENTE PIÙ VIDEO: Menu.py non crea più video.mp4 / Facebook\Video-AAAA-MM-GG.mp4. Dal sito dei
+  PDF vengono tolti video.mp4 e video.html; index.html ora apre subito menu.pdf.
+  Tolti il pulsante "Video" del Monitor e il comando --video.
+- NIENTE PIÙ FOTO SINGOLE DEI MENU: tolti il pulsante "Foto" del Monitor e il comando --foto.
+- POST DEL GIORNO (11:30, o appena ci sono tutti i menu) = sempre l'IMMAGINE RIASSUNTIVA con il
+  testo; il testo invita a toccare «Scopri di più» e ha il link a menu.pdf. La voce "formato"
+  di locali.json > riassunto non serve più (se c'è viene ignorata).
+- Monitor, quarta riga: "Pubblica FB" (pubblica subito l'immagine riassuntiva, comando
+  python Menu.py --pubblica-fb; il vecchio --pubblica-video funziona ancora) e il nuovo "PDF"
+  (apre menu.pdf online).
+- PULIZIA DELLA PAGINA, una volta sola: doppio clic su Pulisci-Facebook.bat
+  (python Menu.py --pulisci-facebook). Elenca i post che RESTANO e quelli DA CANCELLARE, poi
+  chiede conferma (s + Invio). Si cancellano i post con PIÙ foto (le foto dei menu dei locali),
+  i post con un video e quelli con il link a video.html (es. il post fissato col video), con le
+  loro foto/video. Restano: post con una foto sola (immagine riassuntiva, presentazione), post
+  di solo testo, post che iniziano come i testi di Facebook\Testi.txt, copertina e profilo.
+- Rifai-PDF.bat sostituisce Rifai-PDF-e-video.bat (si può cancellare).
+- I file Facebook\Video-*.mp4 e Facebook\musica-video.m4a non servono più (non li usa nessuno).
+Codice: clean_facebook_posts, daily_summary, summary_text, publish_complete, INDEX_PAGE_HTML;
+tolti make_video, make_photos, publish_photos_facebook, publish_video_facebook, photo_captions,
+short_link, wait_online, complete_page_html. Monitor: open_pdf (tolti video e photos).
+Copie precedenti: backup\Menu_2026-10-20_prima-senza-video.py, backup\Monitor_2026-10-20_prima-senza-video.py
