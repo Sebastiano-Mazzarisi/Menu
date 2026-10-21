@@ -2127,7 +2127,16 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
   </div>
   <nav class="towns" id="towns" aria-label="Comuni"></nav>
 </header>
-<main id="main"></main>
+<main id="main">
+<!-- Banner primo elemento: riassunto del giorno cliccabile per aprire menu.pdf -->
+<figure id="banner-riassunto" style="text-align:center;margin:12px auto 18px;max-width:520px;padding:0 8px;">
+  <a href="https://menurosticcerie.github.io/menu.pdf" target="_blank" rel="noopener noreferrer" title="Clicca per aprire il PDF di tutti i menu">
+    <img src="riassunto-oggi.jpg?v=@@RV@@" alt="Stato menu del giorno" style="width:100%;height:auto;border-radius:14px;cursor:pointer;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.12);" />
+  </a>
+  <figcaption style="margin-top:8px;font-size:0.92rem;line-height:1.4;color:var(--ink);text-align:center;">
+    Clicca sull'immagine per vedere i menu pubblicati alle @@ORA_RIASSUNTO@@ di oggi @@DATA_ESTESA@@, @@PRONTI_COUNT@@ rosticcerie su @@TOTALI_COUNT@@ hanno già pubblicato il menu del giorno.
+  </figcaption>
+</figure></main>
 <dialog id="detail" aria-label="Menu"><div class="sheet" tabindex="-1" autofocus>
   <div class="sh-head">
     <img class="lg" id="dLogo" alt="">
