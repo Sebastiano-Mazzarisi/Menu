@@ -1875,3 +1875,8 @@ link_posts_after_daily. Copia precedente: backup\Menu_2026-10-21_prima-del-conte
   aspetta la fine di un giro in corso (blocco dati\automatico.lock) e publish_pdf_site, se GitHub
   rifiuta l'invio, riprova fino a 3 volte (dopo 10, 20, 30 secondi).
   Copia precedente: backup\Menu_2026-10-21_prima-del-riprova-invio.py
+- 21/10/2026: MUSICA DEL VIDEO = Facebook\musica-video.m4a (se manca si usa Facebook\musica-video.mp3;
+  se mancano entrambi il video è muto). Per cambiarla basta sostituire il file tenendo lo stesso
+  nome: la musica fa parte dell'impronta di complete_fingerprint, quindi il video si rifà da solo
+  al giro automatico successivo (o subito con Rifai-PDF.bat). Più corta del video = ripetuta;
+  sfumata negli ultimi 2 secondi.

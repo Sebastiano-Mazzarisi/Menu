@@ -1155,6 +1155,7 @@ def rest_day_sign_image(shop: dict[str, Any]):
     draw.rounded_rectangle((40, 40, width - 40, height - 40), radius=48, outline=(200, 40, 40), width=14)
     logo = video_logo({"logo": shop_logo_source(shop), "nome": shop["nome"]}, 260).convert("RGBA")
     image.paste(logo, ((width - 260) // 2, 120), logo)
+    add_link(image, ((width - 260) // 2, 120, (width + 260) // 2, 380), source_link(shop))  # logo -> fonte
     font, name = video_fit_text(draw, shop["nome"], 74, True, width - 160)
     draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
     box = sign_address(draw, width / 2, 540, full_address(shop), width - 160)
@@ -2825,6 +2826,16 @@ def maps_link(name: str, address: str) -> str:
     return f"{pdf_site()[0]}mappa.html?q={quote(query)}"
 
 
+def source_link(shop: dict) -> str:
+    """Pagina da cui si prende il menu del locale (Facebook, Instagram o sito): la prima fonte
+    online attiva di locali.json con un "url", altrimenti il campo "url" del locale. Nei PDF è il
+    link del LOGO (pagina del menu e cartelli CHIUSO / IN ATTESA)."""
+    for source in shop.get("fonti", []):
+        if source.get("attiva", True) and source.get("tipo") not in ("cartella", "immagine") and source.get("url"):
+            return source["url"]
+    return (shop.get("url") or "").strip()
+
+
 def tel_link(phone: str) -> str:
     """"tel:0804054139" dal numero scritto in locali.json ("080-405.41.39"): solo cifre e +."""
     first = re.split(r"\s*(?:/|,|;|\bo\b)\s*", (phone or "").strip())[0]
@@ -3356,7 +3367,7 @@ def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         found.append({"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop),
                       "indirizzo": full_address(shop), "telefono": shop.get("telefono", ""),
-                      "logo": shop_logo_source(shop),
+                      "fonte_url": source_link(shop), "logo": shop_logo_source(shop),
                       "foto": picture if picture and picture.is_file() else None, "righe": lines})
     found.sort(key=lambda e: sort_key_name(e["nome"]))  # ordine alfabetico, come nell'app e nel PDF
     # per le prove: locali.json > impostazioni > riassunto > "solo_primi": 3 = solo le prime 3
@@ -3426,6 +3437,7 @@ def wait_sign_image(shop: dict[str, Any]):
     draw.rounded_rectangle((40, 40, width - 40, height - 40), radius=48, outline=color, width=14)
     logo = video_logo({"logo": shop_logo_source(shop), "nome": shop.get("nome", "")}, 260).convert("RGBA")
     image.paste(logo, ((width - 260) // 2, 120), logo)
+    add_link(image, ((width - 260) // 2, 120, (width + 260) // 2, 380), source_link(shop))  # logo -> fonte
     font, name = video_fit_text(draw, shop.get("nome", ""), 74, True, width - 160)
     draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
     box = sign_address(draw, width / 2, 540, full_address(shop), width - 160)
@@ -3461,6 +3473,7 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
     for number, shop in enumerate(shops, 1):
         entry = ready.get(shop["id"]) or {"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop),
                                           "indirizzo": full_address(shop), "telefono": shop.get("telefono", ""),
+                                          "fonte_url": source_link(shop),
                                           "logo": shop_logo_source(shop), "foto": None, "righe": []}
         if entry.get("foto") and Path(entry["foto"]).stem.endswith("_riposo"):
             kind, sign = "chiuso", rest_day_sign_image(shop)
@@ -3585,6 +3598,7 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     draw = ImageDraw.Draw(page)
     logo = video_logo(entry, logo_side).convert("RGBA")
     page.paste(logo, (margin, margin), logo)
+    add_link(page, (margin, margin, margin + logo_side, margin + logo_side), entry.get("fonte_url", ""))  # logo -> fonte
     text_x = margin + logo_side + round(28 * k)
     # tre righe alla destra del logo: nome, "Menu di ...", indirizzo completo
     # riga 1: nome a sinistra, telefono a destra con lo stesso carattere (cliccabile nel PDF)
@@ -3759,6 +3773,8 @@ def complete_fingerprint(config: dict[str, Any]) -> str:
     """Impronta di quello che finisce nei PDF e nel video: giorno, locali, menu di oggi, versione di Menu.py."""
     today = date.today().isoformat()
     parts: list[Any] = [today, file_hash(Path(__file__))]
+    # musica del video: se si sostituisce il file, PDF e video si rifanno al giro successivo
+    parts.append([file_hash(path) if path.is_file() else "" for path in VIDEO_MUSIC])
     for shop in config.get("locali", []):
         parts.append([shop.get("id"), shop.get("nome"), shop.get("telefono"), shop.get("riposo")])
     for item in read_json(STATE, {}).get("results", []):
