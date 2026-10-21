@@ -31,14 +31,14 @@
           "descrizione": "Melanzane, cetrioli, zucchina, peperoni"
         },
         {
-          "nome": "Cous cous con bresaola e verdurine",
-          "prezzo": "€5.00",
-          "descrizione": "Zucchine, melanzane, cetrioli e peperoni."
-        },
-        {
           "nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto",
           "prezzo": "€5.00",
           "descrizione": ""
+        },
+        {
+          "nome": "Riso rosso integrale e riso basmati con bresaola e verdure",
+          "prezzo": "€5.00",
+          "descrizione": "Melanzane, zucchine, peperoni e cetrioli."
         },
         {
           "nome": "Riso venere e riso basmati con zucchina, gamberetti e mais",
@@ -56,29 +56,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pasta e patate con provola alla napoletana",
+          "nome": "Penne all'arrabbiata",
           "prezzo": "€6.50",
+          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+        },
+        {
+          "nome": "Risotto con barbabietola e stracciatella",
+          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Gnocchi con gorgonzola e noci",
-          "prezzo": "€8.00",
-          "descrizione": ""
-        },
-        {
-          "nome": "Orecchiette con pancetta, funghi e ciliegino",
+          "nome": "Cavatelli al grano arso con salsiccia a punta di coltello, cicerchie e vellutata di zucca",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con cernia, zucchina e datterino giallo",
+          "nome": "Tagliolino con pesce spada, pomodorini, capperi e origano",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di ceci",
+          "nome": "Minestra di ceci, lenticchie e orzo",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": ""
         }
       ]
     },
@@ -86,19 +86,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Scaloppe di pollo al limone",
-          "prezzo": "€7.50",
-          "descrizione": "2 pezzi"
-        },
-        {
-          "nome": "Trancio di pesce spada alla pizzaiola",
-          "prezzo": "€8.50",
-          "descrizione": "Con pomodorini, origano e olive"
-        },
-        {
-          "nome": "Bombette di capocollo all'ortolana",
+          "nome": "Involtini di capocollo con verdurine",
           "prezzo": "€7.50",
           "descrizione": "5 pezzi"
+        },
+        {
+          "nome": "Filetto di cernia con vongole e datterino giallo e rosso",
+          "prezzo": "€8.50",
+          "descrizione": ""
         }
       ]
     }
