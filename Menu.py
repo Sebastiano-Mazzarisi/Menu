@@ -4060,8 +4060,8 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
 .g{{display:grid;grid-template-columns:1fr 1fr;gap:calc(14px*var(--k)) 16px}}
 .cd{{display:flex;align-items:center;gap:16px;background:#fff;border-radius:22px;padding:calc(12px*var(--k)) 14px;
   box-shadow:0 3px 10px rgba(60,40,10,.10);min-width:0;border:3px solid #1d7f46}}
-.cd.no{{background:#ebe4d8;box-shadow:none;border-color:transparent}}
-.cd.no img,.cd.no .nologo{{opacity:.45;filter:grayscale(1)}}
+.cd.no{{background:#fff;box-shadow:none;border:3px solid #e67e22}}
+.cd.no img,.cd.no .nologo{{opacity:1;filter:none}}
 .cd img,.nologo{{width:calc(104px*var(--k));height:calc(104px*var(--k));border-radius:16px;object-fit:cover;flex:none;background:#eee}}
 .tx{{flex:1;min-width:0}}
 .n{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800;font-size:calc(38px*var(--k));line-height:1.05;
