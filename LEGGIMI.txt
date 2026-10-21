@@ -1,3 +1,363 @@
+################################################################################################
+#  MENU ROSTICCERIE - GUIDA PER IL PROGRAMMATORE  (aggiornata al 20/10/2026)
+#
+#  Questa prima parte descrive COM'E' FATTO OGGI il progetto: basta leggerla per poter fare
+#  modifiche. Più in basso, da "MENU - STRUTTURA MINIMALE" in poi, c'è la STORIA DETTAGLIATA delle
+#  modifiche (giorno per giorno, con i motivi delle scelte). Se la storia e questa guida dicono cose
+#  diverse, vale QUESTA GUIDA (la storia contiene anche cose poi tolte: foto singole, vecchio video,
+#  video.html, cartella pdf/ nel sito Menu, link corti is.gd/da.gd...).
+################################################################################################
+
+
+================================================================================================
+1. A COSA SERVE
+================================================================================================
+Menu raccoglie ogni giorno i "menu del giorno" di 13 rosticcerie (Putignano, Noci, Castellana
+Grotte, Conversano, Turi) dalle loro pagine Facebook/Instagram (post o storie) o dai loro siti, e
+li pubblica:
+  a) in una web app per il cellulare (PWA) su GitHub Pages:
+       https://sebastiano-mazzarisi.github.io/Menu/   (link corto pubblico: https://tinyurl.com/menurosticcerie)
+       amministratore: stessa pagina con ?v=57 (o admin.html): click non contati, funzioni in prova
+  b) in un PDF con TUTTI i locali + PDF di ogni locale + un video con le stesse pagine, su un
+     secondo sito SENZA nome e cognome nell'indirizzo:
+       https://menurosticcerie.github.io/menu.pdf      (pulsante "Scopri di più" della Pagina FB)
+       https://menurosticcerie.github.io/<id>.pdf      (un locale)
+       https://menurosticcerie.github.io/video.mp4     (video)
+       https://menurosticcerie.github.io/mappa.html?q= (apre Apple Maps / Google Maps)
+  c) sulla Pagina Facebook https://www.facebook.com/MenuRosticcerie (API ufficiale Graph):
+       - post fissi "I menu in pdf" (1°, fissato in cima) e "I menu in video" (2°), con un commento
+         di due righe (link + "Aggiornato <giorno> alle ore <hh:mm>") riscritto a ogni aggiornamento;
+       - post del giorno (11:30 o appena ci sono tutti i menu) = immagine riassuntiva + testo.
+Servizio gratuito e senza fini di lucro: va sempre detto nei testi pubblici. Tutto ciò che vede il
+pubblico è pensato prima per il CELLULARE.
+
+Tutto gira sul PC Windows di Nino in C:\Dropbox\Prog\Menu, con Python 3 (python / pythonw nel PATH).
+Il controllo automatico è un'attività pianificata di Windows ("Menu") ogni 30 minuti 08:00-20:00.
+
+
+================================================================================================
+2. FILE E CARTELLE (C:\Dropbox\Prog\Menu)
+================================================================================================
+PROGRAMMI
+  Menu.py          TUTTO il lavoro (circa 4800 righe, un solo file): lettura fonti, OCR, scelta del
+                   menu, pagina web (template HTML/CSS/JS dentro il file), pubblicazione GitHub, PDF,
+                   video, Facebook. Comandi in fondo al file (main) - vedi capitolo 4.
+  Monitor.py       finestrella tkinter sempre in primo piano (solo libreria standard + Pillow
+                   facoltativo): stato dei locali, conto alla rovescia, pulsanti. Lancia Menu.py in
+                   finestre separate; non fa lavoro pesante da sé. Vedi capitolo 9.
+  ocr.ps1          OCR di Windows (Windows.Media.Ocr) chiamato da Menu.py (ocr_lines / ocr_image).
+  Registro_click.gs  Google Apps Script (Web App) che registra click e visite del sito in un Foglio
+                   Google "Menu". NON gira sul PC: va incollato e ridistribuito a mano nell'editor
+                   Apps Script (Deploy > Gestisci deployment > Nuova versione) se lo si cambia.
+
+CONFIGURAZIONE (l'unico file da toccare per i dati)
+  locali.json      impostazioni generali + elenco dei locali. Vedi capitolo 3.
+
+FILE .BAT (per Nino: doppio clic)
+  Avvia.bat                 python Menu.py --pubblica (giro completo + pubblicazione)
+  Monitor.bat               apre il Monitor (pythonw Monitor.py)
+  Pianifica.bat             crea/aggiorna l'attività di Windows "Menu" (--pianifica)
+  Rimuovi_pianificazione.bat  cancella l'attività "Menu"
+  Rifai-PDF.bat             --completo: rifà e pubblica subito PDF + video
+  Rifai-PDF-e-video.bat     vecchio nome, fa lo stesso (si può cancellare)
+  Post-link-Facebook.bat    --post-link: post fissi "I menu in pdf" / "I menu in video" + commenti
+  Collega-Facebook.bat      --facebook-collega e poi --post-link (collegamento Graph API)
+  Pulisci-Facebook.bat      --pulisci-facebook (una tantum, con conferma)
+  Prova-riassunto.bat / Pubblica-riassunto.bat   --riassunto-prova / --riassunto
+  Collega_GitHub.bat        collega la cartella al repository GitHub "Menu" (una volta sola)
+
+CARTELLE (in .gitignore = restano solo sul PC: profilo, errori, ingresso, archivio, dati, backup,
+Foto, pdf-sito, Facebook\Video-*.mp4)
+  ingresso\<id>\   TUTTE le foto/testi trovati per il locale, con la data nel nome:
+                     AAAA-MM-GG_online.jpg                 foto letta online quel giorno
+                     AAAA-MM-GG_riposo.jpg                 cartello CHIUSO del riposo settimanale
+                     AAAA-MM-GG_chiusura_fino_AAAAMMGG.jpg avviso di chiusura (vale fino a quella data)
+                     AAAA-MM-GG_testo.json                 menu scritto (testo del post o del sito)
+                     ..._avviso_controllo                  file di servizio, mai un menu
+                   Si possono mettere foto A MANO qui (fonte "cartella"): vince la data più recente,
+                   il menu di oggi prima di tutto (newest_image).
+  menu\<id>.jpg|.json   copia del menu PUBBLICATO oggi per ogni locale (va su GitHub, la usa il sito)
+  archivio\<id>\   copia di ogni menu pubblicato (AAAA-MM-GG_hhmmss.jpg), storico
+  loghi\           loghi dei locali (campo "logo") + Logo-Menu.jpg / Menu.jpg (logo dell'app)
+  icone\           miniature generate: logo-<id>.jpg, icone dell'app (icona-512.png...), logo-titolo.png
+  profilo\         profilo Chrome di Playwright con l'accesso a Facebook/Instagram (python Menu.py --login)
+  errori\          schermate di diagnostica (tolte dopo 2 giorni)
+  dati\            stato e file privati (NON su GitHub):
+                     stato.json          risultato dell'ultimo giro per ogni locale (vedi cap. 5)
+                     automatico.log      registro di TUTTI i giri (automatici e manuali)
+                     automatico.lock     blocco anti doppio giro (numero di processo dentro)
+                     in_corso.json       locale in esame adesso (pallina gialla del Monitor)
+                     ordine_monitor.json ordine delle righe del Monitor, seguito dal giro manuale
+                     pubblicazione.json  ora dell'ultima pubblicazione con novità (mostrata nel titolo)
+                     ocr.json            cache dell'OCR (ultime 200 foto)
+                     riposi.json         giorni di riposo imparati dai post
+                     avvisi.json         ultimo controllo degli avvisi di chiusura
+                     segnalati.json      impronte di foto/testi segnalati come sbagliati (Monitor)
+                     scartati\           foto tolte da ingresso perché non erano il menu giusto
+                     catture\            foto appena scaricate, prima di sapere se sono un menu
+                     completo.json       impronta + ora dell'ultima pubblicazione di PDF e video
+                     facebook.json       collegamento Graph: pagina_id, pagina_nome, token Pagina (NON
+                                         scade), app_id, salvato_il. SEGRETO.
+                     post-link.json      id dei post fissi e dei loro commenti:
+                                         {"pdf": {"post","commento","ora","fissato"}, "video": {...}}
+                     post-link\          immagini 16:9 dei post fissi (pdf.jpg, video.jpg)
+                     riassunti\          AAAA-MM-GG.jpg/.txt/.html del post del giorno + stato.json
+                     notifica.json       {"bark": "https://api.day.app/CHIAVE"} notifiche iPhone (Bark)
+                     pianificazione.json orari applicati all'attività di Windows
+                     monitor.json        posizione della finestra del Monitor, link al foglio click
+                     panorama\           PDF del pulsante "Panorama" (ultimi 10)
+  pdf-sito\        copia locale del repository menurosticcerie/menurosticcerie.github.io (sito dei
+                   PDF). Contiene: menu.pdf, <id>.pdf, video.mp4, index.html (apre menu.pdf),
+                   mappa.html. Gestita SOLO da Menu.py (publish_pdf_site), una sola versione.
+  Facebook\        materiale della Pagina: Copertina*.jpg, Immagine-profilo.jpg, Post1-3.jpg,
+                   Testi.txt (testi dei post di presentazione: Pulisci-Facebook non li tocca mai),
+                   Collegamento-Facebook.txt (guida al collegamento Graph), musica-video.m4a
+                   (facoltativa, sottofondo del video).
+  backup\          copie precedenti dei programmi: Menu_AAAA-MM-GG_prima-di-<modifica>.py
+  Foto\            vecchie foto singole dei menu (non più create)
+
+FILE GENERATI E PUBBLICATI SU GITHUB (repository Sebastiano-Mazzarisi/Menu, GitHub Pages)
+  Menu.html (copia locale), index.html (sito), admin.html (amministratore), manifest.webmanifest,
+  manifest-admin.webmanifest, menu\, icone\, loghi\, Menu.mp3 (musica del logo).
+  NON modificarli a mano: Menu.py li riscrive a ogni giro (generate_html, PAGE_TEMPLATE).
+
+
+================================================================================================
+3. locali.json
+================================================================================================
+{
+  "impostazioni": {
+    "titolo": "Menu - {data}",
+    "mostra_menu_vecchi": false,          true = pubblica anche menu non di oggi
+    "automatico": {"dalle": "08:00", "alle": "20:00", "ogni_minuti": 30},
+    "avvisi_ogni_minuti": 60,             ogni quanto rileggere i post per avvisi di chiusura
+    "registro_click_url": ".../exec",     Web App di Registro_click.gs
+    "registro_get": true,                 click inviati con GET "immagine" (funziona nei browser FB/IG)
+    "registra_visite": true,
+    "testo_per_tutti": false,             pulsante "Testo" (OCR del menu) visibile a tutti o solo admin
+    "correzioni_ocr": [["fimghi","funghi"], ...],
+    "riassunto": {"attivo": true, "ora": "11:30", "facebook": true},   post del giorno
+    facoltativi: "sito_pdf" (organizzazione GitHub del sito dei PDF, predefinito "menurosticcerie"),
+                 "profilo_facebook", riassunto > "solo_primi": N (prove: solo i primi N locali)
+  },
+  "locali": [ {
+    "id": "fantasia",                     univoco, minuscolo: nomi di file, PDF, cartelle, contatori
+    "nome": "Fantasia",                   mostrato ovunque
+    "nomi_precedenti": [...],             facoltativo (vecchi nomi, per riconoscere i menu)
+    "riposo": ["domenica"],               giorni di riposo fissi (cartello CHIUSO)
+    "telefono": "080-405.41.39",          mostrato e cliccabile (tel:) nel sito e nei PDF
+    "indirizzo": "Via ..., 70017 Putignano (BA)",  COMPLETO: mostrato nei PDF, link alla mappa
+    "comune": "Putignano",                pulsanti dei Comuni nel sito
+    "url": "https://www.facebook.com/...",pagina del locale
+    "logo": "fantasia.jpg",               file in loghi\
+    "testo": {...},                       regole del pulsante "Testo" (inizia_da, finisce_con,
+                                          sostituisci, togli, attivo) - vedi storia "Regole del testo"
+    "fonti": [ ... ]                      provate IN ORDINE finché una dà il menu (acquire_sources)
+  } ]
+}
+TIPI DI FONTE ("tipo"), tutte con "attiva": true/false e "nome":
+  "browser"          post Facebook/Instagram letto con Playwright. Chiavi: url, selettore (immagine),
+                     selettore_testo, scorri, data ("novita"...), parole_menu, richiede_recente,
+                     attesa_secondi, apri_storia (storia Instagram), canale, utente, profilo,
+                     post_da_controllare (predefinito 5), parti_storia (3).
+  "storia_facebook"  storia Facebook (es. Le delizie di Michela). Chiavi: url, profilo, canale,
+                     fuori_schermo (Chrome vero ma fuori dallo schermo: le storie non vanno headless).
+  "pagina"           sito web con il menu scritto (Pane & Co: parse_paneeco). Chiavi: url, sezioni.
+  "immagine"         foto scaricata da un indirizzo fisso.
+  "cartella"         ingresso\<id>\ (foto messe a mano o salvate prima): SEMPRE l'ultima fonte.
+Nuovo locale: python Menu.py --aggiungi (procedura guidata) oppure a mano in locali.json + logo in
+loghi\. Tutto il resto (sito, PDF, video, Comuni, contatori) si adegua da solo.
+
+
+================================================================================================
+4. COMANDI DI Menu.py (main, in fondo al file)
+================================================================================================
+  (nessuno)            giro completo senza pubblicare
+  --pubblica           giro completo + pubblicazione del sito su GitHub (Avvia.bat)
+  --automatico         usato dall'attività di Windows: solo nella fascia oraria, senza finestre,
+                       log in dati\automatico.log; giro (saltando chi ha già il menu di oggi) +
+                       pubblicazione + publish_complete (PDF/video/commenti) + post del giorno se dovuto
+  --salta-aggiornati   come l'automatico: non ricontrolla chi ha già il menu di oggi (Monitor "Controlla")
+  --solo ID            locale segnalato come sbagliato: menu di oggi in dati\scartati, controllo
+                       approfondito solo di quel locale (clic sul nome nel Monitor)
+  --solo-html          rifà la pagina senza andare online e la pubblica (Monitor "Pubblica")
+  --visibile           mostra il browser durante le letture
+  --login              apre Facebook e Instagram nel profilo\ per accedere a mano (sessione salvata)
+  --aggiungi           procedura guidata per un nuovo locale
+  --pianifica          crea/aggiorna l'attività "Menu" di Windows
+  --completo           rifà SUBITO PDF + video e li pubblica sul sito dei PDF (Rifai-PDF.bat)
+  --panorama           PDF di controllo: scheda del sito + fonte di ogni locale (Monitor "Panorama")
+  --riassunto          ricontrolla tutto, pubblica, poi post del giorno su Facebook (se non già fatto)
+  --riassunto-prova    crea immagine e testo del post del giorno senza pubblicare
+  --pubblica-fb        (alias --pubblica-video) pubblica subito il post del giorno, sostituendo quello
+                       di oggi (Monitor "Pubblica FB")
+  --post-link [--forza]  post fissi "I menu in pdf"/"I menu in video": li crea se mancano, aggiunge i
+                       commenti mancanti, prova a fissare il PDF; --forza li rifà togliendo i vecchi
+  --pulisci-facebook   elenca e (dopo "s") cancella i vecchi post con più foto / video / video.html
+  --facebook-collega   collegamento Graph (chiede il codice EAA...) | --facebook-prova  verifica
+  --ocr FILE           prova l'OCR su una foto | --prova-beep | --prova-notifica
+Tutti i giri prendono il blocco dati\automatico.lock (take_lock): due giri non si sovrappongono; un
+blocco di un processo morto o più vecchio di 20 minuti viene tolto.
+
+
+================================================================================================
+5. COME FUNZIONA UN GIRO (run, acquire)
+================================================================================================
+1. run() legge locali.json, ordina i locali (prima quelli già aggiornati, poi alfabetico; se il giro
+   parte dal Monitor segue l'ordine del Monitor), apre UN BrowserCollector (Playwright, profilo\).
+2. Per ogni locale acquire() -> acquire_sources(): prova le fonti in ordine.
+   - giorno di riposo (riposo + riposi.json): rest_day_result crea il cartello CHIUSO, niente lettura;
+   - avvisi di chiusura ("siamo chiusi dal ... al ...", nel testo o nella foto via OCR):
+     closure_period / save_closure -> mostrati come menu per tutto il periodo;
+   - fonte "browser": browser_result legge il 1°, 2°, ... post (post_variants); scarta ciò che non è
+     un menu (NotAMenu: text_is_menu, looks_like_dishes, photo_has_writing...), le foto di ALTRI
+     locali (other_shop_named via OCR), le foto vecchie (keep_first_seen, same_picture, date nel
+     testo: plausible_menu_date, post_day, story_age_day), quelle segnalate (is_reported);
+   - la foto valida finisce in ingresso\<id>\AAAA-MM-GG_online.jpg (place_capture).
+3. Il menu scelto (se è di oggi) viene copiato in menu\<id>.* (copy_current) e in archivio\.
+4. stato.json: {"results": [{"id","image","menu_date","source","checked_at","error","nota"?,
+   "sections"? (menu scritto)}], "firme": {id: impronta}}. Le impronte servono a capire se ci sono
+   NOVITA': solo allora beep sul PC (BEEP_VOLUME), notifica Bark sul cellulare, pubblicazione.
+5. generate_html() riscrive Menu.html/index.html/admin.html dal PAGE_TEMPLATE (HTML+CSS+JS in un
+   unico stringone dentro Menu.py: grafica, Comuni, schede, pulsante Testo con Tesseract.js, +Home,
+   contatori, cartello IN ATTESA disegnato in canvas, registro click); publish() fa git add/commit/
+   pull --rebase -X theirs/push sul repository "Menu".
+6. Solo con --automatico: publish_complete() e, se è ora, daily_summary().
+Il sito NON va modificato nei file generati: si cambia PAGE_TEMPLATE / generate_html in Menu.py.
+
+
+================================================================================================
+6. PDF, VIDEO E SITO DEI PDF (publish_complete)
+================================================================================================
+- complete_fingerprint(): giorno + hash di Menu.py + dati dei locali + menu di oggi. Se uguale a
+  dati\completo.json non si rifà nulla ("niente di nuovo da pubblicare"); --completo forza.
+- all_shop_pages(): TUTTI i locali in ordine alfabetico, una pagina A4 (1240x1754, 150 dpi) ciascuno:
+    "menu"   photo_page(): logo a sinistra; a destra 3 righe: NOME (sinistra) + TELEFONO (destra,
+             stesso carattere, cliccabile), "Menu di <giorno>", INDIRIZZO COMPLETO (cliccabile);
+             sotto la foto del menu (photo_menu_picture) o il testo riscritto (photo_menu_text).
+    "chiuso" rest_day_sign_image(): cartello CHIUSO (1080x1350) con indirizzo completo, ridisegnato
+             ogni volta (non letto dal file del mattino).
+    "attesa" wait_sign_image(): cartello IN ATTESA con indirizzo e "Per ordinare: <telefono>".
+  I link si registrano sull'immagine con add_link(image, box, uri) (image.info["links"]);
+  move_links() li sposta quando un cartello viene rimpicciolito sulla pagina A4.
+- save_pdf(): scrive il PDF A MANO (JPEG per pagina + annotazioni /Link /URI), perché Pillow non
+  sa mettere i link. NON tornare a image.save(..., "PDF"): si perderebbero i link.
+  Indirizzo -> maps_link() -> https://menurosticcerie.github.io/mappa.html?q=<nome, indirizzo>
+  (MAP_PAGE_HTML: Apple Maps su iPhone/iPad/Mac, Google Maps altrove). Telefono -> tel_link().
+  Su iPhone la chiamata chiede due conferme (regola di iOS), sul PC serve un'app per le chiamate.
+- make_pdf_video(): video.mp4 con ESATTAMENTE le pagine A4 del PDF, 7 s l'una (VIDEO_PAGE_SECONDS),
+  stacchi netti, ffmpeg di imageio-ffmpeg (installato da solo con pip la prima volta); musica solo
+  se c'è Facebook\musica-video.m4a.
+- File scritti in pdf-sito\: <id>.pdf, menu.pdf, video.mp4, index.html (INDEX_PAGE_HTML, apre
+  menu.pdf), mappa.html; video.html (vecchio) viene tolto.
+- publish_pdf_site(): commit UNICO senza storia (write-tree / commit-tree / update-ref, push --force
+  sul ramo main) per non far crescere il repository; ripara da sé rami rimasti a metà e index.lock
+  vecchi. Organizzazione GitHub: impostazioni > "sito_pdf" (predefinito menurosticcerie).
+- Dopo una pubblicazione riuscita: update_link_comments() riscrive i commenti dei post fissi.
+- I nomi video_font / video_fit_text / video_logo / video_rounded / video_shops sono rimasti dal
+  vecchio video ma ora servono ai PDF: non cancellarli.
+
+
+================================================================================================
+7. FACEBOOK (Graph API, Pagina "Menu rosticcerie", id 1314723505068190)
+================================================================================================
+COLLEGAMENTO
+- App Meta "Menu rosticcerie Pubblicazione" (FACEBOOK_APP_ID 923658737433113), in sviluppo, caso
+  d'uso "Gestisci tutto sulla tua Pagina" con i permessi: pages_show_list, pages_read_engagement,
+  pages_manage_posts, pages_manage_engagement (COMMENTI), pages_read_user_content.
+- Codice: Strumento di esplorazione API Graph > Generate Access Token con quei permessi, poi
+  Debugger dei token > "Estendi token d'accesso" (codice utente che non scade) -> Collega-Facebook.bat
+  (facebook_connect) chiede SOLO quel codice, ricava il codice della Pagina (me/accounts), controlla
+  che non scada (debug_token expires_at = 0) e lo salva in dati\facebook.json. Se il codice incollato
+  è provvisorio chiede anche ID app e chiave segreta (oauth/access_token fb_exchange_token).
+- facebook_call(path, params, files, version, method): GET, POST testo (method="POST"), POST
+  multipart (files: foto/video), DELETE. Errori Graph -> RuntimeError in italiano (190 = codice
+  scaduto, 10/200 = permesso mancante).
+POST FISSI (publish_link_posts, link_comment, add_link_comment, update_link_comments)
+- Due post foto con immagine 16:9 1920x1080 (link_post_image): "I menu in pdf" e "I menu in video"
+  (testo: "... 👇 Il link è nel commento"). Sotto ognuno UN commento di due righe:
+      Pdf: https://menurosticcerie.github.io/menu.pdf
+      Aggiornato martedì 20 ottobre 2026 alle ore 21:28
+  (Video: https://menurosticcerie.github.io/video.mp4 per l'altro). L'ora = dati\completo.json > ora.
+- ORDINE OBBLIGATORIO SULLA PAGINA: 1° "I menu in pdf", 2° "I menu in video", poi tutti gli altri.
+  * Il PDF è FISSATO in cima (Facebook: "Fissa post" / sezione "In evidenza"; fino a 3 elementi).
+    L'API is_pinned può non funzionare: in quel caso si fissa a mano dalla Pagina (gestendo come
+    Pagina: tre puntini del post > Fissa post) e si mette "fissato": true in dati\post-link.json.
+  * Il video resta 2° perché è il post NON fissato più recente: dopo ogni post del giorno
+    link_posts_after_daily() lo RIPUBBLICA (nuovo post + nuovo commento, il vecchio cancellato).
+    Se il PDF non risulta "fissato" si ripubblica anche il PDF, DOPO il video.
+  * Nessun altro post deve restare fissato sopra il PDF (il 20/10/2026 è stato tolto dagli elementi
+    in evidenza il vecchio "Cos'è Menu rosticcerie?").
+- dati\post-link.json tiene gli id: se un post c'è già --post-link non lo rifà (aggiunge solo il
+  commento mancante); --forza lo rifà e cancella il vecchio.
+POST DEL GIORNO (daily_summary)
+- summary_due(): una volta al giorno, appena TUTTI i locali hanno il menu o alle 11:30 (impostazioni
+  > riassunto > ora); prima un ricontrollo completo. make_summary(): pagina HTML 1080x1350
+  (summary_html) fotografata con Playwright -> dati\riassunti\AAAA-MM-GG.jpg + testo (summary_text:
+  locali con 2 piatti ciascuno, in arrivo, invito a toccare «Scopri di più», link a menu.pdf e app).
+- Pubblicato con publish_summary_facebook (foto+testo). Una nuova pubblicazione nello stesso giorno
+  (Pubblica FB) cancella quella precedente (delete_facebook_posts). Max 3 tentativi se fallisce.
+- Dal 20/10/2026 NIENTE foto singole dei menu e NIENTE video come post del giorno (codice tolto).
+PULIZIA (clean_facebook_posts): cancella SOLO post con più foto, con video o con link a video.html,
+dopo aver mostrato l'elenco e chiesto "s"; non tocca mai post con una foto sola, di solo testo, o
+che iniziano come una riga di Facebook\Testi.txt.
+SICUREZZA: il token sta solo in dati\facebook.json (fuori da GitHub). Non stamparlo nei log.
+
+
+================================================================================================
+8. ALTRI SERVIZI
+================================================================================================
+- GitHub: repository Sebastiano-Mazzarisi/Menu (sito, GitHub Pages) e organizzazione
+  menurosticcerie, repository menurosticcerie.github.io (PDF/video). git deve essere nel PATH e
+  già autenticato sul PC (Collega_GitHub.bat la prima volta).
+- Registro click: Registro_click.gs (Web App "Chiunque") scrive nel Foglio Google "Menu" una riga
+  per click (primo foglio) e per visita (foglio "Visite"); ?azione=statistiche dà i conteggi (Monitor),
+  ?azione=ultima l'ultima riga (pulsante "Accessi"). Con ?v=57 il sito non registra nulla.
+- Notifiche iPhone: app Bark, dati\notifica.json, suono trebeep-piano.caf (caricato a mano in Bark).
+- OCR: Windows (ocr.ps1) sul PC; nel sito, se manca il testo, Tesseract.js sul telefono.
+- Link corto pubblico dell'app: https://tinyurl.com/menurosticcerie (SHORT_URL). Nei link pubblici
+  non deve comparire "sebastiano-mazzarisi" (nome e cognome): per questo PDF/video stanno su
+  menurosticcerie.github.io.
+
+
+================================================================================================
+9. Monitor.py
+================================================================================================
+Finestra tkinter (posizione in dati\monitor.json), icona nella barra = numero di locali aggiornati.
+Legge stato.json, in_corso.json, automatico.log, l'attività "Menu" (schtasks) e il Foglio click.
+Righe dei locali: verde = menu di oggi; clic sul nome = "menu sbagliato" (Menu.py --solo ID).
+Pulsanti (layout in Monitor.__init__, fumetti in button_help):
+  riga 1  Controlla (--salta-aggiornati) | Ricontrolla (tutto) | Registro (automatico.log)
+  riga 2  Sito (apre ?v=57) | Accessi (Foglio click) | Pianifica/Disabilita
+  riga 3  Panorama (--panorama) | Pubblica (--solo-html) | FB (apre la Pagina)
+  riga 4  Pubblica FB (--pubblica-fb, con conferma) | PDF (apre menu.pdf online)
+I pulsanti che lanciano un giro sono spenti mentre un giro è in corso (check_running).
+Dopo una modifica a Monitor.py va chiuso e riaperto (Monitor.bat).
+
+
+================================================================================================
+10. REGOLE DI LAVORO PER CHI MODIFICA
+================================================================================================
+- Prima di cambiare Menu.py o Monitor.py: copia in backup\<Nome>_AAAA-MM-GG_prima-di-<cosa>.py.
+- Ogni modifica va scritta in QUESTO file: aggiornare la guida (capitoli 1-10) se cambia come
+  funziona qualcosa, e aggiungere in fondo un paragrafo datato nella storia.
+- Le soluzioni devono valere per TUTTI i locali e per sempre (dati da locali.json, niente casi
+  speciali scritti nel codice per un giorno).
+- Testi, messaggi, commenti nel codice e nei .bat: in italiano. I .bat con fine riga CRLF.
+- Prova veloce senza toccare internet: python -m py_compile Menu.py ; python Menu.py --solo-html ;
+  python Menu.py --completo (rifà PDF/video: controllare menu.pdf, link cliccabili, video.mp4).
+- Non lanciare a mano un giro mentre è in corso quello automatico (c'è il blocco, ma il Monitor lo
+  segnala). Dropbox può bloccare per un attimo file appena scritti: git/clone grandi fuori da Dropbox.
+- Dipendenze: playwright (con Chrome/Chromium: python -m playwright install chromium), pillow;
+  imageio-ffmpeg si installa da sé. requirements.txt elenca le prime due.
+- I file generati (index.html, admin.html, Menu.html, manifest*, icone, pdf-sito\*) si rifanno da
+  soli: modificarne il codice in Menu.py, mai i file.
+
+
+################################################################################################
+#  STORIA DETTAGLIATA DELLE MODIFICHE (dal più vecchio al più recente)
+################################################################################################
+
 MENU - STRUTTURA MINIMALE
 =========================
 
@@ -1428,3 +1788,65 @@ Codice: clean_facebook_posts, daily_summary, summary_text, publish_complete, IND
 tolti make_video, make_photos, publish_photos_facebook, publish_video_facebook, photo_captions,
 short_link, wait_online, complete_page_html. Monitor: open_pdf (tolti video e photos).
 Copie precedenti: backup\Menu_2026-10-20_prima-senza-video.py, backup\Monitor_2026-10-20_prima-senza-video.py
+
+
+------------------------------------------------------------------------------------------------
+20/10/2026 (sera) - VIDEO RIFATTO CON LE PAGINE DEL PDF + POST "I MENU IN PDF" / "I MENU IN VIDEO"
+------------------------------------------------------------------------------------------------
+- A ogni giro (se qualcosa è cambiato) oltre ai PDF si rifà https://menurosticcerie.github.io/video.mp4
+  con ESATTAMENTE le immagini delle pagine di menu.pdf (A4 verticale, stesso ordine), ognuna ferma
+  7 secondi (VIDEO_PAGE_SECONDS), stacchi netti, niente schermate in più. Musica solo se c'è
+  Facebook\musica-video.m4a (o .mp3), altrimenti muto. Niente video.html: il link va diretto al file.
+- Post fissi sulla Pagina, UNA VOLTA SOLA: doppio clic su Post-link-Facebook.bat
+  (python Menu.py --post-link). Pubblica due post con un'immagine orizzontale 16:9 (1920x1080):
+    1) "I menu in pdf"   -> primo commento: PDF: https://menurosticcerie.github.io/menu.pdf
+       PRIMO dei post: pubblicato per ultimo e messo in evidenza (fissato in cima).
+    2) "I menu in video" -> primo commento: Video: https://menurosticcerie.github.io/video.mp4
+       SECONDO: pubblicato prima del PDF.
+  I link non cambiano mai: i post non vanno rifatti. Gli id sono in dati/post-link.json; se i
+  post ci sono già il comando non li ripubblica (python Menu.py --post-link --forza li rifà e
+  toglie i vecchi). Immagini in dati/post-link/.
+  Se Facebook non permette il commento o il "metti in evidenza", la finestra lo dice e indica
+  cosa fare a mano.
+- Nota: i post del giorno delle 11:30 compaiono sopra i post più vecchi; il post del PDF resta
+  primo perché è fissato, quello del video scende sotto i post nuovi.
+- Pulisci-Facebook.bat NON tocca questi due post (hanno una foto sola).
+Codice: make_pdf_video, video_ffmpeg, publish_complete, link_post_image, publish_link_posts,
+facebook_call(method="POST").
+Copia precedente: backup\Menu_2026-10-20_prima-video-pdf.py
+
+
+------------------------------------------------------------------------------------------------
+20/10/2026 (sera) - COMMENTO DI DUE RIGHE E ORDINE FISSO PDF / VIDEO
+------------------------------------------------------------------------------------------------
+- Il commento sotto i due post ha SOLO due righe:
+      Pdf: https://menurosticcerie.github.io/menu.pdf
+      Aggiornato martedì 27 ottobre 2026 alle ore 11:00
+  (per il video: "Video: https://menurosticcerie.github.io/video.mp4" + la stessa seconda riga).
+  L'ora è quella dell'ultima pubblicazione di PDF e video: ogni volta che PDF e video vengono
+  rifatti, Menu.py RISCRIVE da solo i due commenti con la nuova ora (update_link_comments).
+- Ordine sulla Pagina, sempre: PRIMO "I menu in pdf" (fissato in cima), SECONDO "I menu in video".
+  Il post del giorno delle 11:30 andrebbe sopra il video: per questo, subito dopo averlo
+  pubblicato, Menu.py ripubblica il post del video (e toglie quello vecchio), che torna secondo.
+  Se il PDF non risulta fissato si ripubblica anche il PDF, dopo il video (link_posts_after_daily).
+Codice: link_comment, update_link_comments, publish_link_posts, link_posts_after_daily.
+Copia precedente: backup\Menu_2026-10-20_prima-commenti-due-righe.py
+- Se il commento non riesce (manca il permesso pages_manage_engagement), rilanciando
+  Post-link-Facebook.bat il commento viene aggiunto ai post GIÀ pubblicati, senza rifarli.
+  Come aggiungere il permesso: in fondo a Facebook\Collegamento-Facebook.txt.
+- 20/10/2026: Collega-Facebook.bat ora chiede UN SOLO dato, il codice EAA... Il più comodo è quello
+  del Debugger dei token (developers.facebook.com/tools/debug/accesstoken, pulsante "Estendi token
+  d'accesso": "non scadrà mai"). Solo se il codice incollato è provvisorio chiede anche ID app e
+  chiave segreta. Dopo il collegamento lancia da solo --post-link (commenti mancanti ai due post).
+  Copia precedente: backup\Menu_2026-10-20_prima-collega-semplice.py
+
+
+------------------------------------------------------------------------------------------------
+20/10/2026 (notte) - ORDINE DEI POST SISTEMATO E GUIDA PER IL PROGRAMMATORE
+------------------------------------------------------------------------------------------------
+- Sulla Pagina il vecchio "Cos'è Menu rosticcerie?" era fissato in cima: tolto dagli elementi in
+  evidenza e fissato al suo posto "I menu in pdf" (a mano dalla Pagina, perché is_pinned via API non
+  ha funzionato). In dati\post-link.json: "fissato": true per il PDF. Ordine ora: PDF, video, altri.
+- --post-link riprova a fissare il PDF se "fissato" manca.
+- In cima a questo file: GUIDA PER IL PROGRAMMATORE (capitoli 1-10), valida da sola per lavorare
+  sul progetto; questa storia resta come dettaglio.

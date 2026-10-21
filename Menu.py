@@ -3669,15 +3669,77 @@ def photo_menu_picture(entry: dict[str, Any], width: int):
 #   <id>.pdf   = PDF A4 di ogni locale (menu di oggi, cartello CHIUSO o cartello IN ATTESA)
 #   menu.pdf   = PDF unico con TUTTI i locali in ordine alfabetico  -> pulsante "call to action"
 #                della Pagina Facebook (indirizzo fisso, si imposta una volta sola)
+#   video.mp4  = video con ESATTAMENTE le pagine di menu.pdf, una dopo l'altra (stessa grafica)
 #   index.html = apre subito menu.pdf (chi va su https://menurosticcerie.github.io/ trova il PDF)
 #   mappa.html = apre Apple Maps o Google Maps quando si tocca un indirizzo nel PDF
-# Il video dei menu NON si fa più (dal 20/10/2026): il PDF con tutti i locali è più comodo.
+# I link fissi a menu.pdf e video.mp4 sono nei commenti di due post della Pagina ("I menu in pdf",
+# "I menu in video"), creati una volta con Post-link-Facebook.bat (vedi publish_link_posts).
 # Si rifà tutto solo se qualcosa è cambiato (impronta in dati/completo.json): niente lavoro e
 # niente invii inutili. Il repository tiene una sola versione (vedi publish_pdf_site).
 # ------------------------------------------------------------------------------------------------
 COMPLETE_STATE = DATA / "completo.json"
-COMPLETE_PDF = "menu.pdf"
-OLD_VIDEO_FILES = ("video.mp4", "video.html")  # del vecchio video: tolti dal sito dei PDF
+COMPLETE_PDF, COMPLETE_VIDEO = "menu.pdf", "video.mp4"
+OLD_VIDEO_FILES = ("video.html",)  # pagina del vecchio video: tolta dal sito dei PDF
+VIDEO_PAGE_SECONDS = 7.0   # quanto resta ferma ogni pagina del PDF nel video
+VIDEO_FPS = 30
+# musica di sottofondo facoltativa: Facebook\musica-video.m4a (o .mp3); se manca il video è muto
+VIDEO_MUSIC = (ROOT / "Facebook" / "musica-video.m4a", ROOT / "Facebook" / "musica-video.mp3")
+
+
+def video_ffmpeg() -> str | None:
+    """Programma ffmpeg per scrivere l'MP4: quello di imageio-ffmpeg (installato da solo la prima
+    volta con pip, circa 30 MB) oppure un ffmpeg già presente nel sistema."""
+    for attempt in range(2):
+        try:
+            import imageio_ffmpeg
+            return imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            if attempt == 0:
+                print("Installo imageio-ffmpeg (serve una sola volta per creare i video)...")
+                subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "imageio-ffmpeg"], check=False)
+    return shutil.which("ffmpeg")
+
+
+def make_pdf_video(pages: list[dict[str, Any]], target: Path) -> Path | None:
+    """Video con ESATTAMENTE le stesse immagini delle pagine di menu.pdf (page["a4"], A4 verticale
+    1240x1754), nello stesso ordine, ognuna ferma VIDEO_PAGE_SECONDS secondi, stacchi netti.
+    Le immagini vanno a ffmpeg come elenco con le durate (concat): pochi secondi anche ogni 30 minuti."""
+    ffmpeg = video_ffmpeg()
+    if not ffmpeg or not pages:
+        print("Video non creato: manca ffmpeg (pip install imageio-ffmpeg)." if pages else "Video non creato: nessuna pagina.")
+        return None
+    seconds = VIDEO_PAGE_SECONDS * len(pages)
+    work = Path(tempfile.mkdtemp(prefix="menu-video-"))
+    try:
+        lines = []
+        for index, page in enumerate(pages):
+            name = f"{index:03d}.png"
+            image = page["a4"].convert("RGB")
+            if image.width % 2 or image.height % 2:  # l'MP4 vuole misure pari
+                image = image.crop((0, 0, image.width // 2 * 2, image.height // 2 * 2))
+            image.save(work / name)
+            lines += [f"file '{name}'", f"duration {VIDEO_PAGE_SECONDS:.2f}"]
+        lines.append(f"file '{len(pages) - 1:03d}.png'")  # l'ultima va ripetuta perché valga la sua durata
+        (work / "elenco.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        command = [ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(work / "elenco.txt")]
+        music = next((path for path in VIDEO_MUSIC if path.is_file()), None)
+        if music:  # musica ripetuta se più corta; abbassata dolcemente negli ultimi 2 secondi
+            command += ["-stream_loop", "-1", "-i", str(music), "-map", "0:v", "-map", "1:a",
+                        "-af", f"afade=t=out:st={max(0.0, seconds - 2):.2f}:d=2", "-c:a", "aac", "-b:a", "128k"]
+        command += ["-t", f"{seconds:.2f}", "-vf", f"fps={VIDEO_FPS},format=yuv420p",
+                    "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-tune", "stillimage",
+                    "-profile:v", "high", "-level", "4.1", "-g", str(VIDEO_FPS * 10),
+                    "-movflags", "+faststart", str(target)]
+        print(f"Creo il video con le {len(pages)} pagine del PDF...")
+        done = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    if done.returncode != 0 or not target.is_file():
+        print(f"Video non creato: ffmpeg ha dato un errore. {(done.stderr or '').strip()[:300]}")
+        return None
+    print(f"Video pronto: {target.name} ({target.stat().st_size // 1024} KB)")
+    return target
 INDEX_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Menu rosticcerie</title>
 <meta http-equiv="refresh" content="0; url=menu.pdf"></head>
@@ -3687,7 +3749,7 @@ INDEX_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
 
 
 def complete_fingerprint(config: dict[str, Any]) -> str:
-    """Impronta di quello che finisce nei PDF: giorno, locali, menu di oggi, versione di Menu.py."""
+    """Impronta di quello che finisce nei PDF e nel video: giorno, locali, menu di oggi, versione di Menu.py."""
     today = date.today().isoformat()
     parts: list[Any] = [today, file_hash(Path(__file__))]
     for shop in config.get("locali", []):
@@ -3701,30 +3763,35 @@ def complete_fingerprint(config: dict[str, Any]) -> str:
 
 
 def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
-    """PDF di ogni locale e PDF completo sul sito dei PDF (vedi sopra)."""
+    """PDF di ogni locale, PDF completo e video con le stesse pagine sul sito dei PDF (vedi sopra)."""
     stamp = complete_fingerprint(config)
     if not force and read_json(COMPLETE_STATE, {}).get("impronta") == stamp \
-            and (PDF_SITE_DIR / COMPLETE_PDF).is_file():
-        print("Menu completo (PDF): niente di nuovo da pubblicare.")
+            and (PDF_SITE_DIR / COMPLETE_PDF).is_file() and (PDF_SITE_DIR / COMPLETE_VIDEO).is_file():
+        print("Menu completo (PDF e video): niente di nuovo da pubblicare.")
         return True
     pages = all_shop_pages(config)
     if not pages:
         return False
     PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Menu completo: PDF di {len(pages)} locali e PDF unico...")
+    print(f"Menu completo: PDF di {len(pages)} locali, PDF unico e video...")
     for page in pages:
         save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
     save_pdf([page["a4"] for page in pages], PDF_SITE_DIR / COMPLETE_PDF)
     (PDF_SITE_DIR / "mappa.html").write_text(MAP_PAGE_HTML, encoding="utf-8")  # link degli indirizzi
+    video = make_pdf_video(pages, PDF_SITE_DIR / COMPLETE_VIDEO)
     (PDF_SITE_DIR / "index.html").write_text(INDEX_PAGE_HTML, encoding="utf-8")
     for name in OLD_VIDEO_FILES:
         remove_file(PDF_SITE_DIR / name)
     if not publish_pdf_site():
         return False
     save_json(COMPLETE_STATE, {"impronta": stamp, "ora": datetime.now().isoformat(timespec="seconds"),
-                               "locali": len(pages)})
+                               "locali": len(pages), "video": bool(video)})
     site = pdf_site(config.get("impostazioni", {}))[0]
-    print(f"Menu completo pubblicato: {site}{COMPLETE_PDF}")
+    print(f"Menu completo pubblicato: {site}{COMPLETE_PDF}" + (f" e {site}{COMPLETE_VIDEO}" if video else ""))
+    try:  # nuova ora di aggiornamento nei commenti dei post "I menu in pdf" / "I menu in video"
+        update_link_comments()
+    except Exception as exc:
+        print(f"Commenti dei post con i link non aggiornati: {exc}")
     return True
 
 
@@ -4026,6 +4093,8 @@ def facebook_call(path: str, params: dict[str, str] | None = None, files: dict[s
     params = params or {}
     if method == "DELETE":  # cancellazione di un post o di un video della Pagina
         request = urllib.request.Request(url + "?" + urllib.parse.urlencode(params), method="DELETE")
+    elif method == "POST" and files is None:  # invio di soli testi (es. un commento)
+        request = urllib.request.Request(url, data=urllib.parse.urlencode(params).encode("utf-8"), method="POST")
     elif files is None:  # lettura (GET)
         request = urllib.request.Request(url + ("?" + urllib.parse.urlencode(params) if params else ""))
     else:  # invio di una foto (POST multipart)
@@ -4054,7 +4123,7 @@ def facebook_call(path: str, params: dict[str, str] | None = None, files: dict[s
             raise RuntimeError(f"collegamento Facebook scaduto o revocato ({message}): rifai Collega-Facebook.bat") from exc
         if code in (10, 200) or "permission" in message.lower():
             raise RuntimeError(f"permesso mancante ({message}): rifai Collega-Facebook.bat concedendo "
-                               "pages_manage_posts") from exc
+                               "pages_manage_posts e pages_manage_engagement") from exc
         raise RuntimeError(f"Facebook ha risposto: {message}") from exc
 
 
@@ -4084,6 +4153,158 @@ def delete_facebook_posts(ids: list[str]) -> list[str]:
             print(f"Post precedente {post} non cancellato: {exc}")
             left.append(post)
     return left
+
+
+LINK_POSTS = DATA / "post-link.json"   # {"pdf": {"post", "commento", "ora"}, "video": {...}}
+
+
+def link_post_image(title: str, target: Path) -> Path:
+    """Immagine ORIZZONTALE 16:9 (1920x1080) per i post con il link nel commento: logo dell'app,
+    la scritta grande (es. "I menu in pdf") e, sotto, dove trovare il link."""
+    from PIL import Image, ImageDraw
+    width, height = 1920, 1080
+    image = Image.new("RGB", (width, height), (255, 253, 247))
+    draw = ImageDraw.Draw(image)
+    accent = (232, 146, 30)
+    draw.rounded_rectangle((40, 40, width - 40, height - 40), radius=60, outline=accent, width=16)
+    side = 300
+    if APP_LOGO.is_file():
+        with Image.open(APP_LOGO) as logo:
+            logo = video_rounded(logo.convert("RGB").resize((side, side), Image.LANCZOS), 48).convert("RGBA")
+        image.paste(logo, ((width - side) // 2, 130), logo)
+    font, title = video_fit_text(draw, title, 170, True, width - 240)
+    draw.text((width / 2, 600), title, font=font, fill=(40, 40, 40), anchor="mm")
+    draw.text((width / 2, 760), "Rosticcerie di Putignano e dintorni", font=video_font(64), fill=(90, 90, 90), anchor="mm")
+    draw.text((width / 2, 880), "Il link è nel primo commento", font=video_font(64, True), fill=accent, anchor="mm")
+    image.save(target, quality=92)
+    return target
+
+
+def link_comment(key: str) -> str:
+    """Commento di due righe sotto il post "I menu in pdf" / "I menu in video":
+        Pdf: https://menurosticcerie.github.io/menu.pdf
+        Aggiornato lunedì 27 ottobre 2026 alle ore 11:00
+    L'ora è quella dell'ultima pubblicazione di PDF e video (dati/completo.json > "ora")."""
+    site = pdf_site()[0]
+    first = f"Pdf: {site}{COMPLETE_PDF}" if key == "pdf" else f"Video: {site}{COMPLETE_VIDEO}"
+    try:
+        when = datetime.fromisoformat(read_json(COMPLETE_STATE, {}).get("ora", ""))
+    except (TypeError, ValueError):
+        return first
+    day = f"{SUMMARY_WEEKDAYS[when.weekday()].lower()} {when.day} {list(MONTHS)[when.month - 1]} {when.year}"
+    return f"{first}\nAggiornato {day} alle ore {when:%H:%M}"
+
+
+def update_link_comments() -> None:
+    """Dopo ogni nuova pubblicazione di PDF e video: riscrive i commenti dei due post con la nuova
+    data e ora di aggiornamento (il link non cambia)."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    saved = read_json(LINK_POSTS, {})
+    if not link.get("token"):
+        return
+    for key in ("pdf", "video"):
+        comment = saved.get(key, {}).get("commento")
+        if not comment:
+            continue
+        try:
+            facebook_call(comment, {"message": link_comment(key), "access_token": link["token"]},
+                          version=link.get("versione", ""), method="POST")
+            print(f"Commento del post \"I menu in {key}\" aggiornato")
+        except RuntimeError as exc:
+            print(f"Commento del post \"I menu in {key}\" NON aggiornato: {exc}")
+
+
+def add_link_comment(post: str, key: str, token: str, version: str) -> str:
+    """Mette sotto il post il commento di due righe (link_comment). Restituisce l'id del commento,
+    "" se Facebook non lo permette (serve il permesso pages_manage_engagement: vedi
+    Facebook\\Collegamento-Facebook.txt) - in quel caso al prossimo --post-link si riprova."""
+    comment = link_comment(key)
+    try:
+        answer = facebook_call(f"{post}/comments", {"message": comment, "access_token": token},
+                               version=version, method="POST")
+        print("   commento aggiunto:\n      " + comment.replace("\n", "\n      "))
+        return answer.get("id", "")
+    except RuntimeError as exc:
+        print(f"   commento NON aggiunto: {exc}")
+        if "permess" in str(exc).lower() or "permission" in str(exc).lower():
+            print("   Manca il permesso per commentare come Pagina (pages_manage_engagement): rifai il\n"
+                  "   collegamento seguendo Facebook\\Collegamento-Facebook.txt (Parti 2 e 3, con\n"
+                  "   pages_manage_engagement in più), poi di nuovo Post-link-Facebook.bat.")
+        return ""
+
+
+def publish_link_posts(force: bool = False, keys: tuple[str, ...] = ("video", "pdf")) -> None:
+    """Post-link-Facebook.bat (python Menu.py --post-link): pubblica sulla Pagina due post con
+    un'immagine 16:9 ("I menu in pdf" e "I menu in video") e mette sotto ognuno un commento di due
+    righe (vedi link_comment): il link fisso e "Aggiornato <giorno> alle ore <ora>". I file dietro i
+    link si aggiornano da soli ogni 30 minuti e il commento viene riscritto con la nuova ora
+    (update_link_comments). Gli id sono in dati/post-link.json: se un post c'è già non viene
+    ripubblicato (con force sì, e quello vecchio viene tolto).
+    ORDINE SULLA PAGINA: PRIMO il post del PDF (messo in evidenza, cioè fissato in cima), SECONDO
+    quello del video. Su Facebook il post più recente sta più in alto, quindi si pubblica prima il
+    video e poi il PDF; dopo ogni post del giorno il post del video viene ripubblicato (vedi
+    daily_summary), così torna subito sotto il PDF."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        print("Collegamento Facebook non ancora fatto: prima Collega-Facebook.bat")
+        return
+    token, version = link["token"], link.get("versione", "")
+    saved = read_json(LINK_POSTS, {})
+    texts = {"video": ("I menu in video", "🎬 I menu del giorno di tutte le rosticcerie in un video, pagina per pagina.\n"
+                       "👇 Il link è nel commento."),
+             "pdf": ("I menu in pdf", "📄 I menu del giorno di tutte le rosticcerie in un PDF, con indirizzi e numeri "
+                     "da toccare.\n👇 Il link è nel commento (oppure tocca «Scopri di più» sulla Pagina).")}
+    folder = DATA / "post-link"
+    folder.mkdir(parents=True, exist_ok=True)
+    for key in [key for key in ("video", "pdf") if key in keys]:  # sempre prima il video, poi il PDF
+        title, text = texts[key]
+        old = saved.get(key, {})
+        if old.get("post") and not force:
+            print(f"\"{title}\": post già pubblicato (https://www.facebook.com/{old['post']}), non lo rifaccio.")
+            if not old.get("commento"):  # il commento non era riuscito: si riprova sul post che c'è
+                old["commento"] = add_link_comment(old["post"], key, token, version)
+                save_json(LINK_POSTS, saved)
+            if key == "pdf" and not old.get("fissato"):  # in evidenza non ancora riuscito: si riprova
+                try:
+                    facebook_call(old["post"], {"is_pinned": "true", "access_token": token}, version=version,
+                                  method="POST")
+                    old["fissato"] = True
+                    save_json(LINK_POSTS, saved)
+                    print("   post messo in evidenza (fissato in cima alla Pagina)")
+                except RuntimeError as exc:
+                    print(f"   non sono riuscito a fissarlo in cima ({exc})")
+            continue
+        image = link_post_image(title, folder / f"{key}.jpg")
+        try:
+            post = publish_summary_facebook(image, text)
+            print(f"\"{title}\": post pubblicato: https://www.facebook.com/{post}")
+            entry = {"post": post, "ora": datetime.now().isoformat(timespec="seconds"), "commento": ""}
+            entry["commento"] = add_link_comment(post, key, token, version)
+            if key == "pdf":
+                try:
+                    facebook_call(post, {"is_pinned": "true", "access_token": token}, version=version, method="POST")
+                    entry["fissato"] = True
+                    print("   post messo in evidenza (fissato in cima alla Pagina)")
+                except RuntimeError as exc:
+                    print(f"   non sono riuscito a fissarlo in cima ({exc}).\n   Fallo a mano: sulla Pagina, "
+                          "tre puntini del post \"I menu in pdf\" > Metti in evidenza")
+            if old.get("post"):
+                delete_facebook_posts([old["post"]])  # il post vecchio va via
+            saved[key] = entry
+            save_json(LINK_POSTS, saved)
+        except Exception as exc:
+            print(f"\"{title}\": post NON pubblicato: {exc}")
+
+
+def link_posts_after_daily() -> None:
+    """Dopo il post del giorno (che su Facebook va in cima, sopra i post vecchi): ripubblica il post
+    del video, così torna SECONDO sotto il PDF fissato. Se il PDF non è fissato si ripubblica anche
+    quello (dopo il video), così resta PRIMO. Solo se i post sono già stati creati con --post-link."""
+    saved = read_json(LINK_POSTS, {})
+    if not saved.get("video", {}).get("post"):
+        return
+    keys = ("video",) if saved.get("pdf", {}).get("fissato") else ("video", "pdf")
+    publish_link_posts(force=True, keys=keys)
 
 
 def clean_facebook_posts() -> None:
@@ -4185,6 +4406,10 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
                 state["tentativi"] = int(state.get("tentativi", 0)) + 1
             state["pubblicato"] = publish_summary_facebook(image, text)
             print(f"Riassunto pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
+            try:  # il post del video torna secondo, sotto il PDF (il post del giorno ora è sopra)
+                link_posts_after_daily()
+            except Exception as exc:
+                print(f"Post \"I menu in video\" non ripubblicato: {exc}")
             state.pop("errore", None)
             # una nuova pubblicazione nello stesso giorno (pulsante Pubblica FB) SOSTITUISCE quella di
             # prima: i post precedenti di oggi vengono tolti dalla Pagina, così non ci sono doppioni
@@ -4216,35 +4441,45 @@ def facebook_connect() -> None:
                 return value
             print(f"   Non sembra giusto: {hint}. Riprova.\n")
 
-    app_id = ask(f"1) ID app [{FACEBOOK_APP_ID}] (INVIO per confermare): ", lambda v: v.isdigit(),
-                 "l'ID dell'app è fatto solo di cifre", FACEBOOK_APP_ID)
-    while True:
-        app_secret = ask("2) Chiave segreta dell'app (Impostazioni app > Di base > Mostra): ",
+    # UN SOLO DATO: il codice che comincia con EAA. Va bene quello "che non scadrà mai" del Debugger
+    # dei token (pulsante "Estendi token d'accesso"): non servono ID app né chiave segreta. Se invece
+    # è un codice provvisorio (dura un'ora), dopo vengono chiesti anche ID app e chiave segreta.
+    app_id = FACEBOOK_APP_ID
+    long = ask("Codice di accesso (comincia con EAA; meglio quello del Debugger dei token dopo "
+               "\"Estendi token d'accesso\"): ", lambda v: v.startswith("EAA") and len(v) > 100,
+               "il codice comincia con EAA ed è molto lungo (copialo tutto)")
+    try:
+        probe = facebook_call("me/accounts", {"access_token": long, "fields": "id,access_token"}).get("data", [])
+        permanent = bool(probe) and facebook_call("debug_token", {"input_token": probe[0]["access_token"],
+                                                                  "access_token": probe[0]["access_token"]}
+                                                  ).get("data", {}).get("expires_at", 1) == 0
+    except RuntimeError as exc:
+        print(f"   {exc}")
+        permanent = False
+    while not permanent:
+        print("\nQuesto codice è provvisorio: servono anche ID app e chiave segreta per renderlo definitivo.")
+        app_id = ask(f"ID app [{FACEBOOK_APP_ID}] (INVIO per confermare): ", lambda v: v.isdigit(),
+                     "l'ID dell'app è fatto solo di cifre", FACEBOOK_APP_ID)
+        app_secret = ask("Chiave segreta dell'app (Impostazioni app > Di base > Mostra): ",
                          lambda v: bool(re.fullmatch(r"[0-9a-f]{32}", v)),
                          "la chiave segreta è di 32 caratteri, solo cifre e lettere da a ad f "
                          "(premi \"Mostra\" e copia quella, non i pallini)")
-        short = ask("3) Codice di accesso provvisorio (Strumento di esplorazione, comincia con EAA): ",
-                    lambda v: v.startswith("EAA") and len(v) > 100,
-                    "il codice provvisorio comincia con EAA ed è molto lungo")
-        print("\nScambio il codice provvisorio con uno di lunga durata...")
         try:
             long = facebook_call("oauth/access_token", {"grant_type": "fb_exchange_token", "client_id": app_id,
-                                                        "client_secret": app_secret, "fb_exchange_token": short})["access_token"]
-            break
+                                                        "client_secret": app_secret, "fb_exchange_token": long})["access_token"]
+            permanent = True
         except RuntimeError as exc:
             text = str(exc).lower()
-            if "client secret" in text:
-                print("   Facebook dice che la CHIAVE SEGRETA non è quella di questa app: ricopiala "
-                      "(Impostazioni app > Di base > Mostra) e reinserisci i dati.\n")
-            elif "session has expired" in text or "expired" in text or "190" in text:
-                print("   Il CODICE PROVVISORIO è scaduto (dura circa un'ora): premi di nuovo "
-                      "\"Generate Access Token\" e reinserisci i dati.\n")
+            if "expired" in text or "190" in text:
+                long = ask("   Il codice è scaduto: incollane uno nuovo (EAA...): ",
+                           lambda v: v.startswith("EAA") and len(v) > 100, "il codice comincia con EAA")
             else:
                 print(f"   {exc}\n   Reinserisci i dati.\n")
     pages = facebook_call("me/accounts", {"access_token": long, "fields": "id,name,username,access_token,tasks"}).get("data", [])
     if not pages:
         raise SystemExit("Nessuna Pagina trovata: nello Strumento di esplorazione scegli la Pagina "
-                         "\"Menu rosticcerie\" e i permessi pages_show_list, pages_manage_posts, pages_read_engagement.")
+                         "\"Menu rosticcerie\" e i permessi pages_show_list, pages_manage_posts, pages_read_engagement, "
+                         "pages_manage_engagement.")
     wanted = [page for page in pages if FACEBOOK_PAGE.lower() in (str(page.get("username", "")).lower(), page.get("id"))
               or page.get("name", "").lower() == "menu rosticcerie"]
     page = wanted[0] if wanted else pages[0]
@@ -4306,8 +4541,13 @@ def main() -> None:
                         help="Pubblica SUBITO sulla Pagina Facebook l'immagine riassuntiva di questo momento con il testo "
                              "del riassunto (pulsante \"Pubblica FB\" del Monitor), anche se oggi è già stato pubblicato.")
     parser.add_argument("--completo", action="store_true",
-                        help="Rifà subito PDF di ogni locale e PDF completo (menu.pdf) e li pubblica sul sito "
-                             "dei PDF (lo fa da solo ogni 30 minuti se qualcosa cambia).")
+                        help="Rifà subito PDF di ogni locale, PDF completo (menu.pdf) e video (video.mp4) e li "
+                             "pubblica sul sito dei PDF (lo fa da solo ogni 30 minuti se qualcosa cambia).")
+    parser.add_argument("--post-link", action="store_true",
+                        help="Pubblica sulla Pagina i due post fissi \"I menu in video\" e \"I menu in pdf\" con il "
+                             "link nel primo commento (Post-link-Facebook.bat). Se ci sono già non li rifà.")
+    parser.add_argument("--forza", action="store_true",
+                        help="Con --post-link: ripubblica i due post anche se ci sono già (i vecchi vengono tolti).")
     parser.add_argument("--pulisci-facebook", action="store_true",
                         help="Elenca i vecchi post della Pagina con le foto o il video dei menu e, dopo la conferma, "
                              "li cancella (con le loro foto). I post di presentazione restano (Pulisci-Facebook.bat).")
@@ -4342,6 +4582,9 @@ def main() -> None:
         return
     if args.completo:  # PDF completi subito, anche se nulla è cambiato
         publish_complete(config, force=True)
+        return
+    if args.post_link:  # una tantum: post "I menu in video" e "I menu in pdf" con il link nel commento
+        publish_link_posts(force=args.forza)
         return
     if args.pulisci_facebook:  # una tantum: toglie dalla Pagina i vecchi post con foto e video dei menu
         clean_facebook_posts()
@@ -4414,7 +4657,7 @@ def main() -> None:
         try:
             run(args, config)
             fresh = read_json(CONFIG, config)
-            try:  # PDF di ogni locale e PDF completo sul sito (solo se qualcosa è cambiato)
+            try:  # PDF di ogni locale, PDF completo e video sul sito (solo se qualcosa è cambiato)
                 publish_complete(fresh)
             except Exception as exc:
                 import traceback

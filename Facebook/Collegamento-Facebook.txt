@@ -19,8 +19,9 @@ PARTE 1 - Crea l'app su Meta for Developers
    (ti chiede di nuovo la password di Facebook).
 5. Nel pannello dell'app, a sinistra "Casi d'uso" > "Personalizza" accanto a
    "Gestisci tutto sulla tua Pagina": premi "Aggiungi" accanto a
-   pages_manage_posts  e  pages_read_engagement
-   (pages_show_list c'è già).
+   pages_manage_posts,  pages_read_engagement  e  pages_manage_engagement
+   (pages_show_list c'è già). pages_manage_engagement serve per scrivere come Pagina
+   i commenti con i link sotto i post "I menu in pdf" e "I menu in video".
 6. A sinistra "Impostazioni dell'app" > "Di base": copia
    - ID app             (un numero)
    - Chiave segreta     (premi "Mostra", ti chiede la password)
@@ -34,7 +35,7 @@ PARTE 2 - Prendi il codice di accesso provvisorio
 8. A destra, "App Meta": scegli "Menu rosticcerie Pubblicazione".
 9. "Utente o Pagina": scegli "Ottieni token d'accesso utente".
 10. In "Autorizzazioni" aggiungi: pages_show_list, pages_manage_posts,
-    pages_read_engagement.
+    pages_read_engagement, pages_manage_engagement.
 11. Premi "Generate Access Token": nella finestra di Facebook scegli la Pagina
     "Menu rosticcerie" e premi "Continua" / "Salva".
 12. Copia il lungo codice che compare nel campo "Token d'accesso".
@@ -66,3 +67,9 @@ PROVE E PROBLEMI
 - Orario o disattivazione: locali.json > impostazioni > "riassunto":
   {"attivo": true, "ora": "11:30", "facebook": true}
   ("facebook": false = crea solo immagine e testo, senza pubblicare).
+
+- AGGIUNGERE IL PERMESSO DEI COMMENTI (20/10/2026) a un collegamento già fatto:
+  1) Parte 1, punto 5: aggiungi pages_manage_engagement nel caso d'uso dell'app.
+  2) Parte 2: genera un nuovo codice provvisorio con i 4 permessi (punto 10).
+  3) Parte 3: Collega-Facebook.bat.
+  4) Doppio clic su Post-link-Facebook.bat: aggiunge i commenti ai due post già pubblicati.
