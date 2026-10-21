@@ -3556,7 +3556,14 @@ def publish_pdf_site() -> bool:
                 git("branch", "-D", other)  # es. "nuova-versione" rimasto dalla versione precedente
         git("reflog", "expire", "--expire=now", "--all")
         git("gc", "--prune=now", "--quiet")
-    pushed = git("push", "--force", "origin", branch)
+    # se nello stesso momento un altro invio aggiorna il sito (es. Rifai-PDF.bat mentre gira il
+    # controllo automatico) GitHub rifiuta con "cannot lock ref": si aspetta un attimo e si riprova
+    for attempt in range(4):
+        pushed = git("push", "--force", "origin", branch)
+        if pushed.returncode == 0 or attempt == 3:
+            break
+        print(f"Invio dei PDF rifiutato da GitHub, riprovo tra {10 * (attempt + 1)} secondi...")
+        time.sleep(10 * (attempt + 1))
     if pushed.returncode != 0:
         print(f"PDF NON pubblicati su {site}: {(pushed.stderr or pushed.stdout).strip()[:200]}")
         return False
@@ -3785,7 +3792,8 @@ def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
     if not publish_pdf_site():
         return False
     save_json(COMPLETE_STATE, {"impronta": stamp, "ora": datetime.now().isoformat(timespec="seconds"),
-                               "locali": len(pages), "video": bool(video)})
+                               "locali": len(pages), "pronti": sum(1 for page in pages if page["tipo"] == "menu"),
+                               "video": bool(video)})
     site = pdf_site(config.get("impostazioni", {}))[0]
     print(f"Menu completo pubblicato: {site}{COMPLETE_PDF}" + (f" e {site}{COMPLETE_VIDEO}" if video else ""))
     try:  # nuova ora di aggiornamento nei commenti dei post "I menu in pdf" / "I menu in video"
@@ -4180,114 +4188,129 @@ def link_post_image(title: str, target: Path) -> Path:
     return target
 
 
-def link_comment(key: str) -> str:
-    """Commento di due righe sotto il post "I menu in pdf" / "I menu in video":
-        Pdf: https://menurosticcerie.github.io/menu.pdf
-        Aggiornato lunedì 27 ottobre 2026 alle ore 11:00
-    L'ora è quella dell'ultima pubblicazione di PDF e video (dati/completo.json > "ora")."""
-    site = pdf_site()[0]
-    first = f"Pdf: {site}{COMPLETE_PDF}" if key == "pdf" else f"Video: {site}{COMPLETE_VIDEO}"
+def updated_line() -> str:
+    """Seconda riga dei post "I menu in pdf" / "I menu in video", es.
+    "Aggiornato martedì 20 ottobre 2026 alle ore 21:28 (3/13)": data e ora dell'ultima
+    pubblicazione di PDF e video e, tra parentesi, rosticcerie con il menu di oggi / totale
+    (dati/completo.json > "ora", "pronti", "locali"). "" se PDF e video non sono ancora stati fatti."""
+    state = read_json(COMPLETE_STATE, {})
     try:
-        when = datetime.fromisoformat(read_json(COMPLETE_STATE, {}).get("ora", ""))
+        when = datetime.fromisoformat(state.get("ora", ""))
     except (TypeError, ValueError):
-        return first
+        return ""
     day = f"{SUMMARY_WEEKDAYS[when.weekday()].lower()} {when.day} {list(MONTHS)[when.month - 1]} {when.year}"
-    return f"{first}\nAggiornato {day} alle ore {when:%H:%M}"
+    count = f" ({state['pronti']}/{state['locali']})" if "pronti" in state and state.get("locali") else ""
+    return f"Aggiornato {day} alle ore {when:%H:%M}{count}"
+
+
+UPDATED_LINE = re.compile(r"^\s*Aggiornato\b.*$", re.MULTILINE)
+
+
+def link_text(key: str, current: str = "") -> str:
+    """Testo del post "I menu in pdf" / "I menu in video". Si cambia SOLO la riga che comincia con
+    "Aggiornato" (vedi updated_line): tutto il resto resta com'è (anche se scritto a mano sulla
+    Pagina). Se la riga non c'è viene messa dopo la prima; se il post non ha testo si usa:
+        Pdf: https://menurosticcerie.github.io/menu.pdf       (Video: .../video.mp4 per il video)
+        Aggiornato martedì 20 ottobre 2026 alle ore 21:28 (3/13)"""
+    line = updated_line()
+    if not current.strip():
+        site = pdf_site()[0]
+        first = f"Pdf: {site}{COMPLETE_PDF}" if key == "pdf" else f"Video: {site}{COMPLETE_VIDEO}"
+        return f"{first}\n{line}" if line else first
+    if not line:
+        return current
+    if UPDATED_LINE.search(current):
+        return UPDATED_LINE.sub(line, current, count=1)
+    first, _, rest = current.partition("\n")
+    return f"{first}\n{line}" + (f"\n{rest}" if rest else "")
+
+
+def link_comment(key: str) -> str:
+    """Testo usato per i commenti ancora presenti sotto i due post (stesso testo del post nuovo)."""
+    return link_text(key)
+
+
+def post_message(post: str, token: str, version: str) -> str | None:
+    """Testo attuale di un post della Pagina; None se il post non c'è più (o non si legge)."""
+    try:
+        return facebook_call(post, {"fields": "message", "access_token": token}, version=version).get("message", "")
+    except RuntimeError as exc:
+        print(f"   testo del post {post} non letto: {exc}")
+        return None
 
 
 def update_link_comments() -> None:
-    """Dopo ogni nuova pubblicazione di PDF e video: riscrive i commenti dei due post con la nuova
-    data e ora di aggiornamento (il link non cambia)."""
+    """Dopo ogni nuova pubblicazione di PDF e video (publish_complete): nei due post "I menu in pdf"
+    e "I menu in video" cambia SOLO la seconda riga del testo ("Aggiornato ... (N/13)"), il resto del
+    post non cambia. Se sotto il post c'è ancora un commento con le stesse righe, anche lì si cambia
+    solo quella riga; un commento cancellato non viene rifatto."""
     link = read_json(FACEBOOK_CONFIG, {})
     saved = read_json(LINK_POSTS, {})
     if not link.get("token"):
         return
+    token, version = link["token"], link.get("versione", "")
     for key in ("pdf", "video"):
-        comment = saved.get(key, {}).get("commento")
-        if not comment:
+        entry = saved.get(key, {})
+        if not entry.get("post"):
             continue
-        try:
-            facebook_call(comment, {"message": link_comment(key), "access_token": link["token"]},
-                          version=link.get("versione", ""), method="POST")
-            print(f"Commento del post \"I menu in {key}\" aggiornato")
-        except RuntimeError as exc:
-            print(f"Commento del post \"I menu in {key}\" NON aggiornato: {exc}")
-
-
-def add_link_comment(post: str, key: str, token: str, version: str) -> str:
-    """Mette sotto il post il commento di due righe (link_comment). Restituisce l'id del commento,
-    "" se Facebook non lo permette (serve il permesso pages_manage_engagement: vedi
-    Facebook\\Collegamento-Facebook.txt) - in quel caso al prossimo --post-link si riprova."""
-    comment = link_comment(key)
-    try:
-        answer = facebook_call(f"{post}/comments", {"message": comment, "access_token": token},
-                               version=version, method="POST")
-        print("   commento aggiunto:\n      " + comment.replace("\n", "\n      "))
-        return answer.get("id", "")
-    except RuntimeError as exc:
-        print(f"   commento NON aggiunto: {exc}")
-        if "permess" in str(exc).lower() or "permission" in str(exc).lower():
-            print("   Manca il permesso per commentare come Pagina (pages_manage_engagement): rifai il\n"
-                  "   collegamento seguendo Facebook\\Collegamento-Facebook.txt (Parti 2 e 3, con\n"
-                  "   pages_manage_engagement in più), poi di nuovo Post-link-Facebook.bat.")
-        return ""
+        current = post_message(entry["post"], token, version)
+        if current is not None:
+            text = link_text(key, current)
+            if text != current:
+                try:
+                    facebook_call(entry["post"], {"message": text, "access_token": token}, version=version,
+                                  method="POST")
+                    print(f"Post \"I menu in {key}\": {updated_line()}")
+                except RuntimeError as exc:
+                    print(f"Post \"I menu in {key}\" NON aggiornato: {exc}")
+        comment = entry.get("commento")
+        if comment:
+            try:
+                old = facebook_call(comment, {"fields": "message", "access_token": token}, version=version).get("message", "")
+                facebook_call(comment, {"message": link_text(key, old), "access_token": token},
+                              version=version, method="POST")
+            except RuntimeError as exc:
+                if "not found" in str(exc).lower() or "does not exist" in str(exc).lower():
+                    entry["commento"] = ""  # commento cancellato a mano: non si rifà
+                    save_json(LINK_POSTS, saved)
+                else:
+                    print(f"Commento del post \"I menu in {key}\" NON aggiornato: {exc}")
 
 
 def publish_link_posts(force: bool = False, keys: tuple[str, ...] = ("video", "pdf")) -> None:
-    """Post-link-Facebook.bat (python Menu.py --post-link): pubblica sulla Pagina due post con
-    un'immagine 16:9 ("I menu in pdf" e "I menu in video") e mette sotto ognuno un commento di due
-    righe (vedi link_comment): il link fisso e "Aggiornato <giorno> alle ore <ora>". I file dietro i
-    link si aggiornano da soli ogni 30 minuti e il commento viene riscritto con la nuova ora
-    (update_link_comments). Gli id sono in dati/post-link.json: se un post c'è già non viene
-    ripubblicato (con force sì, e quello vecchio viene tolto).
-    ORDINE SULLA PAGINA: PRIMO il post del PDF (messo in evidenza, cioè fissato in cima), SECONDO
-    quello del video. Su Facebook il post più recente sta più in alto, quindi si pubblica prima il
-    video e poi il PDF; dopo ogni post del giorno il post del video viene ripubblicato (vedi
-    daily_summary), così torna subito sotto il PDF."""
+    """Post-link-Facebook.bat (python Menu.py --post-link): i due post della Pagina con un'immagine
+    16:9 ("I menu in pdf" e "I menu in video", link_post_image) e come testo due righe (link_text):
+        Pdf: https://menurosticcerie.github.io/menu.pdf
+        Aggiornato martedì 20 ottobre 2026 alle ore 21:28 (3/13)
+    Se un post c'è già (id in dati/post-link.json) non viene rifatto, salvo force=True: allora se ne
+    pubblica uno nuovo CON LO STESSO TESTO del vecchio (cambia solo la riga "Aggiornato") e il
+    vecchio viene cancellato.
+    ORDINE SULLA PAGINA: PRIMO il post del PDF, SECONDO quello del video, poi gli altri. Su Facebook
+    il post più recente sta più in alto, quindi si pubblica prima il video e poi il PDF; dopo ogni
+    post del giorno link_posts_after_daily ripubblica il video e poi il PDF, così tornano subito in
+    cima nell'ordine giusto. Non ci si affida al "fissa in cima" (via API non è affidabile)."""
     link = read_json(FACEBOOK_CONFIG, {})
     if not link.get("token") or not link.get("pagina_id"):
         print("Collegamento Facebook non ancora fatto: prima Collega-Facebook.bat")
         return
     token, version = link["token"], link.get("versione", "")
     saved = read_json(LINK_POSTS, {})
-    texts = {"video": ("I menu in video", "🎬 I menu del giorno di tutte le rosticcerie in un video, pagina per pagina.\n"
-                       "👇 Il link è nel commento."),
-             "pdf": ("I menu in pdf", "📄 I menu del giorno di tutte le rosticcerie in un PDF, con indirizzi e numeri "
-                     "da toccare.\n👇 Il link è nel commento (oppure tocca «Scopri di più» sulla Pagina).")}
+    titles = {"video": "I menu in video", "pdf": "I menu in pdf"}
     folder = DATA / "post-link"
     folder.mkdir(parents=True, exist_ok=True)
     for key in [key for key in ("video", "pdf") if key in keys]:  # sempre prima il video, poi il PDF
-        title, text = texts[key]
+        title = titles[key]
         old = saved.get(key, {})
         if old.get("post") and not force:
             print(f"\"{title}\": post già pubblicato (https://www.facebook.com/{old['post']}), non lo rifaccio.")
-            if not old.get("commento"):  # il commento non era riuscito: si riprova sul post che c'è
-                old["commento"] = add_link_comment(old["post"], key, token, version)
-                save_json(LINK_POSTS, saved)
-            if key == "pdf" and not old.get("fissato"):  # in evidenza non ancora riuscito: si riprova
-                try:
-                    facebook_call(old["post"], {"is_pinned": "true", "access_token": token}, version=version,
-                                  method="POST")
-                    old["fissato"] = True
-                    save_json(LINK_POSTS, saved)
-                    print("   post messo in evidenza (fissato in cima alla Pagina)")
-                except RuntimeError as exc:
-                    print(f"   non sono riuscito a fissarlo in cima ({exc})")
             continue
+        previous = post_message(old["post"], token, version) if old.get("post") else ""
+        text = link_text(key, previous or "")
         image = link_post_image(title, folder / f"{key}.jpg")
         try:
             post = publish_summary_facebook(image, text)
-            print(f"\"{title}\": post pubblicato: https://www.facebook.com/{post}")
+            print(f"\"{title}\": post pubblicato: https://www.facebook.com/{post}\n      " + text.replace("\n", "\n      "))
             entry = {"post": post, "ora": datetime.now().isoformat(timespec="seconds"), "commento": ""}
-            entry["commento"] = add_link_comment(post, key, token, version)
-            if key == "pdf":
-                try:
-                    facebook_call(post, {"is_pinned": "true", "access_token": token}, version=version, method="POST")
-                    entry["fissato"] = True
-                    print("   post messo in evidenza (fissato in cima alla Pagina)")
-                except RuntimeError as exc:
-                    print(f"   non sono riuscito a fissarlo in cima ({exc}).\n   Fallo a mano: sulla Pagina, "
-                          "tre puntini del post \"I menu in pdf\" > Metti in evidenza")
             if old.get("post"):
                 delete_facebook_posts([old["post"]])  # il post vecchio va via
             saved[key] = entry
@@ -4298,14 +4321,13 @@ def publish_link_posts(force: bool = False, keys: tuple[str, ...] = ("video", "p
 
 def link_posts_after_daily() -> None:
     """Dopo il post del giorno (che su Facebook va in cima, sopra i post vecchi): ripubblica il post
-    del video, così torna SECONDO sotto il PDF fissato. Se il PDF non è fissato si ripubblica anche
-    quello (dopo il video), così resta PRIMO. Solo se i post sono già stati creati con --post-link."""
+    del video e POI quello del PDF, con lo stesso testo (cambia solo la riga "Aggiornato"), così in
+    cima alla Pagina ci sono sempre 1) "I menu in pdf", 2) "I menu in video", poi tutti gli altri.
+    Solo se i post sono già stati creati con --post-link."""
     saved = read_json(LINK_POSTS, {})
-    if not saved.get("video", {}).get("post"):
+    if not saved.get("video", {}).get("post") and not saved.get("pdf", {}).get("post"):
         return
-    keys = ("video",) if saved.get("pdf", {}).get("fissato") else ("video", "pdf")
-    publish_link_posts(force=True, keys=keys)
-
+    publish_link_posts(force=True, keys=("video", "pdf"))
 
 def clean_facebook_posts() -> None:
     """Pulisci-Facebook.bat (python Menu.py --pulisci-facebook), da usare una volta: dal 20/10/2026
@@ -4580,8 +4602,12 @@ def main() -> None:
     if args.facebook_prova:
         facebook_check()
         return
-    if args.completo:  # PDF completi subito, anche se nulla è cambiato
-        publish_complete(config, force=True)
+    if args.completo:  # PDF e video subito, anche se nulla è cambiato
+        take_lock()  # se gira il controllo automatico aspetta che finisca (stesso invio a GitHub)
+        try:
+            publish_complete(config, force=True)
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
         return
     if args.post_link:  # una tantum: post "I menu in video" e "I menu in pdf" con il link nel commento
         publish_link_posts(force=args.forza)

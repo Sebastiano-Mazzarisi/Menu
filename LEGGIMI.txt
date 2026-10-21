@@ -25,8 +25,9 @@ li pubblica:
        https://menurosticcerie.github.io/video.mp4     (video)
        https://menurosticcerie.github.io/mappa.html?q= (apre Apple Maps / Google Maps)
   c) sulla Pagina Facebook https://www.facebook.com/MenuRosticcerie (API ufficiale Graph):
-       - post fissi "I menu in pdf" (1°, fissato in cima) e "I menu in video" (2°), con un commento
-         di due righe (link + "Aggiornato <giorno> alle ore <hh:mm>") riscritto a ogni aggiornamento;
+       - post "I menu in pdf" (1°) e "I menu in video" (2°) in cima alla Pagina, con testo di due
+         righe (link + "Aggiornato <giorno> alle ore <hh:mm> (N/13)"), riga 2 riscritta a ogni
+         aggiornamento di PDF e video;
        - post del giorno (11:30 o appena ci sono tutti i menu) = immagine riassuntiva + testo.
 Servizio gratuito e senza fini di lucro: va sempre detto nei testi pubblici. Tutto ciò che vede il
 pubblico è pensato prima per il CELLULARE.
@@ -99,7 +100,7 @@ Foto, pdf-sito, Facebook\Video-*.mp4)
                      facebook.json       collegamento Graph: pagina_id, pagina_nome, token Pagina (NON
                                          scade), app_id, salvato_il. SEGRETO.
                      post-link.json      id dei post fissi e dei loro commenti:
-                                         {"pdf": {"post","commento","ora","fissato"}, "video": {...}}
+                                         {"pdf": {"post","commento","ora"}, "video": {...}}
                      post-link\          immagini 16:9 dei post fissi (pdf.jpg, video.jpg)
                      riassunti\          AAAA-MM-GG.jpg/.txt/.html del post del giorno + stato.json
                      notifica.json       {"bark": "https://api.day.app/CHIAVE"} notifiche iPhone (Bark)
@@ -273,23 +274,24 @@ COLLEGAMENTO
 - facebook_call(path, params, files, version, method): GET, POST testo (method="POST"), POST
   multipart (files: foto/video), DELETE. Errori Graph -> RuntimeError in italiano (190 = codice
   scaduto, 10/200 = permesso mancante).
-POST FISSI (publish_link_posts, link_comment, add_link_comment, update_link_comments)
-- Due post foto con immagine 16:9 1920x1080 (link_post_image): "I menu in pdf" e "I menu in video"
-  (testo: "... 👇 Il link è nel commento"). Sotto ognuno UN commento di due righe:
+POST FISSI (publish_link_posts, link_text, updated_line, update_link_comments, link_posts_after_daily)
+- Due post foto con immagine 16:9 1920x1080 (link_post_image): "I menu in pdf" e "I menu in video".
+  Il TESTO del post è di due righe (dal 21/10/2026 è il testo del post, non più un commento):
       Pdf: https://menurosticcerie.github.io/menu.pdf
-      Aggiornato martedì 20 ottobre 2026 alle ore 21:28
-  (Video: https://menurosticcerie.github.io/video.mp4 per l'altro). L'ora = dati\completo.json > ora.
+      Aggiornato martedì 20 ottobre 2026 alle ore 21:28 (3/13)
+  (per il video il link è https://menurosticcerie.github.io/video.mp4). (3/13) = rosticcerie con il
+  menu di oggi / totale dei locali, presi da dati\completo.json ("pronti", "locali") insieme all'ora.
+- OGNI VOLTA che PDF e video cambiano (publish_complete) update_link_comments() cambia SOLO la riga
+  che comincia con "Aggiornato" nel testo dei due post (letto da Facebook e riscritto): il resto
+  del post, anche se modificato a mano sulla Pagina, non cambia. Se sotto un post c'è ancora un
+  commento con quelle righe si aggiorna anche lui; un commento cancellato non viene rifatto.
 - ORDINE OBBLIGATORIO SULLA PAGINA: 1° "I menu in pdf", 2° "I menu in video", poi tutti gli altri.
-  * Il PDF è FISSATO in cima (Facebook: "Fissa post" / sezione "In evidenza"; fino a 3 elementi).
-    L'API is_pinned può non funzionare: in quel caso si fissa a mano dalla Pagina (gestendo come
-    Pagina: tre puntini del post > Fissa post) e si mette "fissato": true in dati\post-link.json.
-  * Il video resta 2° perché è il post NON fissato più recente: dopo ogni post del giorno
-    link_posts_after_daily() lo RIPUBBLICA (nuovo post + nuovo commento, il vecchio cancellato).
-    Se il PDF non risulta "fissato" si ripubblica anche il PDF, DOPO il video.
-  * Nessun altro post deve restare fissato sopra il PDF (il 20/10/2026 è stato tolto dagli elementi
-    in evidenza il vecchio "Cos'è Menu rosticcerie?").
-- dati\post-link.json tiene gli id: se un post c'è già --post-link non lo rifà (aggiunge solo il
-  commento mancante); --forza lo rifà e cancella il vecchio.
+  Si ottiene SENZA fissare nulla: Facebook mette in alto i post più recenti, quindi dopo ogni post
+  del giorno link_posts_after_daily() ripubblica prima il video e poi il PDF (stesso testo, nuova
+  riga "Aggiornato"; i vecchi due post vengono cancellati). Non usare "fissa in cima" via API: non
+  è affidabile e farebbe saltare l'ordine. Non tenere altri post fissati in cima.
+- dati\post-link.json tiene gli id: se un post c'è già --post-link non lo rifà; --forza lo rifà
+  (con lo stesso testo) e cancella il vecchio.
 POST DEL GIORNO (daily_summary)
 - summary_due(): una volta al giorno, appena TUTTI i locali hanno il menu o alle 11:30 (impostazioni
   > riassunto > ora); prima un ricontrollo completo. make_summary(): pagina HTML 1080x1350
@@ -1850,3 +1852,26 @@ Copia precedente: backup\Menu_2026-10-20_prima-commenti-due-righe.py
 - --post-link riprova a fissare il PDF se "fissato" manca.
 - In cima a questo file: GUIDA PER IL PROGRAMMATORE (capitoli 1-10), valida da sola per lavorare
   sul progetto; questa storia resta come dettaglio.
+
+
+------------------------------------------------------------------------------------------------
+21/10/2026 - RIGA "AGGIORNATO ... (N/13)" NEL TESTO DEI DUE POST, ORDINE SENZA "FISSA"
+------------------------------------------------------------------------------------------------
+- Nella notte i due post sono stati rifatti e il loro testo scritto a mano con le due righe
+  ("Pdf: <link>" / "Aggiornato ..."); il commento del PDF era stato cancellato (alle 08:10 Facebook
+  aveva risposto "Comment not found").
+- Ora a ogni nuova pubblicazione di PDF e video si cambia SOLO la seconda riga del TESTO dei post:
+  "Aggiornato mercoledì 21 ottobre 2026 alle ore 08:10 (3/13)" (3 = rosticcerie con il menu di
+  oggi, 13 = totale; publish_complete salva "pronti" in dati\completo.json). Il resto del testo
+  resta quello che c'è sulla Pagina. Commenti: aggiornati solo se ci sono ancora, mai rifatti.
+- Quando i post vengono ripubblicati (dopo il post del giorno, o --post-link --forza) il testo del
+  post nuovo è quello del vecchio, con la riga "Aggiornato" nuova.
+- Niente più "fissa in cima": dopo ogni post del giorno si ripubblicano SEMPRE video e poi PDF,
+  così l'ordine è PDF, video, altri.
+Codice: updated_line, link_text, post_message, update_link_comments, publish_link_posts,
+link_posts_after_daily. Copia precedente: backup\Menu_2026-10-21_prima-del-conteggio.py
+- 21/10/2026: "PDF NON pubblicati ... cannot lock ref 'refs/heads/main'" = due invii al sito dei PDF
+  nello stesso momento (Rifai-PDF.bat mentre girava il controllo automatico). Ora --completo
+  aspetta la fine di un giro in corso (blocco dati\automatico.lock) e publish_pdf_site, se GitHub
+  rifiuta l'invio, riprova fino a 3 volte (dopo 10, 20, 30 secondi).
+  Copia precedente: backup\Menu_2026-10-21_prima-del-riprova-invio.py
