@@ -2127,16 +2127,7 @@ main{max-width:1180px;margin:auto;padding:4px 16px calc(48px + env(safe-area-ins
   </div>
   <nav class="towns" id="towns" aria-label="Comuni"></nav>
 </header>
-<main id="main">
-<!-- Banner primo elemento: riassunto del giorno cliccabile per aprire menu.pdf -->
-<figure id="banner-riassunto" style="text-align:center;margin:12px auto 18px;max-width:520px;padding:0 8px;">
-  <a href="https://menurosticcerie.github.io/menu.pdf" target="_blank" rel="noopener noreferrer" title="Clicca per aprire il PDF di tutti i menu">
-    <img src="riassunto-oggi.jpg?v=@@RV@@" alt="Stato menu del giorno" style="width:100%;height:auto;border-radius:14px;cursor:pointer;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.12);" />
-  </a>
-  <figcaption style="margin-top:8px;font-size:0.92rem;line-height:1.4;color:var(--ink);text-align:center;">
-    Clicca sull'immagine per vedere i menu pubblicati alle @@ORA_RIASSUNTO@@ di oggi @@DATA_ESTESA@@, @@PRONTI_COUNT@@ rosticcerie su @@TOTALI_COUNT@@ hanno già pubblicato il menu del giorno.
-  </figcaption>
-</figure></main>
+<main id="main"></main>
 <dialog id="detail" aria-label="Menu"><div class="sheet" tabindex="-1" autofocus>
   <div class="sh-head">
     <img class="lg" id="dLogo" alt="">
@@ -3995,15 +3986,30 @@ def summary_data(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def summary_text(data: dict[str, Any]) -> str:
-    """Didascalia essenziale del post su Facebook."""
-    pronti = len(data.get("pronti", []))
-    totale = data.get("totale", 13)
-    ora = data.get("ora", "11:45")
+    """Testo del post, pensato per il cellulare: una riga per rosticceria con i suoi piatti
+    (nell'immagine non ci stanno leggibili), poi chi è in arrivo, link corto e hashtag dei paesi."""
     day = data["giorno"]
-    giorni = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
-    mesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"]
-    data_estesa = f"{giorni[day.weekday()]} {day.day} {mesi[day.month - 1]} {day.year}"
-    return f"Clicca sull'immagine per vedere i menu pubblicati alle {ora} di oggi {data_estesa}, {pronti} rosticcerie su {totale} hanno già pubblicato il menu del giorno."
+    title = f"{SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
+    ready = data["pronti"]
+    count = (f"Tutte e {data['totale']} le rosticcerie hanno pubblicato il menu del giorno!"
+             if len(ready) == data["totale"] else
+             f"{len(ready)} rosticcerie su {data['totale']} hanno già pubblicato il menu del giorno:")
+    lines = []
+    for entry in ready:
+        dishes = " · ".join(entry["piatti"]) or entry.get("nota") or "menu in foto nell'app"
+        lines.append(f"✅ {entry['nome']} ({entry['comune']}): {dishes}")
+    waiting = ", ".join(entry["nome"] for entry in data["attesa"])
+    towns = []
+    for entry in ready + data["attesa"]:
+        tag = "#" + re.sub(r"[^A-Za-z]", "", unicodedata.normalize("NFKD", entry["comune"]).encode("ascii", "ignore").decode())
+        if len(tag) > 1 and tag not in towns:
+            towns.append(tag)
+    return (f"🍽️ Che si mangia oggi? Ecco i menu di {title}!\n\n{count}\n\n" + "\n".join(lines)
+            + (f"\n\n⏳ In arrivo: {waiting}" if waiting else "")
+            + "\n\n📄 Tutti i menu completi in un PDF, con indirizzi e numeri per prenotare: tocca «Scopri di più» "
+            + f"sulla Pagina oppure {pdf_site()[0]}{COMPLETE_PDF}"
+            + f"\n👉 App Menu: {SHORT_URL}\n\n"
+            + " ".join(towns + ["#menudelgiorno", "#rosticceria"]))
 
 
 SHORT_URL = "https://tinyurl.com/menurosticcerie"  # link corto all'app (senza nome e cognome)
@@ -4045,8 +4051,8 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
 .g{{display:grid;grid-template-columns:1fr 1fr;gap:calc(14px*var(--k)) 16px}}
 .cd{{display:flex;align-items:center;gap:16px;background:#fff;border-radius:22px;padding:calc(12px*var(--k)) 14px;
   box-shadow:0 3px 10px rgba(60,40,10,.10);min-width:0;border:3px solid #1d7f46}}
-.cd.no{{background:#fff;box-shadow:none;border:3px solid #e67e22}}
-.cd.no img,.cd.no .nologo{{opacity:1;filter:none}}
+.cd.no{{background:#ebe4d8;box-shadow:none;border-color:transparent}}
+.cd.no img,.cd.no .nologo{{opacity:.45;filter:grayscale(1)}}
 .cd img,.nologo{{width:calc(104px*var(--k));height:calc(104px*var(--k));border-radius:16px;object-fit:cover;flex:none;background:#eee}}
 .tx{{flex:1;min-width:0}}
 .n{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800;font-size:calc(38px*var(--k));line-height:1.05;
