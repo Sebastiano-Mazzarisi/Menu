@@ -59,6 +59,7 @@ FILE .BAT (per Nino: doppio clic)
   Pianifica.bat             crea/aggiorna l'attività di Windows "Menu" (--pianifica)
   Rimuovi_pianificazione.bat  cancella l'attività "Menu"
   Rifai-PDF.bat             --completo: rifà e pubblica subito PDF + video
+  Rifai-solo-PDF.bat        --solo-pdf: rifà e pubblica subito SOLO i PDF (niente video, niente Facebook)
   Rifai-PDF-e-video.bat     vecchio nome, fa lo stesso (si può cancellare)
   Post-link-Facebook.bat    --post-link: post fissi "I menu in pdf" / "I menu in video" + commenti
   Collega-Facebook.bat      --facebook-collega e poi --post-link (collegamento Graph API)
@@ -186,6 +187,7 @@ loghi\. Tutto il resto (sito, PDF, video, Comuni, contatori) si adegua da solo.
   --aggiungi           procedura guidata per un nuovo locale
   --pianifica          crea/aggiorna l'attività "Menu" di Windows
   --completo           rifà SUBITO PDF + video e li pubblica sul sito dei PDF (Rifai-PDF.bat)
+  --solo-pdf           rifà SUBITO solo i PDF e li pubblica (Rifai-solo-PDF.bat)
   --panorama           PDF di controllo: scheda del sito + fonte di ogni locale (Monitor "Panorama")
   --riassunto          ricontrolla tutto, pubblica, poi post del giorno su Facebook (se non già fatto)
   --riassunto-prova    crea immagine e testo del post del giorno senza pubblicare
@@ -1933,3 +1935,35 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
 - 22/10/2026 (12:20): il link MP3 apriva il lettore scuro del browser. Nuova pagina ascolta.html
   (audio di sottofondo con barra in alto + pagine del PDF in pdf-sito\pagine\*.jpg); la riga MP3
   della didascalia punta lì. Copia precedente: backup\Menu_2026-10-22_prima-della-pagina-ascolta.py
+- 22/10/2026 (12:55): file più leggeri per un invio a GitHub più veloce (circa metà dimensione):
+  video.mp4 a 10 fotogrammi/s, larghezza 1080 px, crf 29, audio 64k (VIDEO_FPS, VIDEO_WIDTH,
+  VIDEO_CRF, VIDEO_AUDIO; prima 30 fps, 1240 px, crf 20, 128k: 5,5 MB -> ~2,8 MB); pagine dei PDF
+  in JPEG qualità 72 invece di 92 (PDF_JPEG_QUALITY, anche per pagine\*.jpg di ascolta.html:
+  menu.pdf 3,9 MB -> ~2 MB). Per più qualità: alzare PDF_JPEG_QUALITY / abbassare VIDEO_CRF.
+  Copia precedente: backup\Menu_2026-10-22_prima-della-compressione.py
+- 22/10/2026 (14:25): su iPhone toccando l'indirizzo nel PDF non succedeva niente. Due cambi:
+  1) save_pdf: ogni zona cliccabile è alta almeno 28 punti (la riga dell'indirizzo era alta ~20,
+     difficile da prendere col dito) e le annotazioni hanno /F 4 e /Type /Action (più compatibili
+     con il visore PDF di iPhone); 2) mappa.html: su iPhone/iPad/Mac l'app Mappe si apre solo con un
+     tocco, quindi la pagina mostra l'indirizzo e due pulsanti "Apri in Mappe (Apple)" e "Apri in
+     Google Maps"; su Android e PC va subito a Google Maps come prima.
+  Copia precedente: backup\Menu_2026-10-22_prima-indirizzo-iphone.py
+- 22/10/2026 (14:30): zona da toccare per la mappa più grande: anche il NOME del locale apre la
+  mappa. Pagina del menu (photo_page): un rettangolo dal nome all'indirizzo (comprende "Menu di
+  ...") che si ferma prima del telefono, più l'indirizzo intero; cartelli CHIUSO / IN ATTESA:
+  nome + indirizzo insieme (union_box). Copia precedente: backup\Menu_2026-10-22_prima-nome-cliccabile.py
+- 22/10/2026 (14:35): Rifai-solo-PDF.bat (python Menu.py --solo-pdf): rifà e pubblica SOLO i PDF
+  (<id>.pdf, menu.pdf, mappa.html, ascolta.html + pagine\*.jpg), senza video e senza post di
+  Facebook: publish_complete(only_pdf=True). Non aggiorna l'impronta di completo.json, così il giro
+  automatico rifà comunque il video quando serve. Copia precedente: backup\Menu_2026-10-22_prima-solo-pdf.py
+  Nota: git invia solo i file cambiati rispetto a GitHub; se un giro precedente ha rifatto il video
+  ma non ha finito l'invio (finestra chiusa), quel video parte con l'invio successivo, anche con
+  --solo-pdf. La percentuale mostrata è quella di git: conta i FILE inviati, non i MB.
+- 22/10/2026 (14:40): ogni invio a GitHub rimandava TUTTO (~14 MB, anche video e mp3 non cambiati).
+  Causa (provata): git invia solo le differenze se la nuova versione è FIGLIA di quella che GitHub
+  ha già; il commit unico senza genitore gliele nascondeva. Ora publish_pdf_site fa il commit
+  figlio di refs/remotes/origin/main se è di oggi, altrimenti senza genitore: la prima
+  pubblicazione di ogni giorno invia tutto, le altre solo i file cambiati (tipicamente pochi
+  centinaia di KB per i soli PDF, ~3 MB se cambia anche il video). Il repository su GitHub tiene
+  al massimo le versioni di oggi. Dopo un invio riuscito refs/remotes/origin/main viene
+  aggiornato esplicitamente. Copia precedente: backup\Menu_2026-10-22_prima-invio-solo-differenze.py

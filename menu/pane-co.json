@@ -56,29 +56,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Penne all'arrabbiata",
+          "nome": "Strozzapreti alla boscaiola",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
         },
         {
-          "nome": "Risotto con barbabietola e stracciatella",
+          "nome": "Risotto con zucca e scamorza affumicata",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con salsiccia a punta di coltello, cicerchie e vellutata di zucca",
+          "nome": "Orecchiette con vellutata di cavolfiore e speck croccante",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Tagliolino con pesce spada, pomodorini, capperi e origano",
+          "nome": "Spaghetti con tonno, capperi, olive e pomodoro",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Minestra di ceci, lenticchie e orzo",
+          "nome": "Minestrone di verdure",
           "prezzo": "€6.00",
-          "descrizione": ""
+          "descrizione": "Sedano, carote, zucchina, patate, melanzane, piselli e fagiolini. Con o senza pasta"
         }
       ]
     },
@@ -86,12 +86,17 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Involtini di capocollo con verdurine",
-          "prezzo": "€7.50",
-          "descrizione": "5 pezzi"
+          "nome": "Filetto persico con vongole e datterino giallo e rosso",
+          "prezzo": "€8.50",
+          "descrizione": ""
         },
         {
-          "nome": "Filetto di cernia con vongole e datterino giallo e rosso",
+          "nome": "Straccetti di petto di pollo al limone",
+          "prezzo": "€7.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Trancio di baccalà gratinato",
           "prezzo": "€8.50",
           "descrizione": ""
         }

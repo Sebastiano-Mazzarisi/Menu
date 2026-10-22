@@ -1159,8 +1159,9 @@ def rest_day_sign_image(shop: dict[str, Any]):
     font, name = video_fit_text(draw, shop["nome"], 74, True, width - 160)
     draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
     box = sign_address(draw, width / 2, 540, full_address(shop), width - 160)
-    if shop.get("indirizzo"):
-        add_link(image, box, maps_link(shop.get("nome", ""), shop["indirizzo"]))
+    if shop.get("indirizzo"):  # nome + indirizzo = una sola zona da toccare per la mappa
+        add_link(image, union_box(draw.textbbox((width / 2, 450), name, font=font, anchor="mt"), box),
+                 maps_link(shop.get("nome", ""), shop["indirizzo"]))
     draw.text((width / 2, 740), "CHIUSO", font=video_font(190, bold=True), fill=(200, 40, 40), anchor="mm")
     draw.text((width / 2, 900), f"Oggi è {DAY_NAMES[today.weekday()]}", font=video_font(58, bold=True),
               fill=(40, 40, 40), anchor="mt")
@@ -2849,6 +2850,12 @@ def add_link(image, box, uri: str) -> None:
         image.info.setdefault("links", []).append((tuple(round(v) for v in box), uri))
 
 
+def union_box(*boxes):
+    """Rettangolo che contiene tutti i rettangoli dati (x0, y0, x1, y1)."""
+    boxes = [b for b in boxes if b]
+    return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+
 def move_links(links, scale: float, dx: float, dy: float):
     """Zone cliccabili di un'immagine rimpicciolita (scale) e incollata in (dx, dy)."""
     return [((x0 * scale + dx, y0 * scale + dy, x1 * scale + dx, y1 * scale + dy), uri)
@@ -2875,8 +2882,13 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
         annots = []
         for (x0, y0, x1, y1), uri in image.info.get("links", []):
             safe = uri.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-            annots.append(f"<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [{x0 * k - 4:.1f} {h - y1 * k - 4:.1f} "
-                          f"{x1 * k + 4:.1f} {h - y0 * k + 4:.1f}] /A << /S /URI /URI ({safe}) >> >>")
+            # zona da toccare alta almeno 28 punti: col dito sul cellulare una riga di testo piccola
+            # (l'indirizzo) altrimenti è difficile da prendere
+            bottom, top = h - y1 * k - 4, h - y0 * k + 4
+            if top - bottom < 28:
+                bottom, top = (bottom + top) / 2 - 14, (bottom + top) / 2 + 14
+            annots.append(f"<< /Type /Annot /Subtype /Link /Border [0 0 0] /F 4 /Rect [{x0 * k - 4:.1f} {bottom:.1f} "
+                          f"{x1 * k + 4:.1f} {top:.1f}] /A << /Type /Action /S /URI /URI ({safe}) >> >>")
         image_id, content_id, page_id = len(objects) + 3, len(objects) + 4, len(objects) + 5
         objects.append(f"<< /Type /XObject /Subtype /Image /Width {image.width} /Height {image.height} "
                        f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(jpeg)} >>\nstream\n"
@@ -2902,12 +2914,17 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
 
 # pagina del sito dei PDF aperta toccando un indirizzo: Apple Maps su iPhone/iPad/Mac, Google Maps altrove
 MAP_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Mappa</title></head>
-<body style="font:18px system-ui,sans-serif;margin:2em"><p id="m">Apro la mappa…</p><script>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Mappa</title>
+<style>a{display:block;margin:14px 0;padding:14px;border-radius:12px;background:#2e7d32;color:#fff;
+text-align:center;text-decoration:none;font-weight:700}a.g{background:#1565c0}</style></head>
+<body style="font:18px system-ui,sans-serif;margin:1.5em;max-width:480px"><p id="t"></p>
+<a id="ap" href="#">Apri in Mappe (Apple)</a><a id="go" class="g" href="#">Apri in Google Maps</a><script>
 var q=new URLSearchParams(location.search).get('q')||'';
 var apple=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
-var url=apple?'https://maps.apple.com/?q='+encodeURIComponent(q):'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
-document.getElementById('m').innerHTML='<a href="'+url+'">Apri la mappa</a>';location.replace(url);
+var ap='https://maps.apple.com/?q='+encodeURIComponent(q),go='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
+document.getElementById('t').textContent=q;document.getElementById('ap').href=ap;document.getElementById('go').href=go;
+// su iPhone le app (Mappe) si aprono solo col tocco: restano i due pulsanti; altrove si va subito a Google Maps
+if(!apple)location.replace(go);
 </script></body></html>
 """
 
@@ -3444,8 +3461,9 @@ def wait_sign_image(shop: dict[str, Any]):
     font, name = video_fit_text(draw, shop.get("nome", ""), 74, True, width - 160)
     draw.text((width / 2, 450), name, font=font, fill=(40, 40, 40), anchor="mt")
     box = sign_address(draw, width / 2, 540, full_address(shop), width - 160)
-    if shop.get("indirizzo"):
-        add_link(image, box, maps_link(shop.get("nome", ""), shop["indirizzo"]))
+    if shop.get("indirizzo"):  # nome + indirizzo = una sola zona da toccare per la mappa
+        add_link(image, union_box(draw.textbbox((width / 2, 450), name, font=font, anchor="mt"), box),
+                 maps_link(shop.get("nome", ""), shop["indirizzo"]))
     draw.text((width / 2, 730), "IN ATTESA", font=video_font(150, bold=True), fill=color, anchor="mm")
     draw.text((width / 2, 850), "del menù di oggi", font=video_font(64, bold=True), fill=(40, 40, 40), anchor="mm")
     draw.text((width / 2, 935), f"{SUMMARY_WEEKDAYS[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}",
@@ -3520,9 +3538,38 @@ def progress(text: str) -> None:
     print(text)
 
 
+def megabytes(value: float) -> str:
+    """3355443 -> "3,2 MB" (con la virgola, come si scrive in italiano)."""
+    return f"{value / 1048576:.1f} MB".replace(".", ",")
+
+
+def bytes_to_send(branch: str) -> int:
+    """Quanti byte (circa) git deve mandare a GitHub: dimensione dei file della nuova versione che
+    GitHub non ha ancora (refs/remotes/origin/<branch>). Git non lo dice prima di inviare."""
+    hide = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0
+    base = subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}"], cwd=PDF_SITE_DIR,
+                          capture_output=True, text=True, creationflags=hide).stdout.strip()
+    listing = subprocess.run(["git", "rev-list", "--objects", branch] + (["--not", base] if base else []),
+                             cwd=PDF_SITE_DIR, capture_output=True, text=True, creationflags=hide).stdout
+    ids = "\n".join(line.split()[0] for line in listing.splitlines() if line.strip())
+    if not ids:
+        return 0
+    sizes = subprocess.run(["git", "cat-file", "--batch-check=%(objectsize)"], cwd=PDF_SITE_DIR, input=ids + "\n",
+                           capture_output=True, text=True, creationflags=hide).stdout
+    return sum(int(n) for n in sizes.split() if n.isdigit())
+
+
 def push_with_progress(git, branch: str) -> subprocess.CompletedProcess:
-    """git push --force con la PERCENTUALE dell'invio che avanza sulla stessa riga
-    ("Invio a GitHub: 45% (3,2 MB)"): l'invio di PDF e video può durare qualche minuto."""
+    """git push --force con i MB inviati su quelli da inviare che avanzano sulla stessa riga
+    ("Invio a GitHub: 1,2 MB di circa 3,1 MB"): l'invio di PDF e video può durare qualche minuto.
+    Il totale è una stima (bytes_to_send): git spesso manda meno, perché comprime le differenze."""
+    try:
+        total = bytes_to_send(branch)
+    except Exception:
+        total = 0
+    if total:
+        progress(f"Da inviare a GitHub: circa {megabytes(total)}")
+    units = {"B": 1, "KiB": 1024, "MiB": 1048576, "GiB": 1073741824, "KB": 1000, "MB": 1000000, "GB": 1000000000}
     command = ["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost", "push", "--progress",
                "--force", "origin", branch]
     process = subprocess.Popen(command, cwd=PDF_SITE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -3543,8 +3590,11 @@ def push_with_progress(git, branch: str) -> subprocess.CompletedProcess:
                               r"[^:]*:\s*(\d+)%", line)
             if match:
                 phase = "Invio a GitHub" if match.group(1).startswith(("Writing", "Scrittura")) else "Compressione"
-                size = re.search(r"([\d.,]+\s*[KMG]i?B)", line)
-                text = f"{phase}: {match.group(2)}%" + (f" ({size.group(1)} inviati)" if size else "")
+                if phase != "Invio a GitHub":
+                    continue  # la compressione dura poco: si mostra solo l'invio
+                size = re.search(r"([\d.,]+)\s*([KMG]?i?B)\b", line)
+                sent = float(size.group(1).replace(",", ".")) * units.get(size.group(2), 1) if size else 0
+                text = f"{phase}: {megabytes(sent)}" + (f" di circa {megabytes(max(total, sent))}" if total else " inviati")
                 if text != shown and screen:
                     shown = text
                     try:
@@ -3594,8 +3644,8 @@ def publish_pdf_site() -> bool:
                          '<title>Menu rosticcerie</title><p style="font:18px sans-serif;margin:2em">Menu del giorno '
                          'delle rosticcerie: <a href="https://tinyurl.com/menurosticcerie">apri l\'app</a></p>',
                          encoding="utf-8")
-    # UNA sola versione nel repository: i PDF cambiano ogni 30 minuti e tenerne la storia lo
-    # farebbe crescere di centinaia di MB al giorno. Il commit unico (senza "genitore") si costruisce
+    # Solo le versioni di OGGI nel repository (catena che riparte ogni giorno, vedi sotto): tenere
+    # tutta la storia lo farebbe crescere di centinaia di MB al giorno. Il commit si costruisce
     # con i comandi di base di git (write-tree / commit-tree / update-ref): niente cambi di ramo, quindi
     # nessuno stato a metà se qualcosa si interrompe; un ramo rimasto storto si ripara da solo.
     branch = "main"
@@ -3611,7 +3661,17 @@ def publish_pdf_site() -> bool:
         print(f"PDF NON pubblicati: git add non riuscito: {(added.stderr or added.stdout).strip()[:200]}")
         return False
     if tree != current:
-        made = git("commit-tree", tree, "-m", f"Menu {datetime.now():%Y-%m-%d %H:%M}")
+        # INVIO DELLE SOLE DIFFERENZE: git manda solo i file cambiati se la nuova versione è "figlia"
+        # di quella che GitHub ha già (refs/remotes/origin/main); un commit senza genitore gli fa
+        # rinviare TUTTO ogni volta (video e mp3 compresi, ~14 MB). Per non far crescere il
+        # repository, la catena riparte da zero una volta al giorno: la prima pubblicazione di ogni
+        # giorno è un commit senza genitore (invio completo), le altre sono figlie (invio piccolo);
+        # GitHub butta da solo le versioni dei giorni prima.
+        base = git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}").stdout.strip()
+        if base and git("log", "-1", "--format=%cs", base).stdout.strip() != date.today().isoformat():
+            base = ""
+        parent = ["-p", base] if base else []
+        made = git("commit-tree", tree, *parent, "-m", f"Menu {datetime.now():%Y-%m-%d %H:%M}")
         commit = made.stdout.strip()
         if made.returncode != 0 or not commit:
             print(f"PDF NON pubblicati: commit non riuscito: {(made.stderr or made.stdout).strip()[:200]}")
@@ -3622,7 +3682,7 @@ def publish_pdf_site() -> bool:
             if other != branch:
                 git("branch", "-D", other)  # es. "nuova-versione" rimasto dalla versione precedente
         git("reflog", "expire", "--expire=now", "--all")
-        progress("Tolgo la versione precedente (una sola versione sul sito)...")
+        progress("Tolgo dal PC le versioni che non servono più...")
         git("gc", "--prune=now", "--quiet")
     # se nello stesso momento un altro invio aggiorna il sito (es. Rifai-PDF.bat mentre gira il
     # controllo automatico) GitHub rifiuta con "cannot lock ref": si aspetta un attimo e si riprova
@@ -3635,6 +3695,10 @@ def publish_pdf_site() -> bool:
     if pushed.returncode != 0:
         print(f"PDF NON pubblicati su {site}: {(pushed.stderr or pushed.stdout).strip()[:200]}")
         return False
+    # GitHub ha la nuova versione: è lei la base per l'invio delle sole differenze la prossima volta
+    sent = git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").stdout.strip()
+    if sent:
+        git("update-ref", f"refs/remotes/origin/{branch}", sent)
     print(f"PDF pubblicati su {site}")
     return True
 
@@ -3670,9 +3734,15 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     address = entry.get("indirizzo") or entry.get("comune", "")
     address_font, address = video_fit_text(draw, address, round(28 * k), False, page_w - text_x - margin)
     draw.text((text_x, margin + round(117 * k)), address, font=address_font, fill=(110, 110, 110), anchor="ls")
-    if entry.get("indirizzo"):
-        add_link(page, draw.textbbox((text_x, margin + round(117 * k)), address, font=address_font, anchor="ls"),
-                 maps_link(entry.get("nome", ""), entry["indirizzo"]))
+    if entry.get("indirizzo"):  # nome, "Menu di ..." e indirizzo: tutti aprono la mappa
+        uri = maps_link(entry.get("nome", ""), entry["indirizzo"])
+        name_box = draw.textbbox((text_x, margin + round(44 * k)), name, font=name_font, anchor="ls")
+        address_box = draw.textbbox((text_x, margin + round(117 * k)), address, font=address_font, anchor="ls")
+        right = max(name_box[2], address_box[2])
+        if phone:  # sulla riga del nome a destra c'è il telefono: la zona si ferma prima
+            right = min(right, page_w - margin - draw.textlength(phone, font=name_font) - round(30 * k))
+        add_link(page, (text_x, name_box[1], right, address_box[3]), uri)
+        add_link(page, address_box, uri)  # l'indirizzo intero, anche se più lungo
     top = margin + logo_side + round(30 * k)
     draw.line((margin, top - round(14 * k), page_w - margin, top - round(14 * k)), fill=(200, 200, 200), width=2)
     bottom = page_h - margin - round(30 * k)
@@ -3901,8 +3971,11 @@ def complete_fingerprint(config: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(parts, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()[:16]
 
 
-def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
-    """PDF di ogni locale, PDF completo e video con le stesse pagine sul sito dei PDF (vedi sopra)."""
+def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool = False) -> bool:
+    """PDF di ogni locale, PDF completo e video con le stesse pagine sul sito dei PDF (vedi sopra).
+    only_pdf=True (Rifai-solo-PDF.bat, --solo-pdf): rifà e pubblica SOLO i PDF (più mappa.html e le
+    pagine di ascolta.html), senza video e senza toccare il post di Facebook; l'impronta in
+    completo.json non cambia, così il giro automatico rifà il video se serve."""
     stamp = complete_fingerprint(config)
     if not force and read_json(COMPLETE_STATE, {}).get("impronta") == stamp \
             and (PDF_SITE_DIR / COMPLETE_PDF).is_file() and (PDF_SITE_DIR / COMPLETE_VIDEO).is_file():
@@ -3912,7 +3985,8 @@ def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
     if not pages:
         return False
     PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Menu completo: PDF di {len(pages)} locali, PDF unico (con la pagina riepilogativa) e video...")
+    print(f"Solo PDF: PDF di {len(pages)} locali e PDF unico (il video NON si rifà e NON si rinvia)..." if only_pdf else
+          f"Menu completo: PDF di {len(pages)} locali, PDF unico (con la pagina riepilogativa) e video...")
     for page in pages:
         save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
     try:  # primo foglio del PDF unico e prima immagine del video: la pagina riepilogativa (A4)
@@ -3924,6 +3998,14 @@ def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
     song, online = ROOT / SONG, PDF_SITE_DIR / SITE_SONG  # musica dell'app (Menu.mp3) sul sito dei PDF:
     if song.is_file() and not online.is_file():           # file fisso, copiato UNA volta sola
         shutil.copy2(song, online)
+    if only_pdf:
+        try:
+            write_listen_page(pages)
+        except Exception as exc:
+            print(f"Pagina ascolta.html non creata: {exc}")
+        ok = publish_pdf_site()
+        print(f"PDF pubblicati: {pdf_site(config.get('impostazioni', {}))[0]}{COMPLETE_PDF}" if ok else "PDF NON pubblicati.")
+        return ok
     video = make_pdf_video(pages, PDF_SITE_DIR / COMPLETE_VIDEO)
     try:  # pagina del link MP3: audio in sottofondo mentre si guardano le pagine
         write_listen_page(pages)
@@ -4110,8 +4192,9 @@ def summary_data(config: dict[str, Any]) -> dict[str, Any]:
     towns: dict[str, int] = {}
     for shop in shops.values():
         towns[shop_town(shop)] = towns.get(shop_town(shop), 0) + 1
-    order = lambda entry: (-towns.get(entry["comune"], 0), entry["comune"], sort_key_name(entry["nome"]))
-    return {"pronti": sorted(ready, key=order), "attesa": sorted(waiting, key=lambda e: sort_key_name(e["nome"])),
+    # Ordine puro alfabetico (A→Z, senza raggruppare per Comune), come nel menu.pdf
+    by_name = lambda entry: sort_key_name(entry["nome"])
+    return {"pronti": sorted(ready, key=by_name), "attesa": sorted(waiting, key=by_name),
             "totale": len(shops), "giorno": date.today(), "ora": datetime.now().strftime("%H:%M")}
 
 
@@ -4977,6 +5060,9 @@ def main() -> None:
     parser.add_argument("--completo", action="store_true",
                         help="Rifà subito PDF di ogni locale, PDF completo (menu.pdf) e video (video.mp4) e li "
                              "pubblica sul sito dei PDF (lo fa da solo ogni 30 minuti se qualcosa cambia).")
+    parser.add_argument("--solo-pdf", action="store_true",
+                        help="Rifà e pubblica SOLO i PDF (di ogni locale e menu.pdf), senza video e senza post "
+                             "di Facebook (Rifai-solo-PDF.bat).")
     parser.add_argument("--post-link", action="store_true",
                         help="DISATTIVATO (22/10/2026): i vecchi post \"I menu in pdf\"/\"I menu in video\" non si usano più.")
     parser.add_argument("--forza", action="store_true",
@@ -5023,6 +5109,13 @@ def main() -> None:
         take_lock()  # se gira il controllo automatico aspetta che finisca (stesso invio a GitHub)
         try:
             publish_complete(config, force=True)
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
+    if args.solo_pdf:  # solo i PDF: niente video, niente Facebook
+        take_lock()
+        try:
+            publish_complete(config, force=True, only_pdf=True)
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
