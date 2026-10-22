@@ -2855,6 +2855,9 @@ def move_links(links, scale: float, dx: float, dy: float):
             for (x0, y0, x1, y1), uri in links]
 
 
+PDF_JPEG_QUALITY = 72  # qualità JPEG delle pagine nei PDF: 72 = file circa metà di 92, testo ancora nitido
+
+
 def save_pdf(images, target: Path, dpi: int = 150) -> None:
     """PDF con una pagina per immagine (JPEG) e i link cliccabili ricordati con add_link
     (indirizzo -> mappa, telefono -> chiamata). Scritto a mano, senza librerie in più: Pillow
@@ -2865,7 +2868,7 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
     kids = []
     for image in images:
         buffer = io.BytesIO()
-        image.convert("RGB").save(buffer, "JPEG", quality=92)
+        image.convert("RGB").save(buffer, "JPEG", quality=PDF_JPEG_QUALITY, optimize=True)
         jpeg = buffer.getvalue()
         w, h = image.width * 72 / dpi, image.height * 72 / dpi
         k = 72 / dpi
@@ -3757,7 +3760,12 @@ LISTEN_PAGE = "ascolta.html"   # link MP3 della didascalia: audio in sottofondo 
 LISTEN_IMAGES = "pagine"       # cartella del sito con le pagine di menu.pdf in JPG (per ascolta.html)
 OLD_VIDEO_FILES = ("video.html",)  # pagina del vecchio video: tolta dal sito dei PDF
 VIDEO_PAGE_SECONDS = 7.0   # quanto resta ferma ogni pagina del PDF nel video
-VIDEO_FPS = 30
+# compressione del video (circa metà dimensione rispetto a 30 fps / 1240 px / crf 20 / audio 128k):
+# le pagine sono ferme, quindi 10 fotogrammi al secondo bastano; larghezza 1080 px
+VIDEO_FPS = 10
+VIDEO_WIDTH = 1080
+VIDEO_CRF = 29          # più alto = file più piccolo e qualità un po' più bassa (20-30)
+VIDEO_AUDIO = "64k"
 # musica di sottofondo facoltativa: Facebook\musica-video.m4a (o .mp3); se manca il video è muto
 VIDEO_MUSIC = (ROOT / "Facebook" / "musica-video.m4a", ROOT / "Facebook" / "musica-video.mp3")
 
@@ -3801,10 +3809,10 @@ def make_pdf_video(pages: list[dict[str, Any]], target: Path) -> Path | None:
         music = next((path for path in VIDEO_MUSIC if path.is_file()), None)
         if music:  # musica ripetuta se più corta; abbassata dolcemente negli ultimi 2 secondi
             command += ["-stream_loop", "-1", "-i", str(music), "-map", "0:v", "-map", "1:a",
-                        "-af", f"afade=t=out:st={max(0.0, seconds - 2):.2f}:d=2", "-c:a", "aac", "-b:a", "128k"]
-        command += ["-t", f"{seconds:.2f}", "-vf", f"fps={VIDEO_FPS},format=yuv420p",
-                    "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-tune", "stillimage",
-                    "-profile:v", "high", "-level", "4.1", "-g", str(VIDEO_FPS * 10),
+                        "-af", f"afade=t=out:st={max(0.0, seconds - 2):.2f}:d=2", "-c:a", "aac", "-b:a", VIDEO_AUDIO]
+        command += ["-t", f"{seconds:.2f}", "-vf", f"fps={VIDEO_FPS},scale={VIDEO_WIDTH}:-2:flags=lanczos,format=yuv420p",
+                    "-c:v", "libx264", "-preset", "slow", "-crf", str(VIDEO_CRF), "-tune", "stillimage",
+                    "-profile:v", "high", "-level", "4.1", "-g", str(round(VIDEO_FPS * VIDEO_PAGE_SECONDS)),
                     "-movflags", "+faststart", str(target)]
         print(f"Creo il video con le {len(pages)} pagine del PDF...")
         done = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -3867,7 +3875,7 @@ def write_listen_page(pages: list[dict[str, Any]]) -> None:
     items = []
     for index, page in enumerate(pages):
         name = f"{index:02d}.jpg"
-        page["a4"].convert("RGB").save(folder / name, quality=82, optimize=True)
+        page["a4"].convert("RGB").save(folder / name, quality=PDF_JPEG_QUALITY, optimize=True)
         shop = page["entry"].get("id")
         target = COMPLETE_PDF if shop == "riepilogo" else f"{shop}.pdf"
         image = f'<img src="{LISTEN_IMAGES}/{name}?v={version}" width="1240" height="1754" alt=""' + \
