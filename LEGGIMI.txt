@@ -25,9 +25,8 @@ li pubblica:
        https://menurosticcerie.github.io/video.mp4     (video)
        https://menurosticcerie.github.io/mappa.html?q= (apre Apple Maps / Google Maps)
   c) sulla Pagina Facebook https://www.facebook.com/MenuRosticcerie (API ufficiale Graph):
-       - post "I menu in pdf" (1°) e "I menu in video" (2°) in cima alla Pagina, con testo di due
-         righe (link + "Aggiornato <giorno> alle ore <hh:mm> (N/13)"), riga 2 riscritta a ogni
-         aggiornamento di PDF e video;
+       - post fissi "I menu in pdf" (1°, fissato in cima) e "I menu in video" (2°), con un commento
+         di due righe (link + "Aggiornato <giorno> alle ore <hh:mm>") riscritto a ogni aggiornamento;
        - post del giorno (11:30 o appena ci sono tutti i menu) = immagine riassuntiva + testo.
 Servizio gratuito e senza fini di lucro: va sempre detto nei testi pubblici. Tutto ciò che vede il
 pubblico è pensato prima per il CELLULARE.
@@ -100,7 +99,7 @@ Foto, pdf-sito, Facebook\Video-*.mp4)
                      facebook.json       collegamento Graph: pagina_id, pagina_nome, token Pagina (NON
                                          scade), app_id, salvato_il. SEGRETO.
                      post-link.json      id dei post fissi e dei loro commenti:
-                                         {"pdf": {"post","commento","ora"}, "video": {...}}
+                                         {"pdf": {"post","commento","ora","fissato"}, "video": {...}}
                      post-link\          immagini 16:9 dei post fissi (pdf.jpg, video.jpg)
                      riassunti\          AAAA-MM-GG.jpg/.txt/.html del post del giorno + stato.json
                      notifica.json       {"bark": "https://api.day.app/CHIAVE"} notifiche iPhone (Bark)
@@ -274,35 +273,43 @@ COLLEGAMENTO
 - facebook_call(path, params, files, version, method): GET, POST testo (method="POST"), POST
   multipart (files: foto/video), DELETE. Errori Graph -> RuntimeError in italiano (190 = codice
   scaduto, 10/200 = permesso mancante).
-POST FISSI (publish_link_posts, link_text, updated_line, update_link_comments, link_posts_after_daily)
-- Due post foto con immagine 16:9 1920x1080 (link_post_image): "I menu in pdf" e "I menu in video".
-  Il TESTO del post è di due righe (dal 21/10/2026 è il testo del post, non più un commento):
-      Pdf: https://menurosticcerie.github.io/menu.pdf
-      Aggiornato martedì 20 ottobre 2026 alle ore 21:28 (3/13)
-  (per il video il link è https://menurosticcerie.github.io/video.mp4). (3/13) = rosticcerie con il
-  menu di oggi / totale dei locali, presi da dati\completo.json ("pronti", "locali") insieme all'ora.
-- OGNI VOLTA che PDF e video cambiano (publish_complete) update_link_comments() cambia SOLO la riga
-  che comincia con "Aggiornato" nel testo dei due post (letto da Facebook e riscritto): il resto
-  del post, anche se modificato a mano sulla Pagina, non cambia. Se sotto un post c'è ancora un
-  commento con quelle righe si aggiorna anche lui; un commento cancellato non viene rifatto.
-- ORDINE OBBLIGATORIO SULLA PAGINA: 1° "I menu in pdf", 2° "I menu in video", poi tutti gli altri.
-  Si ottiene SENZA fissare nulla: Facebook mette in alto i post più recenti, quindi dopo ogni post
-  del giorno link_posts_after_daily() ripubblica prima il video e poi il PDF (stesso testo, nuova
-  riga "Aggiornato"; i vecchi due post vengono cancellati). Non usare "fissa in cima" via API: non
-  è affidabile e farebbe saltare l'ordine. Non tenere altri post fissati in cima.
-- dati\post-link.json tiene gli id: se un post c'è già --post-link non lo rifà; --forza lo rifà
-  (con lo stesso testo) e cancella il vecchio.
-POST DEL GIORNO (daily_summary)
-- summary_due(): una volta al giorno, appena TUTTI i locali hanno il menu o alle 11:30 (impostazioni
-  > riassunto > ora); prima un ricontrollo completo. make_summary(): pagina HTML 1080x1350
-  (summary_html) fotografata con Playwright -> dati\riassunti\AAAA-MM-GG.jpg + testo (summary_text:
-  locali con 2 piatti ciascuno, in arrivo, invito a toccare «Scopri di più», link a menu.pdf e app).
-- Pubblicato con publish_summary_facebook (foto+testo). Una nuova pubblicazione nello stesso giorno
-  (Pubblica FB) cancella quella precedente (delete_facebook_posts). Max 3 tentativi se fallisce.
-- Dal 20/10/2026 NIENTE foto singole dei menu e NIENTE video come post del giorno (codice tolto).
-PULIZIA (clean_facebook_posts): cancella SOLO post con più foto, con video o con link a video.html,
-dopo aver mostrato l'elenco e chiesto "s"; non tocca mai post con una foto sola, di solo testo, o
-che iniziano come una riga di Facebook\Testi.txt.
+UN SOLO POST SULLA PAGINA (dal 22/10/2026: daily_summary, make_summary, summary_caption,
+keep_only_summary)
+- Sulla Pagina c'è UN SOLO post: la FOTO VERTICALE del giorno (1080x1350, summary_html: logo, data,
+  "N su 13 con il menu", ora, tutte le rosticcerie su DUE colonne, con il menu = cornice verde e
+  spunta, non ancora = cornice ARANCIONE e "in arrivo", logo sempre a colori) con la didascalia:
+      Ultimo aggiornamento giovedì 22 ottobre 2026 - 10:23
+      Clicca su uno di questi link o su [Scopri di più].
+      -----
+      PDF - https://menurosticcerie.github.io/menu.pdf
+      VIDEO - https://menurosticcerie.github.io/video.mp4
+      WEBAPP - https://tinyurl.com/menurosticcerie
+      -----
+  (data e ora = ultima pubblicazione di PDF e video, dati\completo.json).
+- OGNI VOLTA che PDF e video cambiano, publish_complete chiama daily_summary(force=True): nuova
+  immagine, nuovo post, e keep_only_summary() cancella TUTTI i post del giorno precedenti (id in
+  dati\riassunti\pubblicati.json, e la prima volta anche dal registro automatico.log). Così il post
+  in cima è sempre aggiornato e ce n'è uno solo. Se Facebook non risponde si riprova ai giri
+  automatici successivi (max 3, stato in dati\riassunti\stato.json).
+- "Pubblica FB" del Monitor (--pubblica-fb): aggiorna PDF e video se serve e rifà subito il post.
+- Toccando la FOTO Facebook la apre ingrandita (non si può far aprire un link da una foto): i due
+  link sono nella didascalia. (publish_summary_link + summary_wide_html = vecchia prova di post con
+  link e immagine orizzontale, scartata: non più usata.)
+- I vecchi post "I menu in pdf" / "I menu in video" (publish_link_posts, update_link_comments,
+  link_posts_after_daily, --post-link) NON si usano più: restano nel codice ma nessuno li chiama.
+PULIZIA (clean_facebook_posts, Pulisci-Facebook.bat): elenca TUTTI i post della Pagina tranne quello
+del giorno (e i cambi di copertina/immagine del profilo, che non vanno cancellati) e, dopo "s" +
+Invio, li cancella con le loro foto. Svuota dati\post-link.json.
+STATISTICHE DELLA PAGINA (page_stats, --statistiche, Statistiche.bat)
+- Follower (followers_count) e "mi piace" (fan_count) della Pagina; visualizzazioni di oggi e degli
+  ultimi 28 giorni dalle statistiche (/insights, prima metrica che risponde tra VIEW_METRICS:
+  page_media_view, page_views_total, page_impressions, page_impressions_unique - Meta cambia i nomi).
+  Le visualizzazioni possono richiedere il permesso read_insights: se manca, il resto funziona e
+  viene scritto "visualizzazioni non disponibili".
+- Salvate in dati\statistiche.json (con lo storico giornaliero dei follower, 90 giorni) a ogni giro
+  automatico; il Monitor le mostra in due righe sotto l'esito ("Facebook: 73 follower (+3 da ieri)
+  (alle 10:59)" / "Visualizzazioni: 370 oggi · 781 in 28 giorni"). Metrica che funziona:
+  page_media_view, con il permesso read_insights (aggiunto il 22/10/2026).
 SICUREZZA: il token sta solo in dati\facebook.json (fuori da GitHub). Non stamparlo nei log.
 
 
@@ -1855,28 +1862,49 @@ Copia precedente: backup\Menu_2026-10-20_prima-commenti-due-righe.py
 
 
 ------------------------------------------------------------------------------------------------
-21/10/2026 - RIGA "AGGIORNATO ... (N/13)" NEL TESTO DEI DUE POST, ORDINE SENZA "FISSA"
+22/10/2026 - POST DEL GIORNO CLICCABILE (APRE IL PDF), PRIMO DELLA PAGINA; PDF ANCHE DAI GIRI A MANO
 ------------------------------------------------------------------------------------------------
-- Nella notte i due post sono stati rifatti e il loro testo scritto a mano con le due righe
-  ("Pdf: <link>" / "Aggiornato ..."); il commento del PDF era stato cancellato (alle 08:10 Facebook
-  aveva risposto "Comment not found").
-- Ora a ogni nuova pubblicazione di PDF e video si cambia SOLO la seconda riga del TESTO dei post:
-  "Aggiornato mercoledì 21 ottobre 2026 alle ore 08:10 (3/13)" (3 = rosticcerie con il menu di
-  oggi, 13 = totale; publish_complete salva "pronti" in dati\completo.json). Il resto del testo
-  resta quello che c'è sulla Pagina. Commenti: aggiornati solo se ci sono ancora, mai rifatti.
-- Quando i post vengono ripubblicati (dopo il post del giorno, o --post-link --forza) il testo del
-  post nuovo è quello del vecchio, con la riga "Aggiornato" nuova.
-- Niente più "fissa in cima": dopo ogni post del giorno si ripubblicano SEMPRE video e poi PDF,
-  così l'ordine è PDF, video, altri.
-Codice: updated_line, link_text, post_message, update_link_comments, publish_link_posts,
-link_posts_after_daily. Copia precedente: backup\Menu_2026-10-21_prima-del-conteggio.py
-- 21/10/2026: "PDF NON pubblicati ... cannot lock ref 'refs/heads/main'" = due invii al sito dei PDF
-  nello stesso momento (Rifai-PDF.bat mentre girava il controllo automatico). Ora --completo
-  aspetta la fine di un giro in corso (blocco dati\automatico.lock) e publish_pdf_site, se GitHub
-  rifiuta l'invio, riprova fino a 3 volte (dopo 10, 20, 30 secondi).
-  Copia precedente: backup\Menu_2026-10-21_prima-del-riprova-invio.py
-- 21/10/2026: MUSICA DEL VIDEO = Facebook\musica-video.m4a (se manca si usa Facebook\musica-video.mp3;
-  se mancano entrambi il video è muto). Per cambiarla basta sostituire il file tenendo lo stesso
-  nome: la musica fa parte dell'impronta di complete_fingerprint, quindi il video si rifà da solo
-  al giro automatico successivo (o subito con Rifai-PDF.bat). Più corta del video = ripetuta;
-  sfumata negli ultimi 2 secondi.
+- Post del giorno: immagine orizzontale (Facebook mostra le anteprime dei link a 1.91:1), cornice
+  arancione e logo a colori per chi non ha ancora il menu, didascalia "Clicca sull'immagine per
+  vedere i menu pubblicati alle HH:MM di oggi <giorno>, N rosticcerie su 13 ...". È un post con link
+  a pdf-sito\oggi.html che apre menu.pdf. Viene pubblicato DOPO aver ripubblicato video e PDF, così
+  è il primo della Pagina (poi PDF, poi video).
+- PROBLEMA TROVATO: oggi nessun giro automatico (l'ultimo è del 21/10 alle 20:00) e i giri a mano
+  (Monitor Controlla/Ricontrolla/Pubblica, Avvia.bat) non rifacevano PDF e video: menu.pdf era
+  fermo a ieri alle 18:31. Ora ogni giro con pubblicazione rifà anche PDF e video (se qualcosa è
+  cambiato). Se il Monitor dice "Disattivato" o "Non pianificato" premere Pianifica.
+- Nella cartella Menu sono rimasti script di prova (Applica_Modifiche.py, Scrivi_Menu.py,
+  Fix_Testo_FB.py, Fix_fsttring.py) che modificano Menu.py: NON lanciarli più (Menu.py ora fa già
+  quelle cose), si possono cancellare. Anche 858547631_..._n.jpg nella cartella Menu non serve
+  (finirebbe su GitHub con il sito).
+Codice: summary_wide_html, summary_caption, summary_caption_time, publish_summary_link,
+TODAY_PAGE_HTML, daily_summary, run (publish_complete dopo publish). Copia precedente:
+backup\Menu_2026-10-22_prima-del-post-con-link.py
+- 22/10/2026 (10:00): post del giorno con le rosticcerie su DUE colonne (riepilogo a sinistra),
+  didascalia "Clicca l'immagine per vedere ...", e un solo post del giorno sulla Pagina (cancellati
+  da soli tutti i precedenti, anche quelli di ieri: keep_only_summary / summary_history).
+  Copia precedente: backup\Menu_2026-10-22_prima-delle-due-colonne.py
+- 22/10/2026 (10:10): tornati al post FOTO VERTICALE (intera sul cellulare) a due colonne, con il
+  link a menu.pdf nella didascalia ("Clicca il link per vedere ..."): Facebook non permette di
+  aprire un link toccando una foto, e nei post con link taglia l'immagine in orizzontale.
+
+
+------------------------------------------------------------------------------------------------
+22/10/2026 (10:20) - UN SOLO POST SULLA PAGINA
+------------------------------------------------------------------------------------------------
+- Per semplificare al massimo: sulla Pagina resta solo la foto del giorno con la didascalia
+  "Ultimo aggiornamento <giorno> - HH:MM / ----- / Clicca il primo link per vedere il PDF, clicca il
+  secondo per una panoramica video. / <link PDF> / <link video>". Rifatta a ogni cambio di PDF e
+  video (il post precedente viene cancellato). Niente più post "I menu in pdf"/"I menu in video".
+- Pulisci-Facebook.bat ora cancella TUTTI gli altri post (dopo conferma), tranne copertina/profilo.
+Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
+- 22/10/2026 (10:40): nuova didascalia del post (Ultimo aggiornamento / Clicca su uno di questi
+  link o su [Scopri di più] / ----- / PDF - ... / VIDEO - ... / WEBAPP - tinyurl / -----): summary_caption.
+- 22/10/2026 (10:50): follower e visualizzazioni della Pagina nel Monitor e con Statistiche.bat
+  (page_stats, dati\statistiche.json). Copie precedenti: backup\Menu_2026-10-22_prima-delle-statistiche.py,
+  backup\Monitor_2026-10-22_prima-delle-statistiche.py
+- 22/10/2026 (11:10): Collega-Facebook.bat NON lancia più --post-link (alle 10:58, rifacendo il
+  collegamento per read_insights, aveva ricreato i post "I menu in pdf"/"I menu in video").
+  --post-link e Post-link-Facebook.bat sono disattivati: scrivono solo che non si usano più.
+  Permessi del collegamento ora: pages_show_list, pages_read_engagement, pages_read_user_content,
+  pages_manage_posts, pages_manage_engagement, read_insights.

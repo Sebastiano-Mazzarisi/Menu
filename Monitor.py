@@ -30,6 +30,7 @@ LOG = ROOT / "dati" / "automatico.log"
 ORDER_FILE = ROOT / "dati" / "ordine_monitor.json"  # ordine delle righe, letto da Menu.py all'avvio del giro
 IN_PROGRESS = ROOT / "dati" / "in_corso.json"  # locale che Menu.py sta controllando adesso
 LOCK = ROOT / "dati" / "automatico.lock"
+STATS = ROOT / "dati" / "statistiche.json"  # follower e visualizzazioni della Pagina (scritti da Menu.py)
 POSITION = ROOT / "dati" / "monitor.json"
 TASK = "Menu"
 CONSOLE_TITLE = "Menu - controllo manuale"
@@ -457,6 +458,9 @@ class Monitor(tk.Tk):
         self.rows.pack(padx=14, anchor="w", fill="x")
         self.outcome = tk.Label(self, font=font, bg=BG, fg=MUTED, justify="left")
         self.outcome.pack(padx=14, pady=(8, 4), anchor="w")
+        # follower e visualizzazioni della Pagina Facebook (dati/statistiche.json, aggiornato a ogni giro)
+        self.stats = tk.Label(self, font=("Segoe UI", 10, "bold"), bg=BG, fg=FG, justify="left")
+        self.stats.pack(padx=14, pady=(0, 4), anchor="w")
 
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
@@ -524,6 +528,7 @@ class Monitor(tk.Tk):
             self.clicks_busy, self.clicks_at = True, now
             threading.Thread(target=self.query_clicks, args=(settings.get("registro_click_url", ""),),
                              daemon=True).start()
+        self.show_stats()
         active = self.is_active()
         self.toggle_button.config(text="Disabilita" if active else "Pianifica")
 
@@ -909,6 +914,30 @@ class Monitor(tk.Tk):
         subprocess.Popen(f'cmd /c "title Menu - pubblicazione su Facebook & {exe} Menu.py --pubblica-fb & {closing}"',
                          cwd=ROOT, creationflags=subprocess.CREATE_NEW_CONSOLE)
         self.say("Pubblicazione su Facebook avviata: un paio di minuti")
+
+    def show_stats(self) -> None:
+        """Due righe: "Facebook: 73 follower (+3 da ieri) (alle 10:59)" e "Visualizzazioni: 370 oggi · 781 in 28 giorni"
+        letta da dati/statistiche.json (Menu.py la aggiorna a ogni giro automatico e con Statistiche.bat)."""
+        stats = read_json(STATS, {})
+        if not stats:
+            text = "Facebook: numeri non ancora letti (Statistiche.bat)"
+        elif stats.get("follower") is None:
+            text = "Facebook: numeri non disponibili"
+        else:
+            days = list(stats.get("storico", {}).values())
+            change = days[-1] - days[-2] if len(days) > 1 else 0
+            # due righe, così la finestra non si allarga
+            text = (f"Facebook: {stats['follower']} follower" + (f" ({change:+d} da ieri)" if change else "")
+                    + f" (alle {str(stats.get('ora', ''))[11:16]})")
+            views = []
+            if stats.get("visualizzazioni_oggi") is not None:
+                views.append(f"{stats['visualizzazioni_oggi']} oggi")
+            if stats.get("visualizzazioni_28_giorni") is not None:
+                views.append(f"{stats['visualizzazioni_28_giorni']} in 28 giorni")
+            if views:
+                text += "\nVisualizzazioni: " + " · ".join(views)
+        if self.stats.cget("text") != text:
+            self.stats.config(text=text)
 
     def open_pdf(self) -> None:
         """PDF: apre nel browser il PDF con i menu di tutti i locali (sito dei PDF, menu.pdf)."""

@@ -3812,10 +3812,13 @@ def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
                                "video": bool(video)})
     site = pdf_site(config.get("impostazioni", {}))[0]
     print(f"Menu completo pubblicato: {site}{COMPLETE_PDF}" + (f" e {site}{COMPLETE_VIDEO}" if video else ""))
-    try:  # nuova ora di aggiornamento nei commenti dei post "I menu in pdf" / "I menu in video"
-        update_link_comments()
-    except Exception as exc:
-        print(f"Commenti dei post con i link non aggiornati: {exc}")
+    # PDF e video cambiati: sulla Pagina si rifà l'UNICO post (immagine del giorno + didascalia con
+    # "Ultimo aggiornamento" e i due link), il precedente viene cancellato (vedi daily_summary)
+    if summary_settings(config.get("impostazioni", {})).get("facebook", True) and read_json(FACEBOOK_CONFIG, {}).get("token"):
+        try:
+            daily_summary(config, force=True, refresh_pdf=False)
+        except Exception as exc:
+            print(f"Post della Pagina non aggiornato: {exc}")
     return True
 
 
@@ -4051,13 +4054,12 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
 .g{{display:grid;grid-template-columns:1fr 1fr;gap:calc(14px*var(--k)) 16px}}
 .cd{{display:flex;align-items:center;gap:16px;background:#fff;border-radius:22px;padding:calc(12px*var(--k)) 14px;
   box-shadow:0 3px 10px rgba(60,40,10,.10);min-width:0;border:3px solid #1d7f46}}
-.cd.no{{background:#ebe4d8;box-shadow:none;border-color:transparent}}
-.cd.no img,.cd.no .nologo{{opacity:.45;filter:grayscale(1)}}
+.cd.no{{background:#fff8ee;border-color:#e8921e}}  /* in arrivo: cornice arancione, logo a colori */
 .cd img,.nologo{{width:calc(104px*var(--k));height:calc(104px*var(--k));border-radius:16px;object-fit:cover;flex:none;background:#eee}}
 .tx{{flex:1;min-width:0}}
 .n{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800;font-size:calc(38px*var(--k));line-height:1.05;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
-.cd.no .n{{color:#8a7f72}}
+.cd.no .n{{color:#1e1a16}}
 .p{{font-size:calc(28px*var(--k));color:#6b5f52;margin-top:4px}}
 .cd.no .p{{color:#b4501a;font-weight:700}}
 .ck{{flex:none;width:58px;height:58px;border-radius:50%;background:#1d7f46;color:#fff;font-size:36px;display:grid;place-items:center;font-weight:700}}
@@ -4072,17 +4074,100 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
 </div></body></html>'''
 
 
+SUMMARY_W, SUMMARY_H = 1200, 628   # 1.91:1, il formato delle immagini dei post con link di Facebook
+
+
+def summary_wide_html(data: dict[str, Any]) -> str:
+    """Immagine ORIZZONTALE del post del giorno (1200x628, fotografata a doppia risoluzione): è
+    l'anteprima del post con link, toccandola si apre menu.pdf. A sinistra logo, data, quanti hanno
+    il menu e l'ora; a destra TUTTE le rosticcerie su DUE colonne: con il menu = cornice verde e
+    spunta, non ancora = cornice ARANCIONE e "in arrivo", logo sempre a colori."""
+    day = data["giorno"]
+    weekday, rest = SUMMARY_WEEKDAYS[day.weekday()], f"{day.day} {list(MONTHS)[day.month - 1]}"
+    cards = []
+    for entry, ready in [(entry, True) for entry in data["pronti"]] + [(entry, False) for entry in data["attesa"]]:
+        logo = ICONS / f"logo-{entry['id']}.jpg"
+        picture = f'<img src="{logo.as_uri()}">' if logo.exists() else '<span class="nologo"></span>'
+        mark = '<div class="ck">✓</div>' if ready else ""
+        state = html.escape(entry["comune"]) if ready else "in arrivo"
+        cards.append(f'<div class="cd{"" if ready else " no"}">{picture}<div class="tx"><div class="n">'
+                     f'{html.escape(entry["nome"])}</div><div class="p">{state}</div></div>{mark}</div>')
+    ready, total = len(data["pronti"]), data["totale"]
+    count = f'<b>{ready} su {total}</b>' if ready < total else f'<b>Tutte e {total}</b>'
+    logo = APP_LOGO.as_uri() if APP_LOGO.exists() else ""
+    return f"""<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{{--k:1}}*{{box-sizing:border-box}}html,body{{margin:0}}
+.c{{width:{SUMMARY_W}px;height:{SUMMARY_H}px;position:relative;overflow:hidden;background:#f4efe6;color:#1e1a16;
+  font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif;display:flex}}
+.D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
+.sx{{width:330px;flex:none;padding:28px 22px 22px 28px;display:flex;flex-direction:column}}
+.sx img{{width:96px;height:96px;border-radius:22px;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.1);object-fit:contain}}
+.kk{{margin-top:18px;font-size:21px;letter-spacing:.06em;text-transform:uppercase;color:#b8700a;font-weight:700}}
+.dd{{font-size:52px;line-height:1;margin-top:4px;letter-spacing:-.02em}}
+.st{{margin-top:22px;font-size:28px;font-weight:700;line-height:1.15}}
+.st b{{display:block;font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-size:54px;color:#1d7f46}}
+.pill{{margin-top:16px;align-self:flex-start;background:#1d7f46;color:#fff;border-radius:999px;padding:7px 18px;font-size:26px;font-weight:700}}
+.ft{{margin-top:auto;font-size:21px;font-weight:700;color:#b8700a;line-height:1.2}}
+.corpo{{flex:1;padding:18px 22px 18px 0;display:flex;align-items:center}}
+.g{{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:calc(9px*var(--k)) 10px}}
+.cd{{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:calc(5px*var(--k)) 9px;
+  box-shadow:0 2px 6px rgba(60,40,10,.10);min-width:0;border:3px solid #1d7f46}}
+.cd.no{{background:#fff8ee;border-color:#e8921e}}
+.cd img,.nologo{{width:calc(56px*var(--k));height:calc(56px*var(--k));border-radius:10px;object-fit:cover;flex:none;background:#eee}}
+.tx{{flex:1;min-width:0}}
+.n{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800;font-size:calc(24px*var(--k));line-height:1.05;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.p{{font-size:calc(18px*var(--k));color:#6b5f52;margin-top:1px}}
+.cd.no .p{{color:#b4501a;font-weight:700}}
+.ck{{flex:none;width:32px;height:32px;border-radius:50%;background:#1d7f46;color:#fff;font-size:20px;display:grid;place-items:center;font-weight:700}}
+</style></head><body><div class="c">
+<div class="sx"><img src="{logo}"><div class="kk">Menu di oggi</div><div class="dd D">{html.escape(weekday)}<br>{html.escape(rest)}</div>
+<div class="st">{count}con il menu</div><div class="pill">ore {data["ora"]}</div>
+<div class="ft">Tocca l'immagine per aprire tutti i menu (PDF)</div></div>
+<div class="corpo"><div class="g">{"".join(cards)}</div></div>
+</div></body></html>"""
+
+
+def summary_caption_time() -> str:
+    """Ora (hh:mm) dell'ultima pubblicazione di PDF e video, quella scritta nel post del giorno."""
+    try:
+        return datetime.fromisoformat(read_json(COMPLETE_STATE, {}).get("ora", "")).strftime("%H:%M")
+    except (TypeError, ValueError):
+        return datetime.now().strftime("%H:%M")
+
+
+def summary_caption(data: dict[str, Any]) -> str:
+    """Didascalia dell'UNICO post della Pagina (dal 22/10/2026), es.
+        Ultimo aggiornamento giovedì 22 ottobre 2026 - 10:23
+        Clicca su uno di questi link o su [Scopri di più].
+        -----
+        PDF - https://menurosticcerie.github.io/menu.pdf
+        VIDEO - https://menurosticcerie.github.io/video.mp4
+        WEBAPP - https://tinyurl.com/menurosticcerie
+        -----
+    Data e ora = ultima pubblicazione di PDF e video (dati/completo.json)."""
+    try:
+        when = datetime.fromisoformat(read_json(COMPLETE_STATE, {}).get("ora", ""))
+    except (TypeError, ValueError):
+        when = datetime.now()
+    day = f"{SUMMARY_WEEKDAYS[when.weekday()].lower()} {when.day} {list(MONTHS)[when.month - 1]} {when.year}"
+    site = pdf_site()[0]
+    return (f"Ultimo aggiornamento {day} - {when:%H:%M}\n"
+            "Clicca su uno di questi link o su [Scopri di più].\n-----\n"
+            f"PDF - {site}{COMPLETE_PDF}\nVIDEO - {site}{COMPLETE_VIDEO}\nWEBAPP - {SHORT_URL}\n-----")
+
+
 def make_summary(config: dict[str, Any]) -> tuple[Path, str] | None:
     """Crea dati/riassunti/AAAA-MM-GG.jpg e .txt. None se oggi nessun locale ha ancora il menu."""
-    data = summary_data(config)
-    if not data["pronti"]:
-        print("Riassunto: nessuna rosticceria ha ancora il menu di oggi, niente post")
-        return None
+    data = summary_data(config)  # anche con 0 menu: l'immagine mostra tutti "in arrivo"
     SUMMARIES.mkdir(parents=True, exist_ok=True)
     stem = SUMMARIES / date.today().isoformat()
     page_file = stem.with_suffix(".html")
-    page_file.write_text(summary_html(data), encoding="utf-8")
-    text = summary_text(data)
+    data["ora"] = summary_caption_time()  # stessa ora della didascalia: ultima pubblicazione del PDF
+    page_file.write_text(summary_html(data), encoding="utf-8")  # VERTICALE 1080x1350, intera sul cellulare
+    text = summary_caption(data)
     stem.with_suffix(".txt").write_text(text, encoding="utf-8")
     image = stem.with_suffix(".jpg")
     from playwright.sync_api import sync_playwright
@@ -4160,6 +4245,56 @@ def publish_summary_facebook(image: Path, text: str) -> str:
                                                            "access_token": link["token"]},
                            files={"source": image}, version=link.get("versione", ""))
     return answer.get("post_id") or answer.get("id", "")
+
+
+TODAY_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
+<meta property="og:type" content="website"><meta property="og:title" content="{title}">
+<meta property="og:description" content="{description}"><meta property="og:url" content="{url}">
+<meta property="og:image" content="{image}"><meta property="og:image:width" content="{width}">
+<meta property="og:image:height" content="{height}">
+<meta http-equiv="refresh" content="0; url=menu.pdf?v={stamp}"></head>
+<body style="font:18px system-ui,sans-serif;margin:2em"><p><a href="menu.pdf?v={stamp}">Apri i menu di oggi (PDF)</a></p>
+</body></html>
+"""
+
+
+def publish_summary_link(image: Path, text: str) -> str:
+    """Post del giorno come POST CON LINK: l'anteprima è l'immagine orizzontale del riassunto e
+    toccandola si apre menu.pdf. Facebook prende l'anteprima dalla pagina oggi.html del sito dei PDF
+    (og:image = oggi.jpg), che rimanda subito a menu.pdf. Indirizzo con ?v=<ora> diverso ogni volta,
+    così Facebook non usa un'anteprima vecchia. Prima di pubblicare si aspetta che la pagina sia
+    online. Restituisce l'id del post."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
+    site = pdf_site()[0]
+    stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    shutil.copy2(image, PDF_SITE_DIR / "oggi.jpg")
+    url = f"{site}oggi.html?v={stamp}"
+    (PDF_SITE_DIR / "oggi.html").write_text(TODAY_PAGE_HTML.format(
+        title="I menu di oggi delle rosticcerie", description=html.escape(text, quote=True), url=url,
+        image=f"{site}oggi.jpg?v={stamp}", width=SUMMARY_W * 2, height=SUMMARY_H * 2, stamp=stamp), encoding="utf-8")
+    if not publish_pdf_site():
+        raise RuntimeError("pagina dell'anteprima non pubblicata sul sito dei PDF")
+    for _ in range(36):  # GitHub Pages impiega di solito 30-90 secondi
+        try:
+            with urllib.request.urlopen(f"{site}oggi.html?controllo={stamp}", timeout=20) as answer:
+                if f"v={stamp}" in answer.read().decode("utf-8", "replace"):
+                    break
+        except Exception:
+            pass
+        time.sleep(5)
+    else:
+        print("   la pagina dell'anteprima non risulta ancora online: pubblico lo stesso")
+    token, version = link["token"], link.get("versione", "")
+    try:  # chiede a Facebook di leggere subito l'anteprima (immagine e titolo)
+        facebook_call("", {"id": url, "scrape": "true", "access_token": token}, version=version, method="POST")
+    except RuntimeError:
+        pass
+    answer = facebook_call(f"{link['pagina_id']}/feed", {"message": text, "link": url, "access_token": token},
+                           version=version, method="POST")
+    return answer.get("id", "")
 
 
 def delete_facebook_posts(ids: list[str]) -> list[str]:
@@ -4346,21 +4481,21 @@ def link_posts_after_daily() -> None:
     publish_link_posts(force=True, keys=("video", "pdf"))
 
 def clean_facebook_posts() -> None:
-    """Pulisci-Facebook.bat (python Menu.py --pulisci-facebook), da usare una volta: dal 20/10/2026
-    sulla Pagina non vanno più le foto dei singoli menu né il video. Elenca i post della Pagina con
-    PIÙ foto (le foto dei menu dei locali), con un VIDEO o con il link al vecchio video.html e,
-    dopo la conferma, li cancella insieme alle loro foto/video. Restano i post con una foto sola
-    (immagine riassuntiva, post di presentazione), i post di solo testo e quelli il cui inizio è
-    tra i testi di presentazione di Facebook\\Testi.txt."""
+    """Pulisci-Facebook.bat (python Menu.py --pulisci-facebook): sulla Pagina deve restare UN SOLO
+    post, quello con l'immagine del giorno e i link a PDF e video (il più recente pubblicato dal
+    programma, dati/riassunti/pubblicati.json). Elenca TUTTI gli altri post e, dopo la conferma
+    (s + Invio), li cancella insieme alle loro foto/video. Non tocca i cambi di immagine di copertina
+    e del profilo (cancellandoli sparirebbero copertina e logo della Pagina)."""
     link = read_json(FACEBOOK_CONFIG, {})
     if not link.get("token") or not link.get("pagina_id"):
         print("Collegamento Facebook non ancora fatto: prima Collega-Facebook.bat")
         return
     token, version = link["token"], link.get("versione", "")
-    testi = ROOT / "Facebook" / "Testi.txt"
-    intro = [line.strip()[:40] for line in (testi.read_text(encoding="utf-8").splitlines() if testi.is_file() else [])
-             if len(line.strip()) >= 12]  # righe dei post di presentazione: quei post restano sempre
-    fields = "id,created_time,message,status_type,attachments{media_type,url,target,subattachments{target,media_type}}"
+    keep_id = (read_json(SUMMARY_HISTORY, []) or [read_json(SUMMARY_STATE, {}).get("pubblicato", "")])[0]
+    if not keep_id:
+        print("Non so ancora qual è il post da tenere: prima premi \"Pubblica FB\" nel Monitor.")
+        return
+    fields = "id,created_time,message,story,attachments{media_type,target,subattachments{target,media_type}}"
     posts: list[dict[str, Any]] = []
     try:
         answer = facebook_call(f"{link['pagina_id']}/posts", {"fields": fields, "limit": "50", "access_token": token},
@@ -4375,46 +4510,70 @@ def clean_facebook_posts() -> None:
     except RuntimeError as exc:
         print(f"Non riesco a leggere i post della Pagina: {exc}")
         return
+    page_photo = re.compile(r"copertina|immagine del profilo|foto del profilo|cover photo|profile picture", re.I)
     remove, keep = [], []
     for post in posts:
         message = post.get("message") or ""
-        first = next((line.strip() for line in message.splitlines() if line.strip()), "")
-        media = []  # (tipo, id) di foto e video del post
+        first = next((line.strip() for line in message.splitlines() if line.strip()), "") or post.get("story", "")
+        media = []
         for item in post.get("attachments", {}).get("data", []):
-            subs = item.get("subattachments", {}).get("data", [])
-            for sub in subs or [item]:
+            for sub in item.get("subattachments", {}).get("data", []) or [item]:
                 if sub.get("target", {}).get("id"):
-                    media.append((sub.get("media_type") or item.get("media_type") or "", sub["target"]["id"]))
-        links = " ".join([message] + [item.get("url") or "" for item in post.get("attachments", {}).get("data", [])])
-        is_video = any("video" in kind for kind, _ in media) or "video" in (post.get("status_type") or "")
-        many_photos = sum(1 for kind, _ in media if kind in ("photo", "album")) > 1
-        presentation = any(first[:40] == line for line in intro)
-        target = keep if presentation or not (is_video or many_photos or "video.html" in links) else remove
-        target.append((post, first, media))
+                    media.append(sub["target"]["id"])
+        if post["id"] == keep_id or (not message and page_photo.search(post.get("story", ""))):
+            keep.append((post, first, []))
+        else:
+            remove.append((post, first, media))
     def show(rows):
         for post, first, media in rows:
-            print(f"  {post.get('created_time', '')[:16].replace('T', ' ')}  "
-                  f"{len(media)} foto/video  {first[:70] or '(senza testo)'}")
-    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}):")
+            print(f"  {post.get('created_time', '')[:16].replace('T', ' ')}  {first[:80] or '(senza testo)'}")
+    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): il post con i link e i cambi di copertina/profilo")
     show(keep)
-    print(f"\nDA CANCELLARE - foto dei menu dei locali o video ({len(remove)}):")
+    print(f"\nDA CANCELLARE ({len(remove)}):")
     show(remove)
     if not remove:
         print("\nNiente da cancellare.")
         return
-    if input(f"\nCancello dalla Pagina questi {len(remove)} post con le loro foto/video? Scrivi s e premi Invio: ").strip().lower() != "s":
+    if input(f"\nCancello dalla Pagina questi {len(remove)} post? Scrivi s e premi Invio: ").strip().lower() != "s":
         print("Non ho cancellato niente.")
         return
     gone = 0
     for post, first, media in remove:
-        for _, media_id in media:  # foto e video caricati per il post (altrimenti restano negli album)
-            delete_facebook_posts([media_id])
         if not delete_facebook_posts([post["id"]]):
             gone += 1
+        if media:
+            delete_facebook_posts(media)  # foto/video caricati per il post (altrimenti restano negli album)
+    save_json(LINK_POSTS, {})  # i vecchi post "I menu in pdf" / "I menu in video" non ci sono più
     print(f"\nCancellati {gone} post su {len(remove)}.")
 
 
-def daily_summary(config: dict[str, Any], force: bool = False) -> None:
+SUMMARY_HISTORY = SUMMARIES / "pubblicati.json"   # id dei post del giorno ancora sulla Pagina
+
+
+def summary_history() -> list[str]:
+    """Id dei post del giorno pubblicati finora (di tutti i giorni): quelli salvati in
+    dati/riassunti/pubblicati.json più quelli scritti nel registro dati/automatico.log
+    ("Riassunto pubblicato su Facebook: https://www.facebook.com/<id>"), così si trovano anche i
+    post pubblicati dalle versioni precedenti del programma."""
+    ids = list(read_json(SUMMARY_HISTORY, []))
+    try:
+        text = AUTO_LOG.read_text(encoding="utf-8", errors="replace")
+        ids += re.findall(r"(?:Riassunto|Post del giorno) pubblicato su Facebook: https://www\.facebook\.com/(\d+_\d+)", text)
+    except OSError:
+        pass
+    return list(dict.fromkeys(ids))
+
+
+def keep_only_summary(newest: str) -> None:
+    """Sulla Pagina deve esserci UN SOLO post del giorno, il più recente: tutti gli altri (anche dei
+    giorni precedenti) vengono cancellati. Quelli che non si riescono a cancellare restano in
+    pubblicati.json e si riprova la volta dopo."""
+    old = [post for post in summary_history() if post != newest]
+    left = delete_facebook_posts(old) if old else []
+    save_json(SUMMARY_HISTORY, [newest] + left)
+
+
+def daily_summary(config: dict[str, Any], force: bool = False, refresh_pdf: bool = True) -> None:
     """Riassunto del giorno: crea immagine e testo e (se collegato) li pubblica su Facebook.
     Lo stato di oggi è in dati/riassunti/stato.json, così il post non parte due volte."""
     plan = summary_settings(config.get("impostazioni", {}))
@@ -4425,6 +4584,14 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
         print(f"Riassunto di oggi già pubblicato su Facebook (post {state['pubblicato']})")
         return
     previous = state.get("pubblicato", "")  # post di oggi già sulla Pagina: verrà sostituito
+    if refresh_pdf:
+        try:  # PDF aggiornato prima del post (didascalia e immagine dicono l'ora del PDF)
+            before = read_json(COMPLETE_STATE, {}).get("ora")
+            publish_complete(config)
+            if read_json(COMPLETE_STATE, {}).get("ora") != before:
+                return  # PDF e video rifatti: publish_complete ha già ripubblicato il post
+        except Exception as exc:
+            print(f"PDF non aggiornato prima del post del giorno: {exc}")
     made = make_summary(config)
     if not made:
         state.update({"creato": False, "da_ripubblicare": True})
@@ -4442,13 +4609,12 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
         try:
             if read_json(FACEBOOK_CONFIG, {}).get("token"):
                 state["tentativi"] = int(state.get("tentativi", 0)) + 1
-            state["pubblicato"] = publish_summary_facebook(image, text)
-            print(f"Riassunto pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
-            try:  # il post del video torna secondo, sotto il PDF (il post del giorno ora è sopra)
-                link_posts_after_daily()
-            except Exception as exc:
-                print(f"Post \"I menu in video\" non ripubblicato: {exc}")
+            # dal 22/10/2026 sulla Pagina c'è UN SOLO post: questa immagine con i link a PDF e video
+            state["pubblicato"] = publish_summary_facebook(image, text)  # foto verticale intera
+            print(f"Post del giorno pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}\n   {text}")
+            keep_only_summary(state["pubblicato"])  # un solo post del giorno sulla Pagina
             state.pop("errore", None)
+            state["tentativi"] = 0
             # una nuova pubblicazione nello stesso giorno (pulsante Pubblica FB) SOSTITUISCE quella di
             # prima: i post precedenti di oggi vengono tolti dalla Pagina, così non ci sono doppioni
             # (anche le foto caricate per il post precedente, che altrimenti resterebbero negli album)
@@ -4463,6 +4629,84 @@ def daily_summary(config: dict[str, Any], force: bool = False) -> None:
             print(f"Riassunto NON pubblicato su Facebook: {exc}")
             notify_phone(f"Riassunto Facebook non pubblicato: {str(exc)[:120]}")
     save_json(SUMMARY_STATE, state)
+
+
+PAGE_STATS = DATA / "statistiche.json"   # ultimi numeri della Pagina, letti anche dal Monitor
+# metriche delle statistiche della Pagina, in ordine di preferenza (Meta cambia nomi nel tempo:
+# si usa la prima che risponde). "views" = visualizzazioni dei contenuti della Pagina.
+VIEW_METRICS = ("page_media_view", "page_views_total", "page_impressions", "page_impressions_unique")
+
+
+def page_stats(show: bool = True) -> dict[str, Any]:
+    """Numeri della Pagina Facebook letti con il collegamento ufficiale (dati/facebook.json):
+    follower (followers_count, e "mi piace" = fan_count) e visualizzazioni di oggi e degli ultimi
+    28 giorni dalle statistiche della Pagina (servono i permessi pages_read_engagement e, per le
+    visualizzazioni, read_insights). Salva tutto in dati/statistiche.json (lo mostra il Monitor)."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    stats: dict[str, Any] = {"ora": datetime.now().isoformat(timespec="seconds")}
+    if not link.get("token") or not link.get("pagina_id"):
+        stats["errore"] = "collegamento Facebook non ancora fatto (Collega-Facebook.bat)"
+    else:
+        token, version, page = link["token"], link.get("versione", ""), link["pagina_id"]
+        try:
+            info = facebook_call(page, {"fields": "name,followers_count,fan_count", "access_token": token}, version=version)
+            stats.update({"pagina": info.get("name", ""), "follower": info.get("followers_count"),
+                          "mi_piace": info.get("fan_count")})
+        except RuntimeError as exc:
+            stats["errore"] = str(exc)
+        problems = []
+        for metric in VIEW_METRICS:
+            values: dict[str, Any] = {}
+            for period in ("day", "days_28"):
+                # formato vecchio (serie di valori) e formato nuovo (metric_type=total_value)
+                for extra in ({}, {"metric_type": "total_value"}):
+                    try:
+                        answer = facebook_call(f"{page}/insights", {"metric": metric, "period": period, **extra,
+                                                                    "access_token": token}, version=version)
+                    except RuntimeError as exc:
+                        problems.append(f"{metric}/{period}: {str(exc)[:110]}")
+                        continue
+                    item = (answer.get("data") or [{}])[0]
+                    series = item.get("values") or []
+                    value = item.get("total_value", {}).get("value") if item.get("total_value") else (
+                        series[-1].get("value") if series else None)
+                    if isinstance(value, dict):  # valori divisi per tipo: si sommano
+                        value = sum(v for v in value.values() if isinstance(v, (int, float)))
+                    if value is not None:
+                        values[period] = value
+                        break
+                    problems.append(f"{metric}/{period}: risposta vuota")
+            if values:
+                stats.update({"metrica": metric, "visualizzazioni_oggi": values.get("day"),
+                              "visualizzazioni_28_giorni": values.get("days_28")})
+                break
+        if "metrica" not in stats and problems:
+            stats["errore_visualizzazioni"] = "visualizzazioni non disponibili (forse manca il permesso read_insights)"
+            stats["dettagli_visualizzazioni"] = problems
+    old = read_json(PAGE_STATS, {})
+    if stats.get("follower") is not None:  # storico giornaliero dei follower (ultimo valore di ogni giorno)
+        history = old.get("storico", {})
+        history[date.today().isoformat()] = stats["follower"]
+        stats["storico"] = dict(sorted(history.items())[-90:])
+    elif old.get("storico"):
+        stats["storico"] = old["storico"]
+    save_json(PAGE_STATS, stats)
+    if show:
+        print(f"\nPagina {stats.get('pagina', 'Menu rosticcerie')} - {datetime.now():%d/%m/%Y %H:%M}")
+        print(f"  Follower:                 {stats.get('follower', '?')}")
+        print(f"  Mi piace:                 {stats.get('mi_piace', '?')}")
+        if "metrica" in stats:
+            print(f"  Visualizzazioni oggi:     {stats.get('visualizzazioni_oggi', '?')}")
+            print(f"  Visualizzazioni 28 giorni: {stats.get('visualizzazioni_28_giorni', '?')}  ({stats['metrica']})")
+        for key in ("errore", "errore_visualizzazioni"):
+            if stats.get(key):
+                print(f"  {stats[key]}")
+        for line in dict.fromkeys(stats.get("dettagli_visualizzazioni", [])):  # senza righe doppie
+            print(f"     - {line}")
+        days = list(stats.get("storico", {}).items())
+        if len(days) > 1:
+            print("  Follower negli ultimi giorni: " + "  ".join(f"{day[8:10]}/{day[5:7]} {value}" for day, value in days[-7:]))
+    return stats
 
 
 def facebook_connect() -> None:
@@ -4582,13 +4826,15 @@ def main() -> None:
                         help="Rifà subito PDF di ogni locale, PDF completo (menu.pdf) e video (video.mp4) e li "
                              "pubblica sul sito dei PDF (lo fa da solo ogni 30 minuti se qualcosa cambia).")
     parser.add_argument("--post-link", action="store_true",
-                        help="Pubblica sulla Pagina i due post fissi \"I menu in video\" e \"I menu in pdf\" con il "
-                             "link nel primo commento (Post-link-Facebook.bat). Se ci sono già non li rifà.")
+                        help="DISATTIVATO (22/10/2026): i vecchi post \"I menu in pdf\"/\"I menu in video\" non si usano più.")
     parser.add_argument("--forza", action="store_true",
                         help="Con --post-link: ripubblica i due post anche se ci sono già (i vecchi vengono tolti).")
     parser.add_argument("--pulisci-facebook", action="store_true",
-                        help="Elenca i vecchi post della Pagina con le foto o il video dei menu e, dopo la conferma, "
-                             "li cancella (con le loro foto). I post di presentazione restano (Pulisci-Facebook.bat).")
+                        help="Elenca TUTTI i post della Pagina tranne quello con l'immagine del giorno e i link e, dopo la conferma, "
+                             "li cancella con le loro foto; restano i cambi di copertina e profilo (Pulisci-Facebook.bat).")
+    parser.add_argument("--statistiche", action="store_true",
+                        help="Mostra follower e visualizzazioni della Pagina Facebook (Statistiche.bat); "
+                             "li salva in dati/statistiche.json, che il Monitor mostra.")
     parser.add_argument("--facebook-collega", action="store_true",
                         help="Collegamento ufficiale con la Pagina Facebook (Collega-Facebook.bat).")
     parser.add_argument("--facebook-prova", action="store_true",
@@ -4618,6 +4864,9 @@ def main() -> None:
     if args.facebook_prova:
         facebook_check()
         return
+    if args.statistiche:
+        page_stats()
+        return
     if args.completo:  # PDF e video subito, anche se nulla è cambiato
         take_lock()  # se gira il controllo automatico aspetta che finisca (stesso invio a GitHub)
         try:
@@ -4625,8 +4874,9 @@ def main() -> None:
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
-    if args.post_link:  # una tantum: post "I menu in video" e "I menu in pdf" con il link nel commento
-        publish_link_posts(force=args.forza)
+    if args.post_link:  # disattivato dal 22/10/2026: sulla Pagina c'è un solo post (vedi daily_summary)
+        print("I post \"I menu in pdf\" e \"I menu in video\" non si usano più: sulla Pagina c'è un solo post,\n"
+              "l'immagine del giorno con i link (si aggiorna da sola; subito: \"Pubblica FB\" nel Monitor).")
         return
     if args.pulisci_facebook:  # una tantum: toglie dalla Pagina i vecchi post con foto e video dei menu
         clean_facebook_posts()
@@ -4704,8 +4954,15 @@ def main() -> None:
             except Exception as exc:
                 import traceback
                 print(f"Menu completo non pubblicato: {exc!r}\n{traceback.format_exc()}")
-            if summary or summary_due(fresh.get("impostazioni", {}), fresh):
-                daily_summary(fresh)
+            # il post della Pagina si rifà da solo quando cambiano PDF e video (publish_complete);
+            # qui solo se l'ultima pubblicazione su Facebook non è riuscita (al massimo 3 volte)
+            try:  # follower e visualizzazioni per il Monitor
+                page_stats(show=False)
+            except Exception as exc:
+                print(f"Statistiche della Pagina non lette: {exc}")
+            last = read_json(SUMMARY_STATE, {})
+            if last.get("da_ripubblicare") and int(last.get("tentativi", 0)) < 3:
+                daily_summary(fresh, force=True, refresh_pdf=False)
         except BaseException as exc:  # nel log, non in una finestra che nessuno vede
             import traceback
             print(f"ERRORE: {exc!r}\n{traceback.format_exc()}")
@@ -4869,6 +5126,11 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     print(f"Creato: {OUTPUT}")
     if args.pubblica:
         publish()
+        if not getattr(args, "automatico", False):  # il giro automatico lo fa da sé, subito dopo
+            try:  # anche i giri a mano (Monitor, Avvia.bat) rifanno PDF e video se qualcosa è cambiato
+                publish_complete(read_json(CONFIG, {}))
+            except Exception as exc:
+                print(f"Menu completo non pubblicato: {exc!r}")
     if news:
         print("Novità: " + ", ".join(news))  # anche la finestra di controllo legge questa riga
         beep_three_times()
