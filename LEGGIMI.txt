@@ -108,7 +108,7 @@ Foto, pdf-sito, Facebook\Video-*.mp4)
                      panorama\           PDF del pulsante "Panorama" (ultimi 10)
   pdf-sito\        copia locale del repository menurosticcerie/menurosticcerie.github.io (sito dei
                    PDF). Contiene: menu.pdf, <id>.pdf, video.mp4, index.html (apre menu.pdf),
-                   mappa.html. Gestita SOLO da Menu.py (publish_pdf_site), una sola versione.
+                   mappa.html, menu.mp3, ascolta.html + pagine\*.jpg. Gestita SOLO da Menu.py (publish_pdf_site), una sola versione.
   Facebook\        materiale della Pagina: Copertina*.jpg, Immagine-profilo.jpg, Post1-3.jpg,
                    Testi.txt (testi dei post di presentazione: Pulisci-Facebook non li tocca mai),
                    Collegamento-Facebook.txt (guida al collegamento Graph), musica-video.m4a
@@ -231,6 +231,9 @@ Il sito NON va modificato nei file generati: si cambia PAGE_TEMPLATE / generate_
 ================================================================================================
 - complete_fingerprint(): giorno + hash di Menu.py + dati dei locali + menu di oggi. Se uguale a
   dati\completo.json non si rifà nulla ("niente di nuovo da pubblicare"); --completo forza.
+- PRIMO FOGLIO di menu.pdf e PRIMA IMMAGINE del video: la pagina riepilogativa (summary_a4_page):
+  la stessa grafica del post di Facebook (summary_html, alta A4_SUMMARY_HEIGHT invece di 1350) in A4
+  verticale 1240x1754, con l'ora di quando si rifà il PDF. I PDF dei singoli locali non la hanno.
 - all_shop_pages(): TUTTI i locali in ordine alfabetico, una pagina A4 (1240x1754, 150 dpi) ciascuno:
     "menu"   photo_page(): logo a sinistra; a destra 3 righe: NOME (sinistra) + TELEFONO (destra,
              stesso carattere, cliccabile), "Menu di <giorno>", INDIRIZZO COMPLETO (cliccabile);
@@ -249,7 +252,8 @@ Il sito NON va modificato nei file generati: si cambia PAGE_TEMPLATE / generate_
   stacchi netti, ffmpeg di imageio-ffmpeg (installato da solo con pip la prima volta); musica solo
   se c'è Facebook\musica-video.m4a.
 - File scritti in pdf-sito\: <id>.pdf, menu.pdf, video.mp4, index.html (INDEX_PAGE_HTML, apre
-  menu.pdf), mappa.html; video.html (vecchio) viene tolto.
+  menu.pdf), mappa.html, menu.mp3 (solo se manca), ascolta.html + pagine\NN.jpg (write_listen_page);
+  video.html (vecchio) viene tolto.
 - publish_pdf_site(): commit UNICO senza storia (write-tree / commit-tree / update-ref, push --force
   sul ramo main) per non far crescere il repository; ripara da sé rami rimasti a metà e index.lock
   vecchi. Organizzazione GitHub: impostazioni > "sito_pdf" (predefinito menurosticcerie).
@@ -284,8 +288,15 @@ keep_only_summary)
       PDF - https://menurosticcerie.github.io/menu.pdf
       VIDEO - https://menurosticcerie.github.io/video.mp4
       WEBAPP - https://tinyurl.com/menurosticcerie
+      MP3 - https://menurosticcerie.github.io/ascolta.html
       -----
   (data e ora = ultima pubblicazione di PDF e video, dati\completo.json).
+- Il link MP3 NON porta al file menu.mp3 (aprirebbe il lettore scuro del browser) ma ad ascolta.html
+  (LISTEN_PAGE_HTML, write_listen_page, scritta da publish_complete): barra audio fissa in alto con
+  il pulsante "Tocca per ascoltare" e sotto tutte le pagine di menu.pdf in JPG (pdf-sito\pagine\
+  00.jpg, 01.jpg..., rifatte ogni volta); toccando una pagina si apre il PDF di quel locale.
+  I browser (iPhone, app di Facebook) non fanno partire l'audio senza un tocco: la pagina prova da
+  sola, altrimenti serve il pulsante. L'audio si ferma se si chiude la pagina.
 - OGNI VOLTA che PDF e video cambiano, publish_complete chiama daily_summary(force=True): nuova
   immagine, nuovo post, e keep_only_summary() cancella TUTTI i post del giorno precedenti (id in
   dati\riassunti\pubblicati.json, e la prima volta anche dal registro automatico.log). Così il post
@@ -1908,3 +1919,17 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   --post-link e Post-link-Facebook.bat sono disattivati: scrivono solo che non si usano più.
   Permessi del collegamento ora: pages_show_list, pages_read_engagement, pages_read_user_content,
   pages_manage_posts, pages_manage_engagement, read_insights.
+- 22/10/2026 (11:25): primo foglio del PDF unico e prima immagine del video = pagina riepilogativa
+  in A4 (summary_a4_page, render_summary condivisa con il post). Copia precedente:
+  backup\Menu_2026-10-22_prima-del-riepilogo-nel-pdf.py
+- 22/10/2026 (11:50): riga "MP3 - https://menurosticcerie.github.io/menu.mp3" nella didascalia; a ogni
+  prima pubblicazione di PDF e video Menu.mp3 viene copiato UNA volta in pdf-sito\menu.mp3 (SITE_SONG,
+  file fisso; git non lo rinvia alle pubblicazioni successive). Per cambiarlo: cancellare
+  pdf-sito\menu.mp3 e rifare i PDF (Rifai-PDF.bat).
+- 22/10/2026 (12:05): durante l'invio del sito dei PDF la finestra non scriveva niente per minuti
+  (invio di PDF + video + MP3, ~20 MB la prima volta, ~10 MB le altre). Ora scrive le fasi
+  ("Preparo i file per GitHub...", "Tolgo la versione precedente...") e la PERCENTUALE dell'invio
+  sulla stessa riga ("Invio a GitHub: 45% (4,10 MiB inviati)"): push_with_progress (git push --progress).
+- 22/10/2026 (12:20): il link MP3 apriva il lettore scuro del browser. Nuova pagina ascolta.html
+  (audio di sottofondo con barra in alto + pagine del PDF in pdf-sito\pagine\*.jpg); la riga MP3
+  della didascalia punta lì. Copia precedente: backup\Menu_2026-10-22_prima-della-pagina-ascolta.py

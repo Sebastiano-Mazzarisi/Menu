@@ -3512,6 +3512,56 @@ def pdf_site(settings: dict[str, Any] | None = None) -> tuple[str, str]:
     return f"https://{org}.github.io/", f"https://github.com/{org}/{org}.github.io.git"
 
 
+def progress(text: str) -> None:
+    """Scritta di avanzamento (finestra e registro): righe non rientrate, quindi sempre visibili."""
+    print(text)
+
+
+def push_with_progress(git, branch: str) -> subprocess.CompletedProcess:
+    """git push --force con la PERCENTUALE dell'invio che avanza sulla stessa riga
+    ("Invio a GitHub: 45% (3,2 MB)"): l'invio di PDF e video può durare qualche minuto."""
+    command = ["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost", "push", "--progress",
+               "--force", "origin", branch]
+    process = subprocess.Popen(command, cwd=PDF_SITE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    error, piece, shown = [], b"", ""
+    screen = sys.__stdout__
+    while True:
+        byte = process.stderr.read(1)
+        if not byte:
+            break
+        if byte in (b"\r", b"\n"):
+            line = piece.decode("utf-8", "replace").strip()
+            piece = b""
+            if not line:
+                continue
+            error.append(line)
+            match = re.search(r"(Writing objects|Scrittura degli oggetti|Compressing objects|Compressione degli oggetti)"
+                              r"[^:]*:\s*(\d+)%", line)
+            if match:
+                phase = "Invio a GitHub" if match.group(1).startswith(("Writing", "Scrittura")) else "Compressione"
+                size = re.search(r"([\d.,]+\s*[KMG]i?B)", line)
+                text = f"{phase}: {match.group(2)}%" + (f" ({size.group(1)} inviati)" if size else "")
+                if text != shown and screen:
+                    shown = text
+                    try:
+                        screen.write("\r" + text.ljust(50))
+                        screen.flush()
+                    except Exception:
+                        pass
+        else:
+            piece += byte
+    out = process.stdout.read().decode("utf-8", "replace")
+    process.wait()
+    if shown and screen:
+        try:
+            screen.write("\n")
+            screen.flush()
+        except Exception:
+            pass
+    return subprocess.CompletedProcess(command, process.returncode, out, "\n".join(error[-5:]))
+
+
 def publish_pdf_site() -> bool:
     """Invia i PDF di pdf-sito al repository <org>.github.io (la prima volta lo scarica).
     True se l'invio è riuscito (o non c'era niente da inviare)."""
@@ -3550,6 +3600,7 @@ def publish_pdf_site() -> bool:
     if lock.exists() and time.time() - lock.stat().st_mtime > 300:
         remove_file(lock)  # blocco rimasto da un giro interrotto
     git("symbolic-ref", "HEAD", f"refs/heads/{branch}")
+    progress("Preparo i file per GitHub...")
     added = git("add", "-A")
     tree = git("write-tree").stdout.strip()
     current = git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{tree}}").stdout.strip()
@@ -3568,11 +3619,12 @@ def publish_pdf_site() -> bool:
             if other != branch:
                 git("branch", "-D", other)  # es. "nuova-versione" rimasto dalla versione precedente
         git("reflog", "expire", "--expire=now", "--all")
+        progress("Tolgo la versione precedente (una sola versione sul sito)...")
         git("gc", "--prune=now", "--quiet")
     # se nello stesso momento un altro invio aggiorna il sito (es. Rifai-PDF.bat mentre gira il
     # controllo automatico) GitHub rifiuta con "cannot lock ref": si aspetta un attimo e si riprova
     for attempt in range(4):
-        pushed = git("push", "--force", "origin", branch)
+        pushed = push_with_progress(git, branch)
         if pushed.returncode == 0 or attempt == 3:
             break
         print(f"Invio dei PDF rifiutato da GitHub, riprovo tra {10 * (attempt + 1)} secondi...")
@@ -3700,6 +3752,9 @@ def photo_menu_picture(entry: dict[str, Any], width: int):
 # ------------------------------------------------------------------------------------------------
 COMPLETE_STATE = DATA / "completo.json"
 COMPLETE_PDF, COMPLETE_VIDEO = "menu.pdf", "video.mp4"
+SITE_SONG = "menu.mp3"   # copia di Menu.mp3 sul sito dei PDF (fisso, copiato una volta sola)
+LISTEN_PAGE = "ascolta.html"   # link MP3 della didascalia: audio in sottofondo + le pagine del PDF
+LISTEN_IMAGES = "pagine"       # cartella del sito con le pagine di menu.pdf in JPG (per ascolta.html)
 OLD_VIDEO_FILES = ("video.html",)  # pagina del vecchio video: tolta dal sito dei PDF
 VIDEO_PAGE_SECONDS = 7.0   # quanto resta ferma ogni pagina del PDF nel video
 VIDEO_FPS = 30
@@ -3769,6 +3824,59 @@ INDEX_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
 """
 
 
+# Pagina "ascolta" (link MP3 del post): un link diretto all'mp3 apre il lettore scuro del browser;
+# qui invece in alto c'è una barra audio piccola e sotto si scorrono le pagine di menu.pdf mentre
+# si ascolta. I browser (soprattutto iPhone e l'app di Facebook) non fanno partire il suono senza un
+# tocco: si prova a partire da soli, altrimenti il pulsante grande "Tocca per ascoltare".
+# Toccando una pagina si apre il PDF di quel locale (con indirizzo e telefono cliccabili).
+LISTEN_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Menu rosticcerie - ascolta</title>
+<style>
+body{margin:0;background:#eee;font:16px system-ui,-apple-system,sans-serif;color:#222}
+.bar{position:sticky;top:0;z-index:2;background:#fff;box-shadow:0 2px 6px #0003;padding:8px 10px;
+display:flex;align-items:center;gap:10px}
+.bar button{flex:none;border:0;border-radius:24px;background:#2e7d32;color:#fff;font-size:17px;
+font-weight:700;padding:10px 18px;cursor:pointer}
+.bar button.on{background:#555}.bar audio{flex:1;min-width:0;height:36px}
+.pages{max-width:820px;margin:0 auto;padding:10px}
+.pages a{display:block;margin:0 0 12px}.pages img{display:block;width:100%;height:auto;background:#fff;
+box-shadow:0 1px 4px #0003}
+.links{text-align:center;padding:4px 10px 24px}.links a{margin:0 10px;color:#1565c0}
+</style></head><body>
+<div class="bar"><button id="b">&#9654; Tocca per ascoltare</button>
+<audio id="a" src="@@SONG@@" controls preload="auto" autoplay></audio></div>
+<div class="pages">@@PAGES@@</div>
+<div class="links"><a href="menu.pdf">PDF</a><a href="video.mp4">Video</a>
+<a href="https://tinyurl.com/menurosticcerie">App</a></div>
+<script>
+var a=document.getElementById('a'),b=document.getElementById('b');
+function show(){var p=a.paused;b.innerHTML=p?'&#9654; Tocca per ascoltare':'&#10074;&#10074; Pausa';b.className=p?'':'on'}
+b.onclick=function(){if(a.paused)a.play();else a.pause()};
+a.onplay=a.onpause=a.onended=show;
+var t=a.play();if(t&&t.catch)t.catch(function(){});show();
+</script></body></html>
+"""
+
+
+def write_listen_page(pages: list[dict[str, Any]]) -> None:
+    """ascolta.html + pagine/NN.jpg (le stesse pagine di menu.pdf, nello stesso ordine)."""
+    folder = PDF_SITE_DIR / LISTEN_IMAGES
+    shutil.rmtree(folder, ignore_errors=True)  # via le pagine vecchie (i locali possono cambiare)
+    folder.mkdir(parents=True, exist_ok=True)
+    version = datetime.now().strftime("%Y%m%d%H%M")  # così il cellulare non mostra pagine vecchie
+    items = []
+    for index, page in enumerate(pages):
+        name = f"{index:02d}.jpg"
+        page["a4"].convert("RGB").save(folder / name, quality=82, optimize=True)
+        shop = page["entry"].get("id")
+        target = COMPLETE_PDF if shop == "riepilogo" else f"{shop}.pdf"
+        image = f'<img src="{LISTEN_IMAGES}/{name}?v={version}" width="1240" height="1754" alt=""' + \
+                (' loading="lazy"' if index > 1 else "") + ">"
+        items.append(f'<a href="{target}">{image}</a>')
+    html = LISTEN_PAGE_HTML.replace("@@SONG@@", SITE_SONG).replace("@@PAGES@@", "\n".join(items))
+    (PDF_SITE_DIR / LISTEN_PAGE).write_text(html, encoding="utf-8")
+
+
 def complete_fingerprint(config: dict[str, Any]) -> str:
     """Impronta di quello che finisce nei PDF e nel video: giorno, locali, menu di oggi, versione di Menu.py."""
     today = date.today().isoformat()
@@ -3796,19 +3904,30 @@ def publish_complete(config: dict[str, Any], force: bool = False) -> bool:
     if not pages:
         return False
     PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Menu completo: PDF di {len(pages)} locali, PDF unico e video...")
+    print(f"Menu completo: PDF di {len(pages)} locali, PDF unico (con la pagina riepilogativa) e video...")
     for page in pages:
         save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
+    try:  # primo foglio del PDF unico e prima immagine del video: la pagina riepilogativa (A4)
+        pages = [{"entry": {"id": "riepilogo"}, "tipo": "riepilogo", "a4": summary_a4_page(config)}] + pages
+    except Exception as exc:
+        print(f"Pagina riepilogativa non creata: {exc}")
     save_pdf([page["a4"] for page in pages], PDF_SITE_DIR / COMPLETE_PDF)
     (PDF_SITE_DIR / "mappa.html").write_text(MAP_PAGE_HTML, encoding="utf-8")  # link degli indirizzi
+    song, online = ROOT / SONG, PDF_SITE_DIR / SITE_SONG  # musica dell'app (Menu.mp3) sul sito dei PDF:
+    if song.is_file() and not online.is_file():           # file fisso, copiato UNA volta sola
+        shutil.copy2(song, online)
     video = make_pdf_video(pages, PDF_SITE_DIR / COMPLETE_VIDEO)
+    try:  # pagina del link MP3: audio in sottofondo mentre si guardano le pagine
+        write_listen_page(pages)
+    except Exception as exc:
+        print(f"Pagina ascolta.html non creata: {exc}")
     (PDF_SITE_DIR / "index.html").write_text(INDEX_PAGE_HTML, encoding="utf-8")
     for name in OLD_VIDEO_FILES:
         remove_file(PDF_SITE_DIR / name)
     if not publish_pdf_site():
         return False
     save_json(COMPLETE_STATE, {"impronta": stamp, "ora": datetime.now().isoformat(timespec="seconds"),
-                               "locali": len(pages), "pronti": sum(1 for page in pages if page["tipo"] == "menu"),
+                               "locali": sum(1 for page in pages if page["tipo"] != "riepilogo"), "pronti": sum(1 for page in pages if page["tipo"] == "menu"),
                                "video": bool(video)})
     site = pdf_site(config.get("impostazioni", {}))[0]
     print(f"Menu completo pubblicato: {site}{COMPLETE_PDF}" + (f" e {site}{COMPLETE_VIDEO}" if video else ""))
@@ -4018,7 +4137,7 @@ def summary_text(data: dict[str, Any]) -> str:
 SHORT_URL = "https://tinyurl.com/menurosticcerie"  # link corto all'app (senza nome e cognome)
 
 
-def summary_html(data: dict[str, Any]) -> str:
+def summary_html(data: dict[str, Any], height: int = 1350) -> str:
     """Pagina 1080x1350 da fotografare, PENSATA PER IL CELLULARE: nel feed l'immagine è larga
     circa 390 punti (un terzo), quindi solo scritte grandi (nessuna sotto i 26 px = ~10 punti
     sul telefono). Tutte le rosticcerie su due colonne con logo e nome: chi ha il menu di oggi
@@ -4041,7 +4160,7 @@ def summary_html(data: dict[str, Any]) -> str:
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
 :root{{--k:1}}*{{box-sizing:border-box}}html,body{{margin:0}}
-.c{{width:1080px;height:1350px;position:relative;overflow:hidden;background:#f4efe6;color:#1e1a16;padding:46px 44px;
+.c{{width:1080px;height:{height}px;position:relative;overflow:hidden;background:#f4efe6;color:#1e1a16;padding:46px 44px;
   font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
 .D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
 .hd{{display:flex;align-items:center;gap:24px}}
@@ -4146,7 +4265,9 @@ def summary_caption(data: dict[str, Any]) -> str:
         PDF - https://menurosticcerie.github.io/menu.pdf
         VIDEO - https://menurosticcerie.github.io/video.mp4
         WEBAPP - https://tinyurl.com/menurosticcerie
+        MP3 - https://menurosticcerie.github.io/ascolta.html
         -----
+    Il link MP3 apre ascolta.html (audio in sottofondo + pagine del PDF), non il file mp3.
     Data e ora = ultima pubblicazione di PDF e video (dati/completo.json)."""
     try:
         when = datetime.fromisoformat(read_json(COMPLETE_STATE, {}).get("ora", ""))
@@ -4156,7 +4277,50 @@ def summary_caption(data: dict[str, Any]) -> str:
     site = pdf_site()[0]
     return (f"Ultimo aggiornamento {day} - {when:%H:%M}\n"
             "Clicca su uno di questi link o su [Scopri di più].\n-----\n"
-            f"PDF - {site}{COMPLETE_PDF}\nVIDEO - {site}{COMPLETE_VIDEO}\nWEBAPP - {SHORT_URL}\n-----")
+            f"PDF - {site}{COMPLETE_PDF}\nVIDEO - {site}{COMPLETE_VIDEO}\nWEBAPP - {SHORT_URL}\n"
+            f"MP3 - {site}{LISTEN_PAGE}\n-----")
+
+
+A4_SUMMARY_HEIGHT = round(1080 * 1754 / 1240)   # 1528: pagina riepilogativa con le proporzioni dell'A4
+
+
+def render_summary(data: dict[str, Any], target: Path, height: int = 1350, scale: float = 1.0) -> Path:
+    """Fotografa la pagina riepilogativa (summary_html, larga 1080) in target: 1080x1350 per il post
+    di Facebook, oppure alta A4_SUMMARY_HEIGHT e ingrandita (scale) a 1240x1754 per il PDF/video.
+    Le righe si stringono finché tutto sta sopra il piede (tanti locali = righe più basse)."""
+    page_file = target.with_suffix(".html")
+    page_file.write_text(summary_html(data, height), encoding="utf-8")
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(viewport={"width": 1080, "height": height}, device_scale_factor=scale)
+            page.goto(page_file.as_uri(), wait_until="load", timeout=60000)
+            try:
+                page.evaluate("document.fonts.ready.then(() => true)")
+            except Exception:
+                pass
+            page.evaluate("""() => { const c = document.querySelector('.corpo'), f = document.querySelector('.ft');
+                let k = 1; while (k > 0.55 && c.getBoundingClientRect().bottom > f.getBoundingClientRect().top - 16) {
+                  k -= 0.05; document.documentElement.style.setProperty('--k', k); } }""")
+            page.wait_for_timeout(300)
+            page.screenshot(path=str(target), type="jpeg", quality=90)
+        finally:
+            browser.close()
+    return target
+
+
+def summary_a4_page(config: dict[str, Any]):
+    """PRIMO FOGLIO del PDF e prima immagine del video: la stessa pagina riepilogativa del post di
+    Facebook (logo, data, "N su 13 con il menu", ora, rosticcerie su due colonne) ma in formato A4
+    verticale 1240x1754 come le altre pagine. L'ora è quella di adesso (= ora del PDF)."""
+    from PIL import Image
+    data = summary_data(config)
+    data["ora"] = datetime.now().strftime("%H:%M")
+    SUMMARIES.mkdir(parents=True, exist_ok=True)
+    target = render_summary(data, SUMMARIES / "riepilogo-a4.jpg", A4_SUMMARY_HEIGHT, 1240 / 1080)
+    with Image.open(target) as image:
+        return image.convert("RGB").resize((1240, 1754), Image.LANCZOS)
 
 
 def make_summary(config: dict[str, Any]) -> tuple[Path, str] | None:
@@ -4164,30 +4328,10 @@ def make_summary(config: dict[str, Any]) -> tuple[Path, str] | None:
     data = summary_data(config)  # anche con 0 menu: l'immagine mostra tutti "in arrivo"
     SUMMARIES.mkdir(parents=True, exist_ok=True)
     stem = SUMMARIES / date.today().isoformat()
-    page_file = stem.with_suffix(".html")
     data["ora"] = summary_caption_time()  # stessa ora della didascalia: ultima pubblicazione del PDF
-    page_file.write_text(summary_html(data), encoding="utf-8")  # VERTICALE 1080x1350, intera sul cellulare
     text = summary_caption(data)
     stem.with_suffix(".txt").write_text(text, encoding="utf-8")
-    image = stem.with_suffix(".jpg")
-    from playwright.sync_api import sync_playwright
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
-        try:
-            page = browser.new_page(viewport={"width": 1080, "height": 1350})
-            page.goto(page_file.as_uri(), wait_until="load", timeout=60000)
-            try:
-                page.evaluate("document.fonts.ready.then(() => true)")
-            except Exception:
-                pass
-            # righe più strette finché tutto sta sopra il piede (tanti locali = righe più basse)
-            page.evaluate("""() => { const c = document.querySelector('.corpo'), f = document.querySelector('.ft');
-                let k = 1; while (k > 0.55 && c.getBoundingClientRect().bottom > f.getBoundingClientRect().top - 16) {
-                  k -= 0.05; document.documentElement.style.setProperty('--k', k); } }""")
-            page.wait_for_timeout(300)
-            page.screenshot(path=str(image), type="jpeg", quality=90)
-        finally:
-            browser.close()
+    image = render_summary(data, stem.with_suffix(".jpg"))  # VERTICALE 1080x1350, intera sul cellulare
     print(f"Riassunto creato: {image.name} ({len(data['pronti'])} su {data['totale']} rosticcerie)")
     return image, text
 
