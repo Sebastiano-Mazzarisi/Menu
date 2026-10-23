@@ -3064,23 +3064,86 @@ def create_schedule(settings: dict[str, Any]) -> bool:
     span += 1  # un minuto in più: anche il giro delle "alle" (es. 20:00) viene eseguito
     exe = Path(sys.executable).with_name("pythonw.exe")
     exe = exe if exe.exists() else Path(sys.executable)
-    action = f'"{exe}" "{ROOT / "Menu.py"}" --automatico'
-    done = subprocess.run(["schtasks", "/Create", "/F", "/TN", "Menu", "/SC", "DAILY", "/ST", plan["dalle"],
-                           "/RI", str(plan["ogni_minuti"]), "/DU", f"{span // 60:04d}:{span % 60:02d}",
-                           "/TR", action], capture_output=True, text=True,
+    # Creata da XML (non dalle opzioni rapide di schtasks) per fissare le impostazioni che
+    # bloccavano l'avvio: niente stop/rifiuto su batteria, recupero se il PC era spento alle 08:00.
+    xml_file = DATA / "menu_attivita.xml"
+    DATA.mkdir(exist_ok=True)
+    arguments = html.escape(f'"{ROOT / "Menu.py"}" --automatico', quote=False)
+    start_at = f"{date.today().isoformat()}T{plan['dalle']}:00"
+    xml = f'''<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>{start_at}</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay>
+      <Repetition>
+        <Interval>PT{plan['ogni_minuti']}M</Interval>
+        <Duration>PT{span // 60}H{span % 60}M</Duration>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <WakeToRun>true</WakeToRun>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings><StopOnIdleEnd>false</StopOnIdleEnd><RestartOnIdle>false</RestartOnIdle></IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <ExecutionTimeLimit>PT72H</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>{html.escape(str(exe))}</Command>
+      <Arguments>{arguments}</Arguments>
+      <WorkingDirectory>{html.escape(str(ROOT))}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>'''
+    xml_file.write_text(xml, encoding="utf-16")
+    done = subprocess.run(["schtasks", "/Create", "/F", "/TN", "Menu", "/XML", str(xml_file)],
+                          capture_output=True, text=True,
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if done.returncode != 0:
         print("Pianificazione NON riuscita: " + (done.stderr or done.stdout).strip())
         return False
-    save_json(SCHEDULE_STATE, plan)
+    save_json(SCHEDULE_STATE, {**plan, "versione": SCHEDULE_VERSION})
     print(f"Pianificazione attiva: ogni {plan['ogni_minuti']} minuti dalle {plan['dalle']} alle {plan['alle']}.")
     return True
 
 
+SCHEDULE_VERSION = 3  # cambia questo numero quando cambiano le impostazioni dell'attività: la ricreano da sole
+
+
+def task_exists() -> bool:
+    """True se l'attività "Menu" esiste ancora in Utilità di pianificazione di Windows."""
+    import subprocess
+    done = subprocess.run(["schtasks", "/Query", "/TN", "Menu"], capture_output=True, text=True,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return done.returncode == 0
+
+
 def ensure_schedule(settings: dict[str, Any]) -> None:
-    """Se gli orari in locali.json sono diversi da quelli applicati all'attività di Windows
-    (dati/pianificazione.json), la ricrea da sola: basta cambiare locali.json."""
-    if sys.platform == "win32" and read_json(SCHEDULE_STATE, {}) != schedule_plan(settings):
+    """Ricrea l'attività di Windows se: gli orari in locali.json sono cambiati, la versione delle
+    impostazioni è diversa, oppure l'attività non esiste più (cancellata o rimossa da Windows)."""
+    if sys.platform != "win32":
+        return
+    wanted = {**schedule_plan(settings), "versione": SCHEDULE_VERSION}
+    if read_json(SCHEDULE_STATE, {}) != wanted or not task_exists():
         create_schedule(settings)
 
 
