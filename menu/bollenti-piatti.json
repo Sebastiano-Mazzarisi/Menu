@@ -1,0 +1,106 @@
+{
+  "data": "2026-10-23",
+  "testo": "MENÙ DI VENERDÌ\nPRIMI PIATTI\n●FAVE BIANCHE 4,0\n●FAVE E CORNALETTI 5,0\n●FAVE E CICORIA 5,0\n●LASAGNA AL FORNO 5,0\n●CASERECCIA CON PISELLI, GUANCIALE CROCCANTE E FUNGHI MISTI CON PORCINI 5,5\n●CAVATELLI AI FRUTTI DI MARE IN ROSSO 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●OLIVE NERE FRITTE\n●ROSTBEEF DI SUINO ARROSTO IN SALSA DI VERDURE\n●FAGOTTINO DI POLLO CON PROSCIUTTO E GALBANINO IN CREMA DI PISELLI\n●POLPETTE DI POLLO IN SALSA DI PORCINI\n●QUIKE CON CARNE E SPINACI\n●SFORMATO DI VERDURE MISTE CON CARNE E MOZZARELLA\n●PARMIGIANA\n●SPIEDINO DI GAMBERONI DI SURINO AVVOLTI ALLO SPECK GRATINATI AL FORNO\n●FILETTO DI ORATA IN CROSTA DI ZUCCHINE, POMODORINI, CAPPERI E OLIVE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI VENERDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE BIANCHE 4,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE E CORNALETTI 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE E CICORIA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CASERECCIA CON PISELLI, GUANCIALE CROCCANTE E FUNGHI MISTI CON PORCINI 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CAVATELLI AI FRUTTI DI MARE IN ROSSO 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●OLIVE NERE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ROSTBEEF DI SUINO ARROSTO IN SALSA DI VERDURE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAGOTTINO DI POLLO CON PROSCIUTTO E GALBANINO IN CREMA DI PISELLI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI POLLO IN SALSA DI PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●QUIKE CON CARNE E SPINACI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SFORMATO DI VERDURE MISTE CON CARNE E MOZZARELLA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPIEDINO DI GAMBERONI DI SURINO AVVOLTI ALLO SPECK GRATINATI AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FILETTO DI ORATA IN CROSTA DI ZUCCHINE, POMODORINI, CAPPERI E OLIVE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
