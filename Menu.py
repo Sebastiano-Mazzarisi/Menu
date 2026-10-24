@@ -2554,7 +2554,8 @@ info.onclick=()=>{renderStats();sd.showModal();loadStats()};
 renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadStats()})}
 </script>
 <!-- Proposta "Aggiungi alla schermata Home": compare SOLO se il collegamento non c'è già.
-     Le istruzioni sono immagini (icone/home-ios.jpg, icone/home-android.jpg, ricavate da icone/Home.jpg).
+     Le istruzioni sono immagini (icone/home-ios.jpg, icone/home-android.jpg, ricavate da icone/Home.jpg,
+     e icone/home-pc.jpg per il PC, con la stessa grafica: carattere Aptos, icone prese dalle altre due).
      Android: se Chrome può installare l'app compare anche il bottone a un tocco; "beforeinstallprompt"
      arriva solo se Menu non è installato, e getInstalledRelatedApps lo conferma.
      iPhone: Safari non può sapere se l'icona c'è già: c'è il bottone "Ce l'ho già sulla Home".
@@ -2577,13 +2578,6 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
 #aiutoHome .st{margin:12px 2px 6px;font-weight:800;font-size:16px}
 #aiutoHome .st:first-child{margin-top:0}
 #aiutoHome .pc{margin:0 2px 4px;font-size:15px}
-/* guida del PC: stessa grafica delle immagini home-ios.jpg / home-android.jpg (riquadro con bordo
-   scuro, intestazione colorata "Aggiungi Menu al tuo computer", un passo per riga con l'icona) */
-#aiutoHome .card{border:1.5px solid #3a3a3a;background:#fff;color:#111;margin:0 7px}
-#aiutoHome .card .hd{background:#dbe8fb;border-bottom:1.5px solid #3a3a3a;text-align:center;font-size:18px;padding:10px 6px}
-#aiutoHome .card ol{list-style:none;margin:0;padding:6px 10px 8px}
-#aiutoHome .card li{display:flex;gap:9px;align-items:baseline;padding:6px 0;font-size:16.5px;line-height:1.3}
-#aiutoHome .card li .i{flex:none;width:22px;text-align:center}
 #aiutoHome .gia{margin-top:10px;width:100%;padding:11px;border:1.5px solid #bbb;border-radius:10px;background:#f4f6f1;color:#111;font:inherit;font-weight:700;cursor:pointer}
 </style>
 <div id="aiutoHome" role="dialog" aria-label="Aggiungi alla schermata Home">
@@ -2601,18 +2595,6 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
   var box=document.getElementById('aiutoHome'),txt=document.getElementById('aiutoHomeTesto');
   window.aiutoHomeChiudi=function(){box.classList.remove('attivo');try{localStorage.setItem(CH,'1')}catch(e){}};
   var guida=function(q){return '<img class="guida" src="icone/home-'+q+'.jpg?v=@@IV@@" alt="Come aggiungere Menu alla schermata Home">'};
-  /* guida del PC (Windows, Chrome o Edge) con la stessa grafica e lo stesso stile di frasi delle
-     immagini di iPhone e Android; sopra, se il browser lo permette, il bottone a un clic */
-  var guidaPc=function(){
-    var passo=function(i,t){return '<li><span class="i">'+i+'</span><span>'+t+'</span></li>'};
-    return '<div class="card"><div class="hd">Aggiungi <b>Menu</b> al tuo <b>computer</b></div><ol>'
-      +passo('🌐','<b>Apri il sito</b> con Chrome o Edge')
-      +passo('⋮','<b>Clicca i 3 puntini</b> (in alto a destra)')
-      +passo('🖥️','<b>Scegli "Trasmetti, salva e condividi"</b> (in Edge: "App")')
-      +passo('➕','<b>Clicca "Installa Menu"</b> (in Edge: "Installa come app")')
-      +passo('✅','<b>Clicca "Installa"</b> per confermare')
-      +passo('📌','<b>Fatto:</b> trovi Menu sul desktop e nel menu Start')
-      +'</ol></div>'};
   var mostrato=false,rich=null;
   /* contenuto della guida: solo la parte del proprio telefono; sul PC tutte e due */
   var riempi=function(){
@@ -2620,7 +2602,7 @@ renderStats();loadStats();setInterval(loadStats,60000);document.addEventListener
     if(android){txt.innerHTML=(rich?'<button class="ok" id="aiutoHomeOk">📲 Aggiungi alla schermata Home</button>':'')+guida('android');
       if(rich)document.getElementById('aiutoHomeOk').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted')aiutoHomeChiudi()})};return}
     txt.innerHTML='<div class="st">Questo computer</div>'+(rich?'<button class="ok" id="aiutoHomePc">💻 Installa Menu sul PC</button>':'')
-      +guidaPc()
+      +guida('pc')
       +'<div class="st">iPhone</div>'+guida('ios')+'<div class="st">Android</div>'+guida('android');
     if(rich)document.getElementById('aiutoHomePc').onclick=function(){rich.prompt();rich.userChoice.then(function(s){if(s.outcome==='accepted'){rich=null;aiutoHomeChiudi()}})}};
   /* bottone "+ Home" in alto: apre la guida in qualunque momento */
