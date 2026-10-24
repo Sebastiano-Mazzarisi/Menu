@@ -94,19 +94,22 @@ def read_json(path: Path, default):
         return default
 
 
-def task_info() -> tuple[datetime | None, str]:
-    """Chiede a Windows la prossima esecuzione dell'attività "Menu" (formato indipendente dalla lingua)."""
+def task_info() -> tuple[datetime | None, str, datetime | None]:
+    """Chiede a Windows prossima esecuzione, stato e ULTIMO AVVIO dell'attività "Menu" (formato
+    indipendente dalla lingua). L'ultimo avvio serve alla rete di sicurezza (rescue_missed)."""
     command = (f"$t = Get-ScheduledTask -TaskName '{TASK}' -ErrorAction Stop; "
                f"$i = Get-ScheduledTaskInfo -TaskName '{TASK}'; "
                "$n = if ($i.NextRunTime) {{ $i.NextRunTime.ToString('yyyy-MM-ddTHH:mm:ss') }} else {{ '' }}; "
-               "$n + '|' + $t.State").replace("{{", "{").replace("}}", "}")
+               "$l = if ($i.LastRunTime) {{ $i.LastRunTime.ToString('yyyy-MM-ddTHH:mm:ss') }} else {{ '' }}; "
+               "$n + '|' + $t.State + '|' + $l").replace("{{", "{").replace("}}", "}")
     try:
         out = subprocess.run(["powershell", "-NoProfile", "-Command", command], capture_output=True,
                              text=True, timeout=20, creationflags=NO_WINDOW).stdout.strip()
-        when, state = out.split("|", 1)
-        return (datetime.fromisoformat(when) if when else None), state
+        when, state, last = (out.split("|") + ["", ""])[:3]
+        return ((datetime.fromisoformat(when) if when else None), state,
+                (datetime.fromisoformat(last) if last else None))
     except Exception:
-        return None, "assente"
+        return None, "assente", None
 
 
 def pythonw() -> str:
@@ -493,6 +496,8 @@ class Monitor(tk.Tk):
         self.own_mtime = Path(__file__).stat().st_mtime
         self.next_run: datetime | None = None
         self.task_state = ""
+        self.last_run: datetime | None = None   # ultimo avvio dell'attività secondo Windows
+        self.rescued: datetime | None = None    # orario già recuperato dalla rete di sicurezza
         self.last_query = datetime.min
         # click di oggi per rosticceria (dal registro Google, ogni minuto in un thread)
         self.clicks: dict[str, int] | None = None
@@ -740,8 +745,43 @@ class Monitor(tk.Tk):
         self.message, self.message_until = message, datetime.now() + timedelta(seconds=10)
 
     def query_task(self) -> None:
-        self.next_run, self.task_state = task_info()
+        self.next_run, self.task_state, self.last_run = task_info()
+        try:
+            self.rescue_missed()
+        except Exception as exc:
+            log_error(f"rete di sicurezza: {exc!r}")
         self.querying = False
+
+    def rescue_missed(self) -> None:
+        """RETE DI SICUREZZA. Windows a volte salta un orario dell'attività "Menu" (24/10/2026: giro
+        delle 09:00 partito solo alle 09:07, quello delle 09:30 mai partito, "esecuzioni mancate: 1",
+        senza nessun giro bloccato). Se 2 minuti dopo un orario (08:00, 08:30 ... 20:00) Windows non
+        ha avviato l'attività e nessun controllo è in corso, il Monitor la avvia lui (schtasks /Run):
+        il giro è lo stesso di quello automatico. Al massimo una volta per orario; annotato in
+        dati/monitor.log. Niente se l'attività è disattivata o se il PC è fuori fascia."""
+        if self.task_state.lower() not in ("ready", "queued"):
+            return  # disattivata, assente o già in esecuzione
+        settings = read_json(CONFIG, {}).get("impostazioni", {})
+        dalle, _, every = plan(settings)
+        now = datetime.now()
+        first = datetime.combine(now.date(), datetime.strptime(dalle, "%H:%M").time())
+        if now < first:
+            return
+        slot = first + timedelta(minutes=int((now - first).total_seconds() // 60 // every) * every)
+        late = (now - slot).total_seconds()
+        if late < 120 or not in_window(slot, settings) or self.rescued == slot:
+            return
+        if self.last_run and self.last_run >= slot - timedelta(seconds=30):
+            return  # Windows l'ha avviata (anche in ritardo)
+        if check_running():
+            return  # c'è già un controllo (es. a mano): l'orario è coperto
+        self.rescued = slot
+        done = subprocess.run(["schtasks", "/Run", "/TN", TASK], capture_output=True, text=True,
+                              creationflags=NO_WINDOW)
+        outcome = "avviato dal Monitor" if done.returncode == 0 else f"avvio NON riuscito: {done.stderr.strip()}"
+        log_error(f"giro delle {slot:%H:%M} saltato da Windows: {outcome}")
+        self.say(f"Giro delle {slot:%H:%M} saltato da Windows: {outcome}")
+        self.last_query = datetime.min  # rilegge subito lo stato da Windows
 
     # --- pulsanti -------------------------------------------------------------------------------
     def button_help(self, action):

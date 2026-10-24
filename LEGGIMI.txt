@@ -1989,3 +1989,19 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   post, statistiche, avvisi e, nel giro automatico, "TOTALE del giro". Non cambia il funzionamento:
   serve a capire quale fase rallenta prima di toccarla. Righe rientrate = solo nel registro, il
   Monitor e la finestra DOS le ignorano.
+- 24/10/2026 (09:30): guida "+ Home" sul PC con la STESSA grafica di iPhone e Android: riquadro
+  "Aggiungi Menu al tuo computer" (intestazione azzurra, un passo per riga con l'icona: Apri il sito
+  con Chrome o Edge / 3 puntini / Trasmetti, salva e condividi (Edge: App) / Installa Menu / Installa
+  / Fatto). È HTML (guidaPc() e CSS #aiutoHome .card nel PAGE_TEMPLATE), non un'immagine come
+  home-ios.jpg e home-android.jpg: per cambiare un passo basta modificare il testo. Se il browser lo
+  permette resta sopra il bottone a un clic "Installa Menu sul PC".
+- 24/10/2026 (09:40): RETE DI SICUREZZA NEL MONITOR per gli orari saltati da Windows. Il giro delle
+  09:30 non è partito (nessuna riga nel registro) e quello delle 09:00 è partito solo alle 09:07:
+  Get-ScheduledTaskInfo diceva "NumberOfMissedRuns: 1", stato Ready, nessun giro rimasto aperto.
+  Menu.py non c'entra (si avvia senza errori): è Windows che a volte non scatta all'orario.
+  Monitor.py (rescue_missed, chiamata ogni minuto con task_info, che ora legge anche LastRunTime):
+  2 minuti dopo ogni orario della fascia (08:00, 08:30 ... 20:00), se Windows non ha avviato
+  l'attività (LastRunTime prima dell'orario) e nessun controllo è in corso, il Monitor la avvia con
+  "schtasks /Run /TN Menu" (stesso giro automatico). Una volta per orario, mai se l'attività è
+  disattivata; ogni recupero è scritto in dati\monitor.log e mostrato 10 secondi nel Monitor.
+  Funziona solo con il Monitor aperto. Copia precedente: backup\Monitor_2026-10-24_prima-rete-sicurezza.py
