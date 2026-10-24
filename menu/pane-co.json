@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-23",
+  "data": "2026-10-24",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -56,29 +56,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Strozzapreti alla boscaiola",
+          "nome": "Penne all'amatriciana",
           "prezzo": "€6.50",
-          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
+          "descrizione": ""
         },
         {
-          "nome": "Risotto con zucca e scamorza affumicata",
+          "nome": "Risotto con radicchio e fonduta di gorgonzola",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con vellutata di cavolfiore e speck croccante",
+          "nome": "Orecchiette con pesto di pomodori (base ricotta) e speck croccante",
+          "prezzo": "€8.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cavatelli al grano arso con baccalà e cicerchie",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Spaghetti con tonno, capperi, olive e pomodoro",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Minestrone di verdure",
+          "nome": "Zuppa di ceci",
           "prezzo": "€6.00",
-          "descrizione": "Sedano, carote, zucchina, patate, melanzane, piselli e fagiolini. Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -86,18 +86,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto persico con vongole e datterino giallo e rosso",
+          "nome": "Filetto di platessa con olive, pomodorino e pan grattato",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Straccetti di petto di pollo al limone",
+          "nome": "Spezzatino di vitello con patate",
           "prezzo": "€7.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Trancio di baccalà gratinato",
-          "prezzo": "€8.50",
           "descrizione": ""
         }
       ]
