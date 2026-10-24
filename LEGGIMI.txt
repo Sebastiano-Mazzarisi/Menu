@@ -2011,3 +2011,6 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Menu.py --pianifica (schedule_task): così Windows non fa anche il suo recupero tardivo. Una volta per orario, mai se l'attività è
   disattivata; ogni recupero è scritto in dati\monitor.log e mostrato 10 secondi nel Monitor.
   Funziona solo con il Monitor aperto. Copia precedente: backup\Monitor_2026-10-24_prima-rete-sicurezza.py
+- 24/10/2026 (12:00): didascalia del post del giorno (summary_caption) nel formato voluto da Nino:
+  le due righe "-----" sopra e sotto i link diventano righe di trattini bassi (CAPTION_TOP = 58,
+  CAPTION_BOTTOM = 57) e in fondo c'è una riga con un punto ".".

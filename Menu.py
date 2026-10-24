@@ -4454,16 +4454,22 @@ def summary_caption_time() -> str:
         return datetime.now().strftime("%H:%M")
 
 
+CAPTION_TOP = "_" * 58      # riga sopra i link nella didascalia del post
+CAPTION_BOTTOM = "_" * 57   # riga sotto i link
+
+
 def summary_caption(data: dict[str, Any]) -> str:
     """Didascalia dell'UNICO post della Pagina (dal 22/10/2026), es.
-        Ultimo aggiornamento giovedì 22 ottobre 2026 - 10:23
+        Ultimo aggiornamento sabato 24 ottobre 2026 - 11:01
         Clicca su uno di questi link o su [Scopri di più].
-        -----
+        __________________________________________________________   (58 trattini bassi)
         PDF - https://menurosticcerie.github.io/menu.pdf
         VIDEO - https://menurosticcerie.github.io/video.mp4
         WEBAPP - https://tinyurl.com/menurosticcerie
         MP3 - https://menurosticcerie.github.io/ascolta.html
-        -----
+        _________________________________________________________    (57 trattini bassi)
+        .
+    Formato scelto da Nino il 24/10/2026 (CAPTION_TOP, CAPTION_BOTTOM, riga finale ".").
     Il link MP3 apre ascolta.html (audio in sottofondo + pagine del PDF), non il file mp3.
     Data e ora = ultima pubblicazione di PDF e video (dati/completo.json)."""
     try:
@@ -4473,9 +4479,9 @@ def summary_caption(data: dict[str, Any]) -> str:
     day = f"{SUMMARY_WEEKDAYS[when.weekday()].lower()} {when.day} {list(MONTHS)[when.month - 1]} {when.year}"
     site = pdf_site()[0]
     return (f"Ultimo aggiornamento {day} - {when:%H:%M}\n"
-            "Clicca su uno di questi link o su [Scopri di più].\n-----\n"
+            f"Clicca su uno di questi link o su [Scopri di più].\n{CAPTION_TOP}\n"
             f"PDF - {site}{COMPLETE_PDF}\nVIDEO - {site}{COMPLETE_VIDEO}\nWEBAPP - {SHORT_URL}\n"
-            f"MP3 - {site}{LISTEN_PAGE}\n-----")
+            f"MP3 - {site}{LISTEN_PAGE}\n{CAPTION_BOTTOM}\n.")
 
 
 A4_SUMMARY_HEIGHT = round(1080 * 1754 / 1240)   # 1528: pagina riepilogativa con le proporzioni dell'A4
