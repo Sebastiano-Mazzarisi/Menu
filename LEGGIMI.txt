@@ -245,8 +245,16 @@ Il sito NON va modificato nei file generati: si cambia PAGE_TEMPLATE / generate_
     "attesa" wait_sign_image(): cartello IN ATTESA con indirizzo e "Per ordinare: <telefono>".
   I link si registrano sull'immagine con add_link(image, box, uri) (image.info["links"]);
   move_links() li sposta quando un cartello viene rimpicciolito sulla pagina A4.
+  La scritta "tinyurl.com/menurosticcerie" in fondo a OGNI pagina (menu, CHIUSO, IN ATTESA) si
+  scrive con app_link(), che la rende cliccabile verso l'app (SHORT_URL).
+- PRIMA PAGINA di menu.pdf (summary_a4_page): ogni pulsante di rosticceria porta all'INIZIO della
+  pagina di quel locale nello stesso PDF; la scritta tinyurl in fondo apre l'app. Le posizioni dei
+  pulsanti le misura render_summary(boxes=[]) nel browser (attributo data-id delle schede .cd in
+  summary_html); publish_complete passa page_of = id del locale -> numero di pagina (riepilogo = 1).
 - save_pdf(): scrive il PDF A MANO (JPEG per pagina + annotazioni /Link /URI), perché Pillow non
   sa mettere i link. NON tornare a image.save(..., "PDF"): si perderebbero i link.
+  Un link "#pagina=N" è INTERNO (annotazione /Dest verso la pagina N, in alto); gli altri sono /URI.
+  Ogni pagina occupa 3 oggetti (immagine, contenuto, pagina): la pagina N (da 0) è l'oggetto 3*N+5.
   Indirizzo -> maps_link() -> https://menurosticcerie.github.io/mappa.html?q=<nome, indirizzo>
   (MAP_PAGE_HTML: Apple Maps su iPhone/iPad/Mac, Google Maps altrove). Telefono -> tel_link().
   Su iPhone la chiamata chiede due conferme (regola di iOS), sul PC serve un'app per le chiamate.
@@ -1967,3 +1975,10 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   centinaia di KB per i soli PDF, ~3 MB se cambia anche il video). Il repository su GitHub tiene
   al massimo le versioni di oggi. Dopo un invio riuscito refs/remotes/origin/main viene
   aggiornato esplicitamente. Copia precedente: backup\Menu_2026-10-22_prima-invio-solo-differenze.py
+- 24/10/2026: PDF più cliccabili. 1) In tutte le pagine dei PDF (menu.pdf e <id>.pdf) la scritta
+  "tinyurl.com/menurosticcerie" apre l'app Menu (app_link). Il PDF non può decidere se il link si
+  apre in una finestra nuova: lo decide il programma che mostra il PDF (su iPhone si apre l'app e
+  con "indietro" si torna al PDF; sul PC con Ctrl+clic si apre in una scheda nuova). 2) Nella prima
+  pagina di menu.pdf ogni pulsante di rosticceria porta all'inizio della sua pagina (link interni
+  "#pagina=N" in save_pdf). PDF e video si rifanno da soli al giro successivo (l'impronta comprende
+  Menu.py). Copia precedente: backup\Menu_2026-10-24_prima-link-pdf.py

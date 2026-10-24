@@ -1170,7 +1170,7 @@ def rest_day_sign_image(shop: dict[str, Any]):
     if reopen:
         draw.text((width / 2, 1100), f"Riapre {DAY_NAMES[reopen.weekday()]} {reopen.day}", font=video_font(52, bold=True),
                   fill=(30, 120, 60), anchor="mt")
-    draw.text((width / 2, height - 110), "tinyurl.com/menurosticcerie", font=video_font(34), fill=(130, 130, 130), anchor="mm")
+    app_link(image, draw, (width / 2, height - 110), "tinyurl.com/menurosticcerie", video_font(34), "mm")
     return image
 
 
@@ -2850,6 +2850,14 @@ def add_link(image, box, uri: str) -> None:
         image.info.setdefault("links", []).append((tuple(round(v) for v in box), uri))
 
 
+def app_link(image, draw, xy, text: str, font, anchor: str) -> None:
+    """Scrive in grigio la riga con "tinyurl.com/menurosticcerie" e la rende cliccabile nel PDF:
+    toccandola si apre l'app Menu (SHORT_URL). Usata in TUTTE le pagine dei PDF (menu, cartelli
+    CHIUSO e IN ATTESA); nella prima pagina di menu.pdf il link lo mette summary_a4_page."""
+    draw.text(xy, text, font=font, fill=(130, 130, 130), anchor=anchor)
+    add_link(image, draw.textbbox(xy, text, font=font, anchor=anchor), SHORT_URL)
+
+
 def union_box(*boxes):
     """Rettangolo che contiene tutti i rettangoli dati (x0, y0, x1, y1)."""
     boxes = [b for b in boxes if b]
@@ -2867,8 +2875,10 @@ PDF_JPEG_QUALITY = 72  # qualità JPEG delle pagine nei PDF: 72 = file circa met
 
 def save_pdf(images, target: Path, dpi: int = 150) -> None:
     """PDF con una pagina per immagine (JPEG) e i link cliccabili ricordati con add_link
-    (indirizzo -> mappa, telefono -> chiamata). Scritto a mano, senza librerie in più: Pillow
-    salva i PDF ma non sa mettere i link."""
+    (indirizzo -> mappa, telefono -> chiamata, tinyurl.com/menurosticcerie -> app). Un link
+    "#pagina=N" è INTERNO: porta all'inizio della pagina N dello stesso PDF (pulsanti della prima
+    pagina di menu.pdf). Scritto a mano, senza librerie in più: Pillow salva i PDF ma non sa
+    mettere i link."""
     import io
     images = list(images)
     objects: list[bytes] = []
@@ -2887,8 +2897,17 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
             bottom, top = h - y1 * k - 4, h - y0 * k + 4
             if top - bottom < 28:
                 bottom, top = (bottom + top) / 2 - 14, (bottom + top) / 2 + 14
+            target_page = re.fullmatch(r"#pagina=(\d+)", uri)
+            if target_page:  # link INTERNO: salta all'inizio della pagina N (1 = prima) di questo PDF
+                number = int(target_page.group(1)) - 1
+                if not 0 <= number < len(images):
+                    continue  # pagina che in questo PDF non c'è (es. PDF del singolo locale)
+                # gli oggetti di ogni pagina sono 3 (immagine, contenuto, pagina): la pagina N è l'oggetto 3*N+5
+                action = (f"/Dest [{3 * number + 5} 0 R /XYZ 0 {images[number].height * 72 / dpi:.2f} null]")
+            else:
+                action = f"/A << /Type /Action /S /URI /URI ({safe}) >>"
             annots.append(f"<< /Type /Annot /Subtype /Link /Border [0 0 0] /F 4 /Rect [{x0 * k - 4:.1f} {bottom:.1f} "
-                          f"{x1 * k + 4:.1f} {top:.1f}] /A << /Type /Action /S /URI /URI ({safe}) >> >>")
+                          f"{x1 * k + 4:.1f} {top:.1f}] {action} >>")
         image_id, content_id, page_id = len(objects) + 3, len(objects) + 4, len(objects) + 5
         objects.append(f"<< /Type /XObject /Subtype /Image /Width {image.width} /Height {image.height} "
                        f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(jpeg)} >>\nstream\n"
@@ -3536,7 +3555,7 @@ def wait_sign_image(shop: dict[str, Any]):
         text, small = f"Per ordinare: {shop['telefono']}", video_font(40)
         draw.text((width / 2, 1135), text, font=small, fill=(90, 90, 90), anchor="mm")
         add_link(image, draw.textbbox((width / 2, 1135), text, font=small, anchor="mm"), tel_link(shop["telefono"]))
-    draw.text((width / 2, height - 110), "tinyurl.com/menurosticcerie", font=video_font(34), fill=(130, 130, 130), anchor="mm")
+    app_link(image, draw, (width / 2, height - 110), "tinyurl.com/menurosticcerie", video_font(34), "mm")
     return image
 
 
@@ -3814,7 +3833,7 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     scale = min((page_w - 2 * margin) / flat.width, (bottom - top) / flat.height)
     flat = flat.resize((max(1, round(flat.width * scale)), max(1, round(flat.height * scale))), Image.LANCZOS)
     page.paste(flat, ((page_w - flat.width) // 2, top))
-    draw.text((page_w / 2, page_h - margin), footer, font=video_font(round(26 * k)), fill=(130, 130, 130), anchor="ms")
+    app_link(page, draw, (page_w / 2, page_h - margin), footer, video_font(round(26 * k)), "ms")
     return page
 
 
@@ -4053,7 +4072,9 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     for page in pages:
         save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
     try:  # primo foglio del PDF unico e prima immagine del video: la pagina riepilogativa (A4)
-        pages = [{"entry": {"id": "riepilogo"}, "tipo": "riepilogo", "a4": summary_a4_page(config)}] + pages
+        # i suoi pulsanti portano alla pagina del locale: riepilogo = pagina 1, i locali dalla 2
+        page_of = {str(page["entry"]["id"]): number for number, page in enumerate(pages, 2)}
+        pages = [{"entry": {"id": "riepilogo"}, "tipo": "riepilogo", "a4": summary_a4_page(config, page_of)}] + pages
     except Exception as exc:
         print(f"Pagina riepilogativa non creata: {exc}")
     save_pdf([page["a4"] for page in pages], PDF_SITE_DIR / COMPLETE_PDF)
@@ -4305,7 +4326,8 @@ def summary_html(data: dict[str, Any], height: int = 1350) -> str:
         picture = f'<img src="{logo.as_uri()}">' if logo.exists() else '<span class="nologo"></span>'
         mark = '<div class="ck">✓</div>' if ready else ""
         state = html.escape(entry["comune"]) if ready else "in arrivo"
-        cards.append(f'<div class="cd{"" if ready else " no"}">{picture}<div class="tx"><div class="n">'
+        cards.append(f'<div class="cd{"" if ready else " no"}" data-id="{html.escape(str(entry["id"]))}">{picture}'
+                     f'<div class="tx"><div class="n">'
                      f'{html.escape(entry["nome"])}</div><div class="p">{state}</div></div>{mark}</div>')
     count = (f'<b>{len(data["pronti"])} su {data["totale"]}</b> con il menu'
              if len(data["pronti"]) < data["totale"] else f'<b>Tutte e {data["totale"]}</b> con il menu')
@@ -4438,10 +4460,14 @@ def summary_caption(data: dict[str, Any]) -> str:
 A4_SUMMARY_HEIGHT = round(1080 * 1754 / 1240)   # 1528: pagina riepilogativa con le proporzioni dell'A4
 
 
-def render_summary(data: dict[str, Any], target: Path, height: int = 1350, scale: float = 1.0) -> Path:
+def render_summary(data: dict[str, Any], target: Path, height: int = 1350, scale: float = 1.0,
+                   boxes: list | None = None) -> Path:
     """Fotografa la pagina riepilogativa (summary_html, larga 1080) in target: 1080x1350 per il post
     di Facebook, oppure alta A4_SUMMARY_HEIGHT e ingrandita (scale) a 1240x1754 per il PDF/video.
-    Le righe si stringono finché tutto sta sopra il piede (tanti locali = righe più basse)."""
+    Le righe si stringono finché tutto sta sopra il piede (tanti locali = righe più basse).
+    Con boxes=[] ci mette le zone (in pixel dell'immagine) dei pulsanti delle rosticcerie
+    (("locale", id), (x0, y0, x1, y1)) e della scritta tinyurl (("app", ""), ...): servono per i
+    link della prima pagina di menu.pdf."""
     page_file = target.with_suffix(".html")
     page_file.write_text(summary_html(data, height), encoding="utf-8")
     from playwright.sync_api import sync_playwright
@@ -4458,23 +4484,38 @@ def render_summary(data: dict[str, Any], target: Path, height: int = 1350, scale
                 let k = 1; while (k > 0.55 && c.getBoundingClientRect().bottom > f.getBoundingClientRect().top - 16) {
                   k -= 0.05; document.documentElement.style.setProperty('--k', k); } }""")
             page.wait_for_timeout(300)
+            if boxes is not None:
+                found = page.evaluate("""() => {
+                  const box = e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+                  return [...document.querySelectorAll('.cd[data-id]')].map(e => ['locale', e.dataset.id, box(e)])
+                    .concat([...document.querySelectorAll('.ft .u')].map(e => ['app', '', box(e)])); }""")
+                boxes.extend(((kind, key), tuple(v * scale for v in rect)) for kind, key, rect in found)
             page.screenshot(path=str(target), type="jpeg", quality=90)
         finally:
             browser.close()
     return target
 
 
-def summary_a4_page(config: dict[str, Any]):
+def summary_a4_page(config: dict[str, Any], page_of: dict[str, int] | None = None):
     """PRIMO FOGLIO del PDF e prima immagine del video: la stessa pagina riepilogativa del post di
     Facebook (logo, data, "N su 13 con il menu", ora, rosticcerie su due colonne) ma in formato A4
-    verticale 1240x1754 come le altre pagine. L'ora è quella di adesso (= ora del PDF)."""
+    verticale 1240x1754 come le altre pagine. L'ora è quella di adesso (= ora del PDF).
+    Link nel PDF: ogni pulsante di rosticceria porta all'inizio della SUA pagina di menu.pdf
+    (page_of = id del locale -> numero di pagina, 1 = questa) e la scritta tinyurl.com/menurosticcerie
+    apre l'app."""
     from PIL import Image
     data = summary_data(config)
     data["ora"] = datetime.now().strftime("%H:%M")
     SUMMARIES.mkdir(parents=True, exist_ok=True)
-    target = render_summary(data, SUMMARIES / "riepilogo-a4.jpg", A4_SUMMARY_HEIGHT, 1240 / 1080)
+    boxes: list = []
+    target = render_summary(data, SUMMARIES / "riepilogo-a4.jpg", A4_SUMMARY_HEIGHT, 1240 / 1080, boxes)
     with Image.open(target) as image:
-        return image.convert("RGB").resize((1240, 1754), Image.LANCZOS)
+        fx, fy = 1240 / image.width, 1754 / image.height
+        page = image.convert("RGB").resize((1240, 1754), Image.LANCZOS)
+    for (kind, key), (x0, y0, x1, y1) in boxes:
+        uri = SHORT_URL if kind == "app" else (f"#pagina={page_of[key]}" if page_of and key in page_of else "")
+        add_link(page, (x0 * fx, y0 * fy, x1 * fx, y1 * fy), uri)
+    return page
 
 
 def make_summary(config: dict[str, Any]) -> tuple[Path, str] | None:

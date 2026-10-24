@@ -1,0 +1,76 @@
+{
+  "data": "2026-10-24",
+  "testo": "MENÙ DI SABATO\nPRIMI PIATTI\n●LASAGNA AL FORNO 5,0\n●STROZZAPRETI ALLA BOSCAIOLA ( FUNGHI, PISELLI E GUANCIALE) 5,0\n●ORECCHIETTE FRESCHE CON MELANZANA VIOLETTA, SPECK CROCCANTE E SCAGLIE DI GRANA 5,0\n●FUSILLI CREMOSI AL SALMONE E MAIS 5,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●ROSTBEEF DI CAPOCOLLO IN SALSA DI VERDURE CON PATATE\n●INVOLTINI DI BOMBETTE IN SALSA DI DATTERINO GIALLO\n●POLPETTE DI POLLO CON CAROTE E SPINACI IN SALSA DI PORCINI\n●FILETTO DI ORATA IN CROSTA DI ZUCCHINE, POMODORO CAPPERI E OLIVE\n●OLIVE FRITTE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI SABATO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STROZZAPRETI ALLA BOSCAIOLA ( FUNGHI, PISELLI E GUANCIALE) 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ORECCHIETTE FRESCHE CON MELANZANA VIOLETTA, SPECK CROCCANTE E SCAGLIE DI GRANA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FUSILLI CREMOSI AL SALMONE E MAIS 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ROSTBEEF DI CAPOCOLLO IN SALSA DI VERDURE CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INVOLTINI DI BOMBETTE IN SALSA DI DATTERINO GIALLO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI POLLO CON CAROTE E SPINACI IN SALSA DI PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FILETTO DI ORATA IN CROSTA DI ZUCCHINE, POMODORO CAPPERI E OLIVE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●OLIVE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
