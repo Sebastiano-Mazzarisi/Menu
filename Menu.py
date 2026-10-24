@@ -4462,12 +4462,12 @@ def summary_caption(data: dict[str, Any]) -> str:
     """Didascalia dell'UNICO post della Pagina (dal 22/10/2026), es.
         Ultimo aggiornamento sabato 24 ottobre 2026 - 11:01
         Clicca su uno di questi link o su [Scopri di più].
-        __________________________________________________________   (58 trattini bassi)
+        ______________________________________   (58 trattini bassi)
         PDF - https://menurosticcerie.github.io/menu.pdf
         VIDEO - https://menurosticcerie.github.io/video.mp4
         WEBAPP - https://tinyurl.com/menurosticcerie
         MP3 - https://menurosticcerie.github.io/ascolta.html
-        _________________________________________________________    (57 trattini bassi)
+        ______________________________________    (57 trattini bassi)
         .
     Formato scelto da Nino il 24/10/2026 (CAPTION_TOP, CAPTION_BOTTOM, riga finale ".").
     Il link MP3 apre ascolta.html (audio in sottofondo + pagine del PDF), non il file mp3.
