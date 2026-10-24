@@ -1982,3 +1982,10 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   pagina di menu.pdf ogni pulsante di rosticceria porta all'inizio della sua pagina (link interni
   "#pagina=N" in save_pdf). PDF e video si rifanno da soli al giro successivo (l'impronta comprende
   Menu.py). Copia precedente: backup\Menu_2026-10-24_prima-link-pdf.py
+- 24/10/2026 (09:15): MISURA DEI TEMPI nel registro. Dopo ogni fase una riga rientrata
+  "  [tempo] <fase>: N s (ore hh:mm:ss)" (tick() e TIMER, vicino ad AUTO_LOG): controllo delle
+  rosticcerie, pagina Menu.html, invio del sito Menu, pagine dei PDF, PDF dei locali, pagina
+  riepilogativa, menu.pdf, video, ascolta.html, invio del sito dei PDF, immagine e pubblicazione del
+  post, statistiche, avvisi e, nel giro automatico, "TOTALE del giro". Non cambia il funzionamento:
+  serve a capire quale fase rallenta prima di toccarla. Righe rientrate = solo nel registro, il
+  Monitor e la finestra DOS le ignorano.

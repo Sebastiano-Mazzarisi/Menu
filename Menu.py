@@ -3044,6 +3044,19 @@ def add_shop(config: dict[str, Any]) -> None:
 AUTO_LOG = DATA / "automatico.log"
 AUTO_LOCK = DATA / "automatico.lock"
 
+# Misura dei tempi: nel registro, dopo ogni fase, una riga "  [tempo] <fase>: N s (ore hh:mm:ss)"
+# (rientrata: il Monitor non la confonde con le righe che legge). Serve a vedere quale fase rallenta
+# il giro; non cambia niente del funzionamento. TIMER = inizio della fase in corso e del giro.
+TIMER = {"fase": time.time(), "giro": time.time()}
+
+
+def tick(label: str, total: bool = False) -> None:
+    """Scrive quanto è durata la fase appena finita (o tutto il giro, con total=True)."""
+    now = time.time()
+    seconds = now - TIMER["giro" if total else "fase"]
+    print(f"  [tempo] {label}: {seconds:.0f} s (ore {datetime.now():%H:%M:%S})")
+    TIMER["fase"] = now
+
 
 def schedule_plan(settings: dict[str, Any]) -> dict[str, Any]:
     """Orari del controllo automatico, da locali.json > impostazioni > automatico:
@@ -4063,7 +4076,9 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
             and (PDF_SITE_DIR / COMPLETE_PDF).is_file() and (PDF_SITE_DIR / COMPLETE_VIDEO).is_file():
         print("Menu completo (PDF e video): niente di nuovo da pubblicare.")
         return True
+    TIMER["fase"] = time.time()
     pages = all_shop_pages(config)
+    tick("pagine dei PDF (immagini A4)")
     if not pages:
         return False
     PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
@@ -4071,13 +4086,16 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
           f"Menu completo: PDF di {len(pages)} locali, PDF unico (con la pagina riepilogativa) e video...")
     for page in pages:
         save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
+    tick("PDF dei singoli locali")
     try:  # primo foglio del PDF unico e prima immagine del video: la pagina riepilogativa (A4)
         # i suoi pulsanti portano alla pagina del locale: riepilogo = pagina 1, i locali dalla 2
         page_of = {str(page["entry"]["id"]): number for number, page in enumerate(pages, 2)}
         pages = [{"entry": {"id": "riepilogo"}, "tipo": "riepilogo", "a4": summary_a4_page(config, page_of)}] + pages
     except Exception as exc:
         print(f"Pagina riepilogativa non creata: {exc}")
+    tick("pagina riepilogativa (prima pagina)")
     save_pdf([page["a4"] for page in pages], PDF_SITE_DIR / COMPLETE_PDF)
+    tick("PDF unico menu.pdf")
     (PDF_SITE_DIR / "mappa.html").write_text(MAP_PAGE_HTML, encoding="utf-8")  # link degli indirizzi
     song, online = ROOT / SONG, PDF_SITE_DIR / SITE_SONG  # musica dell'app (Menu.mp3) sul sito dei PDF:
     if song.is_file() and not online.is_file():           # file fisso, copiato UNA volta sola
@@ -4091,14 +4109,18 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
         print(f"PDF pubblicati: {pdf_site(config.get('impostazioni', {}))[0]}{COMPLETE_PDF}" if ok else "PDF NON pubblicati.")
         return ok
     video = make_pdf_video(pages, PDF_SITE_DIR / COMPLETE_VIDEO)
+    tick("video")
     try:  # pagina del link MP3: audio in sottofondo mentre si guardano le pagine
         write_listen_page(pages)
     except Exception as exc:
         print(f"Pagina ascolta.html non creata: {exc}")
+    tick("pagina ascolta.html")
     (PDF_SITE_DIR / "index.html").write_text(INDEX_PAGE_HTML, encoding="utf-8")
     for name in OLD_VIDEO_FILES:
         remove_file(PDF_SITE_DIR / name)
-    if not publish_pdf_site():
+    sent = publish_pdf_site()
+    tick("invio del sito dei PDF a GitHub")
+    if not sent:
         return False
     save_json(COMPLETE_STATE, {"impronta": stamp, "ora": datetime.now().isoformat(timespec="seconds"),
                                "locali": sum(1 for page in pages if page["tipo"] != "riepilogo"), "pronti": sum(1 for page in pages if page["tipo"] == "menu"),
@@ -4931,7 +4953,9 @@ def daily_summary(config: dict[str, Any], force: bool = False, refresh_pdf: bool
                 return  # PDF e video rifatti: publish_complete ha già ripubblicato il post
         except Exception as exc:
             print(f"PDF non aggiornato prima del post del giorno: {exc}")
+    TIMER["fase"] = time.time()
     made = make_summary(config)
+    tick("immagine del post del giorno")
     if not made:
         state.update({"creato": False, "da_ripubblicare": True})
         save_json(SUMMARY_STATE, state)
@@ -4960,6 +4984,7 @@ def daily_summary(config: dict[str, Any], force: bool = False, refresh_pdf: bool
             keep = {state["pubblicato"], *state.get("foto_ids", [])}
             old = [post for post in state.get("precedenti", []) + [previous] + previous_photos if post and post not in keep]
             state["precedenti"] = delete_facebook_posts(list(dict.fromkeys(old)))
+            tick("pubblicazione su Facebook")
         except LookupError as exc:
             state["errore"] = str(exc)
             print(f"Riassunto NON pubblicato: {exc}. Immagine e testo sono in dati/riassunti")
@@ -5305,13 +5330,16 @@ def main() -> None:
                 print(f"Menu completo non pubblicato: {exc!r}\n{traceback.format_exc()}")
             # il post della Pagina si rifà da solo quando cambiano PDF e video (publish_complete);
             # qui solo se l'ultima pubblicazione su Facebook non è riuscita (al massimo 3 volte)
+            TIMER["fase"] = time.time()
             try:  # follower e visualizzazioni per il Monitor
                 page_stats(show=False)
             except Exception as exc:
                 print(f"Statistiche della Pagina non lette: {exc}")
+            tick("statistiche della Pagina Facebook")
             last = read_json(SUMMARY_STATE, {})
             if last.get("da_ripubblicare") and int(last.get("tentativi", 0)) < 3:
                 daily_summary(fresh, force=True, refresh_pdf=False)
+            tick("TOTALE del giro", total=True)
         except BaseException as exc:  # nel log, non in una finestra che nessuno vede
             import traceback
             print(f"ERRORE: {exc!r}\n{traceback.format_exc()}")
@@ -5425,6 +5453,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     except OSError:
         pass
     previous_records = {item.get("id"): item for item in read_json(STATE, {}).get("results", [])}
+    TIMER["fase"] = TIMER["giro"] = time.time()
     try:
         for shop in shops:
             if args.solo and shop["id"] != args.solo and shop["id"] in previous_records:
@@ -5455,6 +5484,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     finally:
         browser.stop()
         IN_PROGRESS.unlink(missing_ok=True)
+    tick("controllo delle rosticcerie")
     old_state = read_json(STATE, {})
     prints = menu_fingerprints(results)
     names = {shop["id"]: shop["nome"] for shop in shops}
@@ -5473,8 +5503,10 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     make_icons()
     generate_html(settings, shops, results)
     print(f"Creato: {OUTPUT}")
+    tick("pagina Menu.html")
     if args.pubblica:
         publish()
+        tick("invio del sito Menu a GitHub")
         if not getattr(args, "automatico", False):  # il giro automatico lo fa da sé, subito dopo
             try:  # anche i giri a mano (Monitor, Avvia.bat) rifanno PDF e video se qualcosa è cambiato
                 publish_complete(read_json(CONFIG, {}))
@@ -5484,6 +5516,7 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
         print("Novità: " + ", ".join(news))  # anche la finestra di controllo legge questa riga
         beep_three_times()
         notify_phone("Novità: " + ", ".join(news))
+        tick("avvisi (suono e cellulare)")
 
 
 if __name__ == "__main__":
