@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-24",
+  "data": "2026-10-25",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -56,29 +56,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Penne all'amatriciana",
+          "nome": "Fusilli alla puttanesca",
           "prezzo": "€6.50",
-          "descrizione": ""
+          "descrizione": "Olive, capperi, acciughe, aglio e pomodorino"
         },
         {
-          "nome": "Risotto con radicchio e fonduta di gorgonzola",
-          "prezzo": "€7.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Orecchiette con pesto di pomodori (base ricotta) e speck croccante",
+          "nome": "Gnocchi con gorgonzola e pistacchi",
           "prezzo": "€8.00",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con baccalà e cicerchie",
+          "nome": "Orecchiette con funghi porcini, salsiccia e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di ceci",
+          "nome": "Risotto con gamberetti e datterino giallo",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Minestrone di verdure",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Sedano, carote, zucchina, patate, melanzane, piselli e fagiolini. Con o senza pasta"
         }
       ]
     },
@@ -86,13 +86,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di platessa con olive, pomodorino e pan grattato",
-          "prezzo": "€8.50",
+          "nome": "Bocconcini di vitello all'ortolana",
+          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Spezzatino di vitello con patate",
-          "prezzo": "€7.50",
+          "nome": "Filetto di cernia con zucchine",
+          "prezzo": "€8.50",
           "descrizione": ""
         }
       ]
