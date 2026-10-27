@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-26",
+  "data": "2026-10-27",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -41,6 +41,11 @@
           "descrizione": "Melanzane, zucchine, peperoni e cetrioli."
         },
         {
+          "nome": "Cous cous con ceci, cetrioli, carote e speck croccante",
+          "prezzo": "€5.00",
+          "descrizione": ""
+        },
+        {
           "nome": "Riso venere e riso basmati con zucchina, gamberetti e mais",
           "prezzo": "€6.00",
           "descrizione": ""
@@ -56,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Fusilli alla puttanesca",
+          "nome": "Spaghetti alla carbonara",
           "prezzo": "€6.50",
-          "descrizione": "Olive, capperi, acciughe, aglio e pomodorino"
-        },
-        {
-          "nome": "Gnocchi con gorgonzola e pistacchi",
-          "prezzo": "€8.00",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con funghi porcini, salsiccia e pomodorino",
+          "nome": "Risotto con barbabietola e fonduta al gorgonzola",
+          "prezzo": "€7.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Orecchiette con porcini, datterino giallo e noci",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con gamberetti e datterino giallo",
+          "nome": "Cavatelli al grano arso con pesce spada e melanzane",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Minestrone di verdure",
+          "nome": "Zuppa di lenticchie",
           "prezzo": "€6.00",
-          "descrizione": "Sedano, carote, zucchina, patate, melanzane, piselli e fagiolini. Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -86,14 +91,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Bocconcini di vitello all'ortolana",
-          "prezzo": "€7.50",
+          "nome": "Filetto di merluzzo gratinato con battuto di olive e capperi",
+          "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Filetto di cernia con zucchine",
-          "prezzo": "€8.50",
-          "descrizione": ""
+          "nome": "Scaloppe di lonza al limone",
+          "prezzo": "€7.50",
+          "descrizione": "2 pezzi"
         }
       ]
     }
