@@ -1,0 +1,91 @@
+{
+  "data": "2026-10-27",
+  "testo": "MENÙ DI MARTEDÌ\nPRIMI PIATTI\n●PIZZA AL TAGLIO AL PEZZO 2,00\n●MINESTRONE DI VERDURE FRESCHE 5,0\n●PASTA E MINESTRONE 5,0\n●LASAGNETTA CON SUGO DI PORCINI, PROSCIUTTO COTTO E MOZZARELLA 5,5\n●RIGATONCELLO ALLA PARMIGIANA DI MELANZANE 5,0\n●FETTUCCINE AL LIMONE CON TONNO 5,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●ALETTE DI POLLO AL FORNELLO\n●MAXI HAMBURGER DI VITELLO AI FUNGHI MISTI CON PORCINI\n●STRACCETTI DI POLLO AL CURRY\n●POLPETTE DI PANE FRITTE\n●MELANZANE RIPIENE\n●SFORMATO DI ZUCCHINE AL SALMONE CREMOSO E SPINACI",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI MARTEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PIZZA AL TAGLIO AL PEZZO 2,00",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MINESTRONE DI VERDURE FRESCHE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PASTA E MINESTRONE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNETTA CON SUGO DI PORCINI, PROSCIUTTO COTTO E MOZZARELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RIGATONCELLO ALLA PARMIGIANA DI MELANZANE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FETTUCCINE AL LIMONE CON TONNO 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ALETTE DI POLLO AL FORNELLO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MAXI HAMBURGER DI VITELLO AI FUNGHI MISTI CON PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STRACCETTI DI POLLO AL CURRY",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI PANE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MELANZANE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SFORMATO DI ZUCCHINE AL SALMONE CREMOSO E SPINACI",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
