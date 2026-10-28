@@ -1,0 +1,91 @@
+{
+  "data": "2026-10-28",
+  "testo": "MENÙ DI MERCOLEDI\nPRIMI PIATTI\n●MINESTRONE DI VERDURE FRESCHE 5,0\n●BIETOLE ALL'OLIO 5,0\n●PENNETTE ALL'ARRABBIATA 4,5\n●ORECCHIETTE CON CIME DI RAPE 5,5\n●FUSILLI AL PESTO DI ZUCCHINE E GAMBERI 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●TRIPPA IN UMIDO\n●ROASTED PORK ARROSTO ALLE ERBE\n●COSCIA E SOVRAVOSCIA DI POLLO AL FORNO CON PATATE\n●PARMIGIANA\n●MELANZANE RIPIENE\n●FILETTO DI ORATA IN CROSTA DI PATATE\n●CARPACCIO DI SALMONE AL LIME E PREZZEMOLO",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI MERCOLEDI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MINESTRONE DI VERDURE FRESCHE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BIETOLE ALL'OLIO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PENNETTE ALL'ARRABBIATA 4,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ORECCHIETTE CON CIME DI RAPE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FUSILLI AL PESTO DI ZUCCHINE E GAMBERI 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRIPPA IN UMIDO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ROASTED PORK ARROSTO ALLE ERBE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●COSCIA E SOVRAVOSCIA DI POLLO AL FORNO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MELANZANE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FILETTO DI ORATA IN CROSTA DI PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CARPACCIO DI SALMONE AL LIME E PREZZEMOLO",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
