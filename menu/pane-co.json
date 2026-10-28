@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-27",
+  "data": "2026-10-28",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -26,22 +26,22 @@
           "descrizione": "Al pezzo"
         },
         {
-          "nome": "Orzo con caponata di verdure",
+          "nome": "Farro con caponata di verdure",
           "prezzo": "€5.00",
-          "descrizione": "Melanzane, cetrioli, zucchina, peperoni"
+          "descrizione": "Melanzane, cetrioli, zucchina e peperoni."
         },
         {
-          "nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto",
+          "nome": "Funghi pleurotus con bresaola, rucola e grana",
+          "prezzo": "€6.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cous cous con ceci, cetrioli, carote e speck croccante",
           "prezzo": "€5.00",
           "descrizione": ""
         },
         {
-          "nome": "Riso rosso integrale e riso basmati con bresaola e verdure",
-          "prezzo": "€5.00",
-          "descrizione": "Melanzane, zucchine, peperoni e cetrioli."
-        },
-        {
-          "nome": "Cous cous con ceci, cetrioli, carote e speck croccante",
+          "nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto",
           "prezzo": "€5.00",
           "descrizione": ""
         },
@@ -61,27 +61,27 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla carbonara",
+          "nome": "Pasta e patate con provola alla napoletana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con barbabietola e fonduta al gorgonzola",
+          "nome": "Risotto con funghi misti e zafferano",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con porcini, datterino giallo e noci",
+          "nome": "Rigatoni con cavolfiore e pancetta",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con pesce spada e melanzane",
+          "nome": "Spaghetti con pesto di pistacchi e gamberetti",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di lenticchie",
+          "nome": "Zuppa di fagioli",
           "prezzo": "€6.00",
           "descrizione": "Con o senza pasta"
         }
@@ -91,14 +91,19 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di merluzzo gratinato con battuto di olive e capperi",
+          "nome": "Scaloppe di lonza al limone",
+          "prezzo": "€7.50",
+          "descrizione": "2 pezzi"
+        },
+        {
+          "nome": "Trancio di pesce spada con olive e pomodorini",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Scaloppe di lonza al limone",
+          "nome": "Spezzatino di pollo con patate",
           "prezzo": "€7.50",
-          "descrizione": "2 pezzi"
+          "descrizione": "4 pezzi"
         }
       ]
     }
