@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-28",
+  "data": "2026-10-29",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -36,7 +36,7 @@
           "descrizione": ""
         },
         {
-          "nome": "Cous cous con ceci, cetrioli, carote e speck croccante",
+          "nome": "Cous cous e riso rosso integrale con ceci, cetrioli, carote e speck croccante",
           "prezzo": "€5.00",
           "descrizione": ""
         },
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pasta e patate con provola alla napoletana",
+          "nome": "Strozzapreti alla boscaiola",
           "prezzo": "€6.50",
-          "descrizione": ""
+          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
         },
         {
-          "nome": "Risotto con funghi misti e zafferano",
+          "nome": "Risotto con zucca e capocollo croccante",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Rigatoni con cavolfiore e pancetta",
+          "nome": "Gnocchi di patate alla sorrentina",
+          "prezzo": "€8.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cavatellucci con cozze, fagioli e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Spaghetti con pesto di pistacchi e gamberetti",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Zuppa di fagioli",
+          "nome": "Zuppa del casale",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Con orzo, farro, ceci, fagioli e lenticchie Con o senza pasta"
         }
       ]
     },
@@ -91,19 +91,19 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Scaloppe di lonza al limone",
-          "prezzo": "€7.50",
-          "descrizione": "2 pezzi"
-        },
-        {
-          "nome": "Trancio di pesce spada con olive e pomodorini",
+          "nome": "Filetto di pesce persico con vongole e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Spezzatino di pollo con patate",
+          "nome": "Alette di pollo al forno con patate",
           "prezzo": "€7.50",
           "descrizione": "4 pezzi"
+        },
+        {
+          "nome": "Bocconcini di vitello con verdurine",
+          "prezzo": "€7.50",
+          "descrizione": ""
         }
       ]
     }
