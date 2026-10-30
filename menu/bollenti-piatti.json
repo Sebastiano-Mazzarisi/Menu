@@ -1,0 +1,96 @@
+{
+  "data": "2026-10-30",
+  "testo": "MENÙ DI VENERDÌ\nPRIMI PIATTI\n●FAVE BIANCHE 4,0\n●FAVE E CICORIA 5,0\n●FAVE E CORNALETTI 5,0\n●LASAGNA AL FORNO 5,0\n●TORTIGLIONI CON PESTO DI MELANZANE VIOLETTE, SPECK E SCAGLIE DI GRANA 5,5\n●LINGUINE AGLI SCAMPI 6,0\nSECONDI PIATTI\n●SPIEDINO DI ROTELLE DI CARNE MACINATA CON SPINACI, COTTO, SCAMORZA, PURÉ DI PATATE AL FORNO\n●PANZEROTTO DI POLLO CON PROSCIUTTO E GALBANINO CON CONTORNO DI PISELLI E CAROTE\n●ZAMPINA ARROSTO\n●PEPERONI RIPIENI AL TONNO\n●FUNGHI PLEOS GRATINATI CON POMODORINI\n●TRANCI DI CERNIA IN CREMA DI ZUCCA\n●PARMIGIANA\n●POLPETTE DI PANE AL SUGO",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI VENERDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE BIANCHE 4,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE E CICORIA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE E CORNALETTI 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TORTIGLIONI CON PESTO DI MELANZANE VIOLETTE, SPECK E SCAGLIE DI GRANA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LINGUINE AGLI SCAMPI 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPIEDINO DI ROTELLE DI CARNE MACINATA CON SPINACI, COTTO, SCAMORZA, PURÉ DI PATATE AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PANZEROTTO DI POLLO CON PROSCIUTTO E GALBANINO CON CONTORNO DI PISELLI E CAROTE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ZAMPINA ARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PEPERONI RIPIENI AL TONNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FUNGHI PLEOS GRATINATI CON POMODORINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRANCI DI CERNIA IN CREMA DI ZUCCA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI PANE AL SUGO",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
