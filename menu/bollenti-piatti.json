@@ -1,0 +1,76 @@
+{
+  "data": "2026-10-31",
+  "testo": "MENÙ DI SABATO\nPRIMI PIATTI\n●LASAGNA AL FORNO 5,0\n●RAVIOLI ALLA ZUCCA IN SALSA AURORA CON GUANCIALE CROCCANTE 5,5\n●FUSILLI CON GAMBERI E PESTO DI BASILICO 5,5\n●LINGUINE AGLI SCAMPI 6,0\nSECONDI PIATTI\n●COSCE DI POLLO AL FORNO CON PATATE\n●BRACIOLETTE IN UMIDO CON POMODORINI, SCALOGNO, PISELLI E CAROTE\n●FAGOTTO DI CARNE CON PROSCIUTTO E GALBANINO CON FUNGHI MISTI CON PORCINI\n●PARMIGIANA\n●INVOLTINI DI ZUCCHINE AL SALMONE GRATINATI AL FORNO\n●POLPETTE DI PANE FRITTE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI SABATO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RAVIOLI ALLA ZUCCA IN SALSA AURORA CON GUANCIALE CROCCANTE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FUSILLI CON GAMBERI E PESTO DI BASILICO 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LINGUINE AGLI SCAMPI 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●COSCE DI POLLO AL FORNO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BRACIOLETTE IN UMIDO CON POMODORINI, SCALOGNO, PISELLI E CAROTE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAGOTTO DI CARNE CON PROSCIUTTO E GALBANINO CON FUNGHI MISTI CON PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INVOLTINI DI ZUCCHINE AL SALMONE GRATINATI AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI PANE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
