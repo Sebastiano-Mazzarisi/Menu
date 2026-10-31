@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-30",
+  "data": "2026-10-31",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pennette all'arrabbiata",
+          "nome": "Spaghetti alla San Giovanni",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+          "descrizione": "Con acciughe, capperi, pomodorino e aglio"
         },
         {
-          "nome": "Tagliolino con asparagi e speck",
+          "nome": "Risotto con zucca e speck croccante",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con vellutata di cavolfiore e battuto di salsiccia",
+          "nome": "Gnocchi con gorgonzola e pistacchi",
+          "prezzo": "€8.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cavatellucci con cernia e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con ragù di mare",
-          "prezzo": "€8.50",
-          "descrizione": "Vongole, cozze, cernia, gamberetti e pomodoro."
-        },
-        {
-          "nome": "Minestra di piselli",
+          "nome": "Zuppa di legumi misti",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Con orzo, farro, ceci, fagioli e lenticchie Con o senza pasta"
         }
       ]
     },
@@ -91,13 +91,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Trancio di baccalà gratinato con battuto di olive e capperi",
-          "prezzo": "€8.50",
+          "nome": "Straccetti di lonza alla boscaiola",
+          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Straccetti di capocollo con funghi misti",
-          "prezzo": "€7.50",
+          "nome": "Filetto di platessa alla pizzaiola",
+          "prezzo": "€8.50",
           "descrizione": ""
         }
       ]
