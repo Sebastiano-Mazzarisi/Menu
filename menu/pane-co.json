@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-31",
+  "data": "2026-11-01",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla San Giovanni",
+          "nome": "Pennette all'arrabbiata",
           "prezzo": "€6.50",
-          "descrizione": "Con acciughe, capperi, pomodorino e aglio"
+          "descrizione": "Salsa di pomodoro, olio e peperoncino"
         },
         {
-          "nome": "Risotto con zucca e speck croccante",
-          "prezzo": "€7.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Gnocchi con gorgonzola e pistacchi",
-          "prezzo": "€8.00",
-          "descrizione": ""
-        },
-        {
-          "nome": "Cavatellucci con cernia e pomodorino",
+          "nome": "Cavatelli al grano arso con zucca e salsiccia",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di legumi misti",
+          "nome": "Orecchiette con vellutata di cavolfiore e capocollo croccante",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Risotto con ragù di mare (cernia, gamberetti, cozze, vongole e pomodorino)",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Minestra di piselli",
           "prezzo": "€6.00",
-          "descrizione": "Con orzo, farro, ceci, fagioli e lenticchie Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -91,14 +91,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Straccetti di lonza alla boscaiola",
-          "prezzo": "€7.50",
+          "nome": "Filetto di merluzzo gratinato con zucchina",
+          "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Filetto di platessa alla pizzaiola",
-          "prezzo": "€8.50",
-          "descrizione": ""
+          "nome": "Spezzatino di vitello all'ortolana",
+          "prezzo": "€7.50",
+          "descrizione": "Sedano, cipolla, carote, zucchina e patate."
         }
       ]
     }
