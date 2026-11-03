@@ -277,6 +277,7 @@
       "id": "guaglio",
       "nome": "Guagliò",
       "riposo": ["lunedì"],
+      "menu_fisso": {"giorni": ["martedì", "mercoledì", "giovedì", "venerdì"]},
       "telefono": "342-843.21.21",
       "indirizzo": "Via Conversano 3, 70017 Putignano (BA)",
       "comune": "Putignano",

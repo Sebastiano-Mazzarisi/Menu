@@ -1167,6 +1167,36 @@ def rest_days(shop: dict[str, Any]) -> set[int]:
     return configured | set(read_json(REST_STATE, {}).get(shop["id"], []))
 
 
+def fixed_menu_days(shop: dict[str, Any]) -> set[int]:
+    """Giorni in cui vale il "menu fisso" del locale (locali.json: "menu_fisso": {"giorni":
+    ["martedì", "mercoledì", "giovedì", "venerdì"]}): numeri 0 = lunedì. Vuoto se non c'è."""
+    names = (shop.get("menu_fisso") or {}).get("giorni", [])
+    return {WEEKDAYS[name.strip().lower()[:3]] for name in names if name.strip()[:3].lower() in WEEKDAYS}
+
+
+def fixed_menu_valid(shop: dict[str, Any], published: date | None, today: date | None = None) -> bool:
+    """True se un menu pubblicato il giorno "published" vale ancora oggi come menu fisso: oggi è
+    uno dei giorni del menu fisso e il menu è di questa settimana (pubblicato da domenica scorsa
+    in poi, mai nel futuro). Es. Guagliò: menu del martedì valido anche mercoledì-venerdì."""
+    today = today or date.today()
+    days = fixed_menu_days(shop)
+    if not days or published is None or today.weekday() not in days:
+        return False
+    week_start = today - timedelta(days=today.weekday() + 1)  # domenica prima del lunedì
+    return week_start <= published <= today
+
+
+def apply_fixed_menu(shop: dict[str, Any], result: Result) -> Result:
+    """Menu fisso: il menu di questa settimana (es. pubblicato martedì) diventa il menu di OGGI
+    in tutti i giorni indicati in "menu_fisso", così sito, PDF, video e post lo mostrano tutta la
+    settimana come per gli altri locali. Fuori da quei giorni non cambia niente."""
+    if result.image and result.menu_day and result.menu_day != date.today() \
+            and fixed_menu_valid(shop, result.menu_day):
+        print(f"  {shop['nome']} - menu fisso del {result.menu_day:%d/%m}: vale anche oggi")
+        return Result(result.image, date.today(), result.source, result.checked_at, result.error)
+    return result
+
+
 def rest_day_sign(shop: dict[str, Any], target: Path) -> None:
     """Salva il cartello "CHIUSO" (vedi rest_day_sign_image) come foto del menu del giorno di riposo."""
     rest_day_sign_image(shop).save(target, quality=92, optimize=True)
@@ -1579,7 +1609,7 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     # letta il 17/10: non è mai il menu di oggi. Se la stessa foto era già stata salvata come
     # menu, viene tolta (discard_wrong_menu)
     old = browser.last_posted
-    if old and (date.today() - old).days >= 2:
+    if old and (date.today() - old).days >= 2 and not fixed_menu_valid(shop, old):  # menu fisso: vale tutta la settimana
         discard_wrong_menu(shop, folder, image)
         raise NotAMenu(f"post vecchio, pubblicato il {old:%d/%m}")
     # controllo approfondito (clic sul locale nel Monitor), secondo passaggio: si parte dall'idea
@@ -1774,7 +1804,7 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
         if closed:
             print(f"  {shop['nome']} - avviso di chiusura (foto) dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
             return Result(save_closure(folder, closed, image), date.today(), result.source, checked)
-    return result
+    return apply_fixed_menu(shop, result)
 
 
 def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, online: bool,

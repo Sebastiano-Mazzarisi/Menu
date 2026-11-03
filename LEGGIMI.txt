@@ -156,6 +156,9 @@ FILE GENERATI E PUBBLICATI SU GITHUB (repository Sebastiano-Mazzarisi/Menu, GitH
     "nome": "Fantasia",                   mostrato ovunque
     "nomi_precedenti": [...],             facoltativo (vecchi nomi, per riconoscere i menu)
     "riposo": ["domenica"],               giorni di riposo fissi (cartello CHIUSO)
+    "menu_fisso": {"giorni": [...]},      facoltativo: lo STESSO menu vale in tutti quei giorni della
+                                          settimana in cui è stato pubblicato (es. Guagliò, menu pranzo
+                                          dal martedì al venerdì). Vedi storia 03/11/2026.
     "telefono": "080-405.41.39",          mostrato e cliccabile (tel:) nel sito e nei PDF
     "indirizzo": "Via ..., 70017 Putignano (BA)",  COMPLETO: mostrato nei PDF, link alla mappa
     "comune": "Putignano",                pulsanti dei Comuni nel sito
@@ -2122,3 +2125,12 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   I loghi non c'erano: aggiunta save_missing_logo (vedi capitolo 3), che li scarica da sola al primo
   giro in loghi\<id>.jpg. Nuovi pulsanti dei Comuni: Gioia del Colle, Monopoli, Rutigliano.
   Copie precedenti: backup\Menu_2026-11-03_prima-dei-nuovi-locali.py, backup\locali_2026-11-03_prima-dei-nuovi-locali.json
+- 03/11/2026 (13:00): MENU FISSO PER PIU' GIORNI. Guagliò pubblica una volta il menu del pranzo che vale
+  dal martedì al venerdì. Nuovo campo facoltativo di locali.json: "menu_fisso": {"giorni": ["martedì",
+  "mercoledì", "giovedì", "venerdì"]}. Funzioni nuove: fixed_menu_days, fixed_menu_valid (il menu è di
+  questa settimana, pubblicato da domenica scorsa in poi, e oggi è uno dei giorni) e apply_fixed_menu,
+  chiamata alla fine di acquire: in quei giorni il menu della settimana diventa "menu di oggi" (sito,
+  PDF, video, post del giorno). In browser_result il controllo "post vecchio (2 o più giorni fa)" non
+  scarta più un post che vale come menu fisso. Fuori dai giorni indicati (sabato, domenica, lunedì) il
+  locale resta "in arrivo" oppure CHIUSO nei giorni di "riposo". Vale per qualsiasi locale.
+  Copia precedente: backup\Menu_2026-11-03_prima-del-menu-fisso.py
