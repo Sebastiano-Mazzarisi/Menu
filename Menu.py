@@ -190,7 +190,11 @@ def expand_more(page: Any, selector: str) -> None:
 
 
 def clean_post_text(text: str) -> str:
-    """Toglie i comandi di Facebook rimasti in fondo al testo: "… Altro...", "Vedi meno", "See less"."""
+    """Toglie i comandi di Facebook rimasti in fondo al testo: "… Altro...", "Vedi meno", "See less".
+    Le lettere "decorative" che molti locali usano nei post (𝐌𝐄𝐍𝐔, 𝟑 𝐍𝐎𝐕𝐄𝐌𝐁𝐑𝐄, 𝑨𝑵𝑪𝑯𝑬) diventano
+    lettere e numeri normali (NFKC), altrimenti i controlli "è un menu?" non le riconoscono."""
+    import unicodedata
+    text = "".join(unicodedata.normalize("NFKC", c) if 0x1D400 <= ord(c) <= 0x1D7FF else c for c in (text or ""))
     return re.sub(r"\s*(…|\.\.\.)?\s*(altro|mostra altro|see more|vedi meno|mostra meno|see less)\s*(\.\.\.|…)?\s*$",
                   "", text or "", flags=re.IGNORECASE).strip()
 
@@ -1604,12 +1608,19 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     if browser is None:
         raise RuntimeError("browser non disponibile")
     image = browser.capture(shop, source)
-    if image is None:  # post solo testo
-        return text_post_result(shop, source, folder, browser.last_text, checked, browser.last_posted)
     excluded = [word for word in source.get("parole_escluse", []) if word and word.lower() in (browser.last_text or "").lower()]
     if excluded:
         # post del locale che non è il menu del giorno (es. Guagliò: "degustazione" della domenica)
+        if image is not None:
+            discard_wrong_menu(shop, folder, image)
+        for wrong in folder.glob("*_testo.json"):  # lo stesso post salvato prima come menu scritto
+            if excluded[0].lower() in str(read_json(wrong, {}).get("testo", "")).lower():
+                DISCARDED.mkdir(parents=True, exist_ok=True)
+                wrong.replace(DISCARDED / f"{shop['id']}_{wrong.name}")
+                print(f"  {shop['nome']} - tolto {wrong.name} (non era il menu): ora in dati/scartati")
         raise NotAMenu(f"post escluso (contiene \"{excluded[0]}\")")
+    if image is None:  # post solo testo
+        return text_post_result(shop, source, folder, browser.last_text, checked, browser.last_posted)
     if source.get("menu_nel_testo") and (browser.last_text or "").strip():
         # il locale scrive il menu nel testo del post e le foto sono solo piatti (es. Da Giuseppe,
         # "PRANZO DI OGGI DA GIUSEPPE!" + elenco): vale il testo, la foto resta in dati/catture
@@ -1836,7 +1847,29 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
         if closed:
             print(f"  {shop['nome']} - avviso di chiusura (foto) dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
             return Result(save_closure(folder, closed, image), date.today(), result.source, checked)
-    return apply_fixed_menu(shop, result)
+    return apply_fixed_menu(shop, photo_as_text(shop, result, folder))
+
+
+def photo_as_text(shop: dict[str, Any], result: Result, folder: Path) -> Result:
+    """"foto_come_testo": true in locali.json (es. Sfizi, che pubblica il menu come una schermata
+    di testo con "Buongiorno e buon appetito... Ecco il menù del giorno" in testa e "Attenzione!!
+    allergeni" in fondo): la foto viene letta (OCR), tagliata con le regole "testo" del locale e
+    salvata come AAAA-MM-GG_testo.json. Sito, PDF, video e post mostrano così SOLO i piatti, riga
+    per riga, come per i menu scritti nel post. Se la lettura dà meno di 2 righe resta la foto."""
+    image = result.image
+    if not (shop.get("foto_come_testo") and image and image.suffix.lower() in IMAGE_EXTENSIONS
+            and result.menu_day and not any(mark in image.stem for mark in ("_chiusura", "_riposo"))):
+        return result
+    text = clean_menu_text(ocr_lines(image), shop, read_json(CONFIG, {}).get("impostazioni", {}))
+    lines = [re.sub(r"^[\s\-–—•*_·]+", "", line).strip() for line in text.splitlines()]
+    lines = join_dish_lines([line for line in lines if line])  # "...straccetti di" + "brasciola"
+    if len(lines) < 2:
+        return result
+    path = folder / f"{result.menu_day.isoformat()}_testo.json"
+    save_json(path, {"data": result.menu_day.isoformat(), "testo": "\n".join(lines), "da_foto": image.name,
+                     "sezioni": [{"titolo": "Menu del giorno", "piatti": [
+                         {"nome": line, "prezzo": "", "descrizione": ""} for line in lines]}]})
+    return Result(path, result.menu_day, result.source, result.checked_at, result.error)
 
 
 def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, online: bool,

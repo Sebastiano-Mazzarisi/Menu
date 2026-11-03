@@ -156,6 +156,9 @@ FILE GENERATI E PUBBLICATI SU GITHUB (repository Sebastiano-Mazzarisi/Menu, GitH
     "nome": "Fantasia",                   mostrato ovunque
     "nomi_precedenti": [...],             facoltativo (vecchi nomi, per riconoscere i menu)
     "riposo": ["domenica"],               giorni di riposo fissi (cartello CHIUSO)
+    "foto_come_testo": true,              facoltativo: la foto del menu (tutta scritta, es. Sfizi) viene
+                                          letta, tagliata con le regole "testo" e mostrata come elenco
+                                          di piatti (photo_as_text). Vedi storia 03/11/2026.
     "menu_fisso": {"giorni": [...]},      facoltativo: lo STESSO menu vale in tutti quei giorni della
                                           settimana in cui è stato pubblicato (es. Guagliò, menu pranzo
                                           dal martedì al venerdì). Vedi storia 03/11/2026.
@@ -2161,3 +2164,16 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   = lineMatch del sito): non escono più "Buongiorno e buon appetito con Sfizi..." e "Ecco il menù del
   giorno". Copia precedente: backup\Menu_2026-11-03_prima-di-viaroma-guaglio-sfizi.py,
   backup\locali_2026-11-03_prima-di-viaroma-guaglio-sfizi.json
+- 03/11/2026 (14:00): 1) GUAGLIÒ formattato male: il post "LA PAUSA PRANZO AL GUAGLIO'" era scartato
+  perché scritto con lettere "decorative" Unicode (𝐌𝐄𝐍𝐔, 𝟑): i controlli non le riconoscevano, e il
+  programma prendeva il post successivo, la degustazione di domenica senza foto, mostrata riga per
+  riga. Ora clean_post_text trasforma quelle lettere in normali (NFKC, per TUTTI i locali); le
+  "parole_escluse" valgono anche per i post senza foto e tolgono il vecchio _testo.json sbagliato;
+  per Guagliò "parole_menu" con "pausa pranzo" e "aperti a pranzo". 2) SFIZI mostrava ancora le righe
+  di saluto: il menu è una FOTO (schermata di testo), quindi sito, PDF e video la mostravano intera.
+  Nuovo campo del locale "foto_come_testo": true -> photo_as_text (in acquire) legge la foto con
+  l'OCR, applica le regole "testo" (dopo "Ecco il menù del giorno", prima di "Attenzione!!"), toglie
+  i trattini "_", riunisce i piatti spezzati su due righe (join_dish_lines) e salva
+  AAAA-MM-GG_testo.json: si vedono solo i piatti. Se l'OCR legge meno di 2 righe resta la foto.
+  Copia precedente: backup\Menu_2026-11-03_prima-di-foto-come-testo.py,
+  backup\locali_2026-11-03_prima-di-foto-come-testo.json

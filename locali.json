@@ -212,6 +212,7 @@
     {
       "id": "sfizi",
       "nome": "Sfizi - La cucina di casa",
+      "foto_come_testo": true,
       "telefono": "320-295.21.81",
       "indirizzo": "Via Rosselli 22, 70014 Conversano (BA)",
       "comune": "Conversano",
@@ -284,7 +285,7 @@
       "url": "https://www.facebook.com/guaglioputignano",
       "logo": "guaglio.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/guaglioputignano", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_escluse": ["degustazione", "festeggia", "laurea", "compleanno", "evento"], "attiva": true},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/guaglioputignano", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "pausa pranzo", "aperti a pranzo"], "parole_escluse": ["degustazione", "festeggia", "laurea", "compleanno", "evento"], "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },
