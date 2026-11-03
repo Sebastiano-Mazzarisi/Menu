@@ -256,7 +256,7 @@
       "url": "https://www.facebook.com/profile.php?id=100064619451437",
       "logo": "dagiuseppe.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=100064619451437", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "pranzo di oggi", "pranzo"], "menu_nel_testo": true, "testo_dopo": "aspettano oggi|men[uù] di oggi|pranzo di oggi", "testo_prima_di": "^dai sapori|alimentari da giuseppe|^via |prenota|#", "attiva": true},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=100064619451437", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "pranzo di oggi", "pranzo"], "menu_nel_testo": true, "testo_dopo": "aspettano oggi|abbiamo preparato|pronte da gustare|men[uù] di oggi|pranzo di oggi", "testo_prima_di": "^dai sapori|^passa |alimentari da giuseppe|^via |prenota|#", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },
@@ -269,7 +269,7 @@
       "url": "https://www.facebook.com/Viaromagastronomia",
       "logo": "viaroma.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/Viaromagastronomia", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/Viaromagastronomia", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "menu_nel_testo": true, "testo_dopo": "^men[uù] d", "testo_prima_di": "^aperto a pranzo|per info|ordinazioni|^\\d{3}", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },
@@ -284,7 +284,7 @@
       "url": "https://www.facebook.com/guaglioputignano",
       "logo": "guaglio.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/guaglioputignano", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/guaglioputignano", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_escluse": ["degustazione", "festeggia", "laurea", "compleanno", "evento"], "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },

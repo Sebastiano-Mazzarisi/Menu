@@ -177,6 +177,8 @@ TIPI DI FONTE ("tipo"), tutte con "attiva": true/false e "nome":
                      menu_nel_testo (true: il menu è il TESTO del post, le foto sono solo piatti),
                      testo_dopo / testo_prima_di (espressioni regolari: quali righe del testo
                      tenere, vedi cut_post_lines; es. Da Giuseppe).
+                     parole_escluse (post da non usare mai come menu, es. Guagliò:
+                     "degustazione", "festeggia"...: si passa al post successivo).
   "storia_facebook"  storia Facebook (es. Le delizie di Michela). Chiavi: url, profilo, canale,
                      fuori_schermo (Chrome vero ma fuori dallo schermo: le storie non vanno headless).
   "pagina"           sito web con il menu scritto (Pane & Co: parse_paneeco). Chiavi: url, sezioni.
@@ -2145,3 +2147,17 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   sapori", indirizzo, "Prenota", hashtag) e "testo_dopo" (ultima riga prima dei piatti: "...ti
   aspettano oggi"): restano solo i piatti. Se una delle due frasi manca, quel taglio non si fa.
   Copia precedente: backup\Menu_2026-11-03_prima-del-menu-nel-testo.py
+- 03/11/2026 (13:40): 1) VIA ROMA GASTRONOMIA: il menu è nel testo del post ("Menù di martedì 3/11/2026"
+  + elenco), le foto sono solo piatti -> "menu_nel_testo" con testo_dopo "^men[uù] d" e testo_prima_di
+  "Aperto a pranzo / per info / ordinazioni / numero di telefono". cut_post_lines ora toglie anche i
+  trattini iniziali ("- Lasagna" -> "Lasagna"). 2) GUAGLIÒ: il 03/11 il programma aveva preso come menu la
+  locandina della degustazione di domenica 8 (post più recente). Nuova chiave "parole_escluse" della
+  fonte browser: un post che le contiene non è mai il menu (si guarda il successivo). Per Guagliò:
+  degustazione, festeggia, laurea, compleanno, evento. Il menu resta la foto "Aperti a pranzo" (come
+  Cibària: foto del menu + testo del post). 3) Da Giuseppe: aggiunte le frasi di inizio "abbiamo
+  preparato", "pronte da gustare" e di fine "Passa da noi / Passa a trovarci" (post del 29/07 e 17/08).
+  4) SFIZI e tutti i locali: le regole "testo" (inizia_da/inizia_dopo/finisce_con/finisce_prima_di)
+  ora valgono anche per i piatti del post del giorno (clean_menu_text -> cut_by_rules, rule_line_match
+  = lineMatch del sito): non escono più "Buongiorno e buon appetito con Sfizi..." e "Ecco il menù del
+  giorno". Copia precedente: backup\Menu_2026-11-03_prima-di-viaroma-guaglio-sfizi.py,
+  backup\locali_2026-11-03_prima-di-viaroma-guaglio-sfizi.json

@@ -1318,7 +1318,8 @@ def cut_post_lines(lines: list[str], source: dict[str, Any]) -> list[str]:
         found = [i for i in range(end) if re.search(source["testo_dopo"], lines[i], re.I)]
         if found:
             start = found[-1] + 1
-    return lines[start:end] or lines
+    kept = lines[start:end] or lines
+    return [re.sub(r"^[\-–—•*_·]+\s*", "", line) for line in kept]  # "- Lasagna" -> "Lasagna"
 
 
 MENU_WORDS = ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti"]
@@ -1605,6 +1606,10 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     image = browser.capture(shop, source)
     if image is None:  # post solo testo
         return text_post_result(shop, source, folder, browser.last_text, checked, browser.last_posted)
+    excluded = [word for word in source.get("parole_escluse", []) if word and word.lower() in (browser.last_text or "").lower()]
+    if excluded:
+        # post del locale che non è il menu del giorno (es. Guagliò: "degustazione" della domenica)
+        raise NotAMenu(f"post escluso (contiene \"{excluded[0]}\")")
     if source.get("menu_nel_testo") and (browser.last_text or "").strip():
         # il locale scrive il menu nel testo del post e le foto sono solo piatti (es. Da Giuseppe,
         # "PRANZO DI OGGI DA GIUSEPPE!" + elenco): vale il testo, la foto resta in dati/catture
@@ -1646,6 +1651,10 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     # l'ultimo post è davvero un menu? (non una pubblicità, una foto di un piatto, ecc.)
     words = source.get("parole_menu", MENU_WORDS)
     seen_all = f"{browser.last_text} {photo_text}"
+    excluded = [word for word in source.get("parole_escluse", []) if word and word.lower() in seen_all.lower()]
+    if excluded:
+        discard_wrong_menu(shop, folder, image)
+        raise NotAMenu(f"post escluso (contiene \"{excluded[0]}\")")
     if words and not any(word in seen_all.lower() for word in words) and not looks_like_dishes(seen_all) \
             and not MENU_PHRASES.search(seen_all):
         discard_wrong_menu(shop, folder, image)
@@ -4288,7 +4297,42 @@ def clean_menu_text(text: str, shop: dict[str, Any], settings: dict[str, Any]) -
             text = text.replace(pair[0], pair[1])
     for word in rules.get("togli", []):
         text = text.replace(word, "")
-    return text
+    return cut_by_rules(text, rules)
+
+
+def rule_line_match(line: str, pattern: str) -> bool:
+    """Come lineMatch del sito: senza maiuscole e accenti la riga COMINCIA con il testo indicato;
+    con "re:" davanti è un'espressione regolare cercata in tutta la riga."""
+    if not pattern:
+        return False
+    plain_line = plain(line).strip()
+    if pattern.lower().startswith("re:"):
+        try:
+            return re.search(pattern[3:], plain_line, re.IGNORECASE) is not None
+        except re.error:
+            return False
+    return plain_line.startswith(plain(pattern).strip())
+
+
+def cut_by_rules(text: str, rules: dict[str, Any]) -> str:
+    """Regole "inizia_da" / "inizia_dopo" / "finisce_con" / "finisce_prima_di" del locale (come
+    applyRules del pulsante "Testo"): così anche il post del giorno, il PDF e il video non riportano
+    le righe di saluto prima del menu (es. Sfizi: "Buongiorno e buon appetito... Ecco il menù del
+    giorno") né quelle dopo ("Attenzione!! allergeni"). Se la riga non c'è si tiene tutto."""
+    lines = text.split("\n")
+    start = 0
+    begin = rules.get("inizia_da") or rules.get("inizia_dopo")
+    if begin:
+        found = next((i for i, line in enumerate(lines) if rule_line_match(line, begin)), None)
+        if found is not None:
+            start = found if rules.get("inizia_da") else found + 1
+    end = len(lines)
+    stop = rules.get("finisce_con") or rules.get("finisce_prima_di")
+    if stop:
+        found = next((i for i in range(start, len(lines)) if rule_line_match(lines[i], stop)), None)
+        if found is not None:
+            end = found + 1 if rules.get("finisce_con") else found
+    return "\n".join(lines[start:end])
 
 
 # parola finale che dice "il nome del piatto continua alla riga dopo" ("Tagliata di manzo, rucola, grana e")
