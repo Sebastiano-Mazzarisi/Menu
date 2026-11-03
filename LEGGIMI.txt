@@ -68,6 +68,8 @@ FILE .BAT (per Nino: doppio clic)
   Prova-riassunto.bat / Pubblica-riassunto.bat   --riassunto-prova / --riassunto
   Prova-meteo.bat / Pubblica-meteo.bat   --meteo-prova (crea e apre l'immagine, non pubblica) /
                             --meteo (pubblica SUBITO il meteo di oggi, sostituendo quello sulla Pagina)
+  Prova-reel.bat / Pubblica-reel.bat   --reel-prova (crea e apre il Reel, non pubblica) /
+                            --reel (pubblica SUBITO il Reel di oggi, sostituendo quello sulla Pagina)
   Collega_GitHub.bat        collega la cartella al repository GitHub "Menu" (una volta sola)
 
 CARTELLE (in .gitignore = restano solo sul PC: profilo, errori, ingresso, archivio, dati, backup,
@@ -2177,3 +2179,22 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   AAAA-MM-GG_testo.json: si vedono solo i piatti. Se l'OCR legge meno di 2 righe resta la foto.
   Copia precedente: backup\Menu_2026-11-03_prima-di-foto-come-testo.py,
   backup\locali_2026-11-03_prima-di-foto-come-testo.json
+- 03/11/2026 (14:30): REEL DEL GIORNO SULLA PAGINA. Nuove funzioni reel_settings, reel_due, reel_frame,
+  make_reel, publish_reel_facebook, reel_post (prima di menus_on_top). Video VERTICALE 9:16 1080x1920,
+  30 fps, audio AAC 48 kHz (musica Facebook\musica-video.* se c'è, altrimenti silenzio: Facebook vuole
+  l'audio), MAI oltre 88 secondi (limite di Facebook: 90): prima la pagina riepilogativa (summary_html
+  alta 1920, 5 secondi), poi SOLO i locali che hanno già il menu di oggi, ognuno tra 3,5 e 6 secondi
+  (si accorcia da solo quando i locali sono tanti), con la data in alto e tinyurl in basso.
+  Pubblicazione con la Reels Publishing API: POST {pagina}/video_reels upload_phase=start ->
+  caricamento su rupload.facebook.com (Authorization: OAuth <token>, offset, file_size) -> finish con
+  video_state=PUBLISHED e description. Stessi permessi del collegamento attuale (pages_manage_posts).
+  Quando: nel giro automatico, dall'ora del riassunto (11:30) una volta; una seconda volta dalle 12:30
+  SOLO se ora ci sono più menu del primo Reel. Ogni Reel nuovo cancella i precedenti (dati\reel\
+  pubblicati.json): sulla Pagina ne resta uno. Dopo il Reel si rifà il post dei menu (daily_summary
+  force) così resta il primo della Pagina. Al massimo 3 tentativi al giorno, poi notifica sul cellulare.
+  File in dati\reel\: AAAA-MM-GG.mp4, .txt (didascalia), -copertina.jpg, stato.json.
+  Impostazioni facoltative: locali.json > impostazioni > "reel": {"attivo": true, "ora": "11:30",
+  "seconda_ora": "12:30", "facebook": true, "secondi_max": 88} ("attivo": false lo spegne).
+  Nuovi comandi --reel-prova / --reel e file Prova-reel.bat / Pubblica-reel.bat.
+  Limite di Facebook: 30 pubblicazioni via API in 24 ore (Reel, post e meteo insieme).
+  Copia precedente: backup\Menu_2026-11-03_prima-del-reel.py

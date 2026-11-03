@@ -5528,6 +5528,204 @@ def weather_post(config: dict[str, Any], force: bool = False) -> None:
 
 
 
+# ------------------------------------------------------------------------------------------------
+# REEL DEL GIORNO SULLA PAGINA FACEBOOK (vedi LEGGIMI.txt > Reel del giorno)
+# Video VERTICALE 9:16 (1080x1920, sotto i 90 secondi come vuole Facebook): pagina riepilogativa e
+# poi SOLO i locali che hanno già il menu di oggi. Pubblicato una volta al giorno all'ora del
+# riassunto (11:30) e al massimo una seconda volta (12:30) se nel frattempo sono arrivati altri
+# menu. Ogni Reel nuovo toglie dalla Pagina quelli vecchi (ne resta uno solo). Dopo il Reel il post
+# dei menu viene rifatto, così resta il primo della Pagina.
+# Impostazioni facoltative in locali.json > impostazioni > "reel":
+#   {"attivo": true, "ora": "11:30", "seconda_ora": "12:30", "facebook": true, "secondi_max": 88}
+# ------------------------------------------------------------------------------------------------
+REELS = DATA / "reel"
+REEL_STATE = REELS / "stato.json"        # {"data", "pubblicati": [{"id", "ora", "pronti"}], "tentativi", "errore"?}
+REEL_HISTORY = REELS / "pubblicati.json"  # id dei Reel ancora sulla Pagina
+REEL_W, REEL_H, REEL_FPS = 1080, 1920, 30
+REEL_FIRST_SECONDS = 5.0                  # pagina riepilogativa
+REEL_PAGE_SECONDS = (3.5, 6.0)            # ogni locale: minimo e massimo
+
+
+def reel_settings(settings: dict[str, Any]) -> dict[str, Any]:
+    plan = {"attivo": True, "ora": summary_settings(settings).get("ora", "11:30"), "seconda_ora": "12:30",
+            "facebook": True, "secondi_max": 88}
+    plan.update(settings.get("reel") or {})
+    return plan
+
+
+def reel_due(config: dict[str, Any]) -> str:
+    """"" se non è ora; "primo" dall'ora del riassunto se oggi non c'è ancora un Reel; "secondo"
+    dalla seconda ora, una volta sola, se ora ci sono più menu di quando è uscito il primo."""
+    plan = reel_settings(config.get("impostazioni", {}))
+    if not plan["attivo"]:
+        return ""
+    now = datetime.now()
+    at = lambda text: now.replace(hour=int(str(text).split(":")[0]), minute=int(str(text).split(":")[1]),
+                                  second=0, microsecond=0)
+    state = read_json(REEL_STATE, {})
+    if state.get("data") != date.today().isoformat():
+        state = {}
+    done = state.get("pubblicati", [])
+    if int(state.get("tentativi", 0)) >= 3 and state.get("errore"):
+        return ""  # tre errori oggi: si riprova domani (o a mano con Pubblica-reel.bat)
+    if not done:
+        return "primo" if now >= at(plan["ora"]) else ""
+    if len(done) == 1 and plan.get("seconda_ora") and now >= at(plan["seconda_ora"]):
+        ready = len(video_shops(config))
+        return "secondo" if ready > int(done[0].get("pronti", 0)) else ""
+    return ""
+
+
+def reel_frame(picture, title: str):
+    """Una pagina del Reel: la pagina del locale (1080x1350, come nel video) al centro di uno
+    sfondo verticale 1080x1920, con la data in alto e l'indirizzo dell'app in basso."""
+    from PIL import Image, ImageDraw
+    frame = Image.new("RGB", (REEL_W, REEL_H), VIDEO_BG)
+    picture = picture.convert("RGB")
+    scale = min(REEL_W / picture.width, 1500 / picture.height)
+    picture = picture.resize((round(picture.width * scale), round(picture.height * scale)), Image.LANCZOS)
+    top = (REEL_H - picture.height) // 2
+    frame.paste(picture, ((REEL_W - picture.width) // 2, top))
+    draw = ImageDraw.Draw(frame)
+    size = 60
+    while size > 30 and draw.textlength(title, font=video_font(size, bold=True)) > REEL_W - 80:
+        size -= 2  # la data deve stare tutta nella larghezza
+    draw.text((REEL_W / 2, top / 2), title, font=video_font(size, bold=True), fill=VIDEO_INK, anchor="mm")
+    draw.text((REEL_W / 2, top + picture.height + (REEL_H - top - picture.height) / 2),
+              "tinyurl.com/menurosticcerie", font=video_font(50, bold=True), fill=(246, 167, 35), anchor="mm")
+    return frame
+
+
+def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path, str, int] | None:
+    """Crea dati/reel/AAAA-MM-GG.mp4 (9:16, 30 fotogrammi al secondo, audio AAC 48 kHz: i requisiti
+    dei Reel di Facebook) e il testo. Restituisce (video, testo, quanti locali hanno il menu)."""
+    from PIL import Image
+    plan = reel_settings(config.get("impostazioni", {}))
+    day = date.today()
+    title = f"Menu di oggi · {SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
+    pages = [page for page in all_shop_pages(config) if page["tipo"] == "menu"]
+    REELS.mkdir(parents=True, exist_ok=True)
+    target = target or REELS / f"{day.isoformat()}.mp4"
+    data = summary_data(config)
+    first = render_summary(data, REELS / f"{day.isoformat()}-copertina.jpg", height=REEL_H)
+    budget = float(plan["secondi_max"]) - REEL_FIRST_SECONDS
+    seconds = max(REEL_PAGE_SECONDS[0], min(REEL_PAGE_SECONDS[1], budget / len(pages))) if pages else 0
+    pages = pages[:int(budget // seconds)] if pages else []  # mai oltre i 90 secondi di Facebook
+    ffmpeg = video_ffmpeg()
+    if not ffmpeg:
+        print("Reel non creato: manca ffmpeg (pip install imageio-ffmpeg).")
+        return None
+    work = Path(tempfile.mkdtemp(prefix="menu-reel-"))
+    try:
+        with Image.open(first) as cover:
+            frames = [(cover.convert("RGB").resize((REEL_W, REEL_H), Image.LANCZOS), REEL_FIRST_SECONDS)]
+        frames += [(reel_frame(page["video"], title), seconds) for page in pages]
+        lines = []
+        for index, (image, duration) in enumerate(frames):
+            image.save(work / f"{index:03d}.png")
+            lines += [f"file '{index:03d}.png'", f"duration {duration:.2f}"]
+        lines.append(f"file '{len(frames) - 1:03d}.png'")
+        (work / "elenco.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        total = sum(duration for _, duration in frames)
+        command = [ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(work / "elenco.txt")]
+        music = next((path for path in VIDEO_MUSIC if path.is_file()), None)
+        if music:
+            command += ["-stream_loop", "-1", "-i", str(music)]
+        else:  # Facebook vuole una traccia audio: silenzio
+            command += ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]
+        command += ["-map", "0:v", "-map", "1:a", "-af", f"afade=t=out:st={max(0.0, total - 2):.2f}:d=2",
+                    "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
+                    "-t", f"{total:.2f}", "-vf", f"fps={REEL_FPS},format=yuv420p", "-c:v", "libx264",
+                    "-preset", "medium", "-crf", "23", "-profile:v", "high", "-level", "4.1",
+                    "-movflags", "+faststart", str(target)]
+        print(f"Creo il Reel: copertina + {len(pages)} locali, {total:.0f} secondi...")
+        done = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    if done.returncode != 0 or not target.is_file():
+        print(f"Reel non creato: ffmpeg ha dato un errore. {(done.stderr or '').strip()[:300]}")
+        return None
+    when = f"{SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
+    text = (f"I menu di oggi, {when}: {len(data['pronti'])} rosticcerie su {data['totale']} "
+            f"hanno già pubblicato il menu del giorno.\nTutti i menu: https://tinyurl.com/menurosticcerie")
+    target.with_suffix(".txt").write_text(text, encoding="utf-8")
+    print(f"Reel pronto: {target.name} ({target.stat().st_size // 1024} KB)")
+    return target, text, len(pages)
+
+
+def publish_reel_facebook(video: Path, text: str) -> str:
+    """Pubblica il video come Reel della Pagina (Reels Publishing API: start, caricamento su
+    rupload.facebook.com, finish con video_state=PUBLISHED). Restituisce l'id del video."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
+    token, version, page = link["token"], link.get("versione", ""), link["pagina_id"]
+    started = facebook_call(f"{page}/video_reels", {"upload_phase": "start", "access_token": token},
+                            version=version, method="POST")
+    video_id = started.get("video_id")
+    if not video_id:
+        raise RuntimeError(f"Facebook non ha dato l'id del Reel: {started}")
+    data = video.read_bytes()
+    request = urllib.request.Request(started.get("upload_url") or f"https://rupload.facebook.com/video-upload/{version or 'v21.0'}/{video_id}",
+                                     data=data, method="POST",
+                                     headers={"Authorization": f"OAuth {token}", "offset": "0", "file_size": str(len(data))})
+    with urllib.request.urlopen(request, timeout=900) as answer:
+        uploaded = json.loads(answer.read().decode("utf-8"))
+    if not uploaded.get("success", True):
+        raise RuntimeError(f"caricamento del Reel non riuscito: {uploaded}")
+    facebook_call(f"{page}/video_reels", {"upload_phase": "finish", "video_id": video_id, "video_state": "PUBLISHED",
+                                          "description": text, "access_token": token}, version=version, method="POST")
+    return str(video_id)
+
+
+def reel_post(config: dict[str, Any], force: bool = False) -> bool:
+    """Reel del giorno (reel_due) oppure subito con force (--reel). Toglie i Reel precedenti e
+    rimette in cima il post dei menu. True se un Reel è stato pubblicato."""
+    plan = reel_settings(config.get("impostazioni", {}))
+    kind = "manuale" if force else reel_due(config)
+    if not kind:
+        return False
+    state = read_json(REEL_STATE, {})
+    if state.get("data") != date.today().isoformat():
+        state = {"data": date.today().isoformat(), "pubblicati": [], "tentativi": 0}
+    TIMER["fase"] = time.time()
+    state["tentativi"] = int(state.get("tentativi", 0)) + 1
+    try:
+        made = make_reel(config)
+        if not made or not plan["facebook"]:
+            return False
+        video, text, ready = made
+        if not ready:
+            print("Reel non pubblicato: oggi nessun locale ha ancora il menu.")
+            return False
+        reel = publish_reel_facebook(video, text)
+        state["pubblicati"].append({"id": reel, "ora": datetime.now().strftime("%H:%M"), "pronti": ready})
+        state.pop("errore", None)
+        state["tentativi"] = 0
+        print(f"Reel pubblicato su Facebook ({kind}): https://www.facebook.com/reel/{reel}")
+        old = [item for item in read_json(REEL_HISTORY, []) if item != reel]
+        save_json(REEL_HISTORY, [reel] + (delete_facebook_posts(old) if old else []))
+        tick("Reel del giorno")
+        try:  # il Reel è il più recente: il post dei menu torna primo
+            daily_summary(config, force=True, refresh_pdf=False)
+        except Exception as exc:
+            print(f"Post dei menu non rimesso in cima dopo il Reel: {exc}")
+        return True
+    except LookupError as exc:
+        state.update({"errore": str(exc), "tentativi": 3})
+        print(f"Reel NON pubblicato: {exc}")
+    except Exception as exc:
+        state["errore"] = str(exc)
+        print(f"Reel NON pubblicato: {exc}")
+        if int(state.get("tentativi", 0)) >= 3:
+            notify_phone(f"Reel non pubblicato: {str(exc)[:120]}")
+    finally:
+        REELS.mkdir(parents=True, exist_ok=True)
+        save_json(REEL_STATE, state)
+    return False
+
+
 def menus_on_top(config: dict[str, Any]) -> None:
     """ORDINE DELLA PAGINA (voluto da Nino il 02/11/2026): 1° il post dei menu, 2° il meteo.
     Facebook mette in cima il post più recente: se il post dei menu è stato pubblicato PRIMA del
@@ -5897,6 +6095,10 @@ def main() -> None:
                         help="Pubblica SUBITO il post del meteo di oggi (sostituisce quello già sulla Pagina).")
     parser.add_argument("--meteo-prova", action="store_true",
                         help="Crea immagine e testo del post del meteo e li apre, senza pubblicare.")
+    parser.add_argument("--reel-prova", action="store_true",
+                        help="Crea il Reel di oggi (video verticale) e lo apre, senza pubblicare.")
+    parser.add_argument("--reel", action="store_true",
+                        help="Pubblica SUBITO il Reel di oggi sulla Pagina (toglie quello precedente).")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
@@ -5960,6 +6162,24 @@ def main() -> None:
         try:
             weather_post(config, force=True)
             menus_on_top(config)  # il post dei menu torna primo, il meteo resta secondo
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
+    if args.reel_prova:  # solo per vedere il Reel: non pubblica, non tocca lo stato
+        made = make_reel(config)
+        if made:
+            print(f"\n{made[1]}")
+            if sys.platform == "win32":
+                os.startfile(made[0])
+        return
+    if args.reel:  # Pubblica-reel.bat: Reel subito (anche se oggi è già stato fatto)
+        start_manual_log("Reel del giorno")
+        if not take_lock():
+            print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
+            return
+        try:
+            reel_post(config, force=True)
+            menus_on_top(config)
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
@@ -6053,6 +6273,10 @@ def main() -> None:
             last = read_json(SUMMARY_STATE, {})
             if last.get("da_ripubblicare") and int(last.get("tentativi", 0)) < 3:
                 daily_summary(fresh, force=True, refresh_pdf=False)
+            try:  # Reel del giorno (11:30, ed eventualmente 12:30 se ci sono altri menu)
+                reel_post(fresh)
+            except Exception as exc:
+                print(f"Reel non pubblicato: {exc!r}")
             try:  # 1° i menu, 2° il meteo: se il giro non ha rifatto il post dei menu lo si rifà qui
                 menus_on_top(fresh)
             except Exception as exc:
