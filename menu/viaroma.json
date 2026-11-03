@@ -1,0 +1,66 @@
+{
+  "data": "2026-11-03",
+  "testo": "Menù di martedì 3/11/2026\n- Zuppa di lenticchie\n- Lasagna classica\n- Rigatoni al ragù\n- Pasta al forno bianca\n- Filetto di sgombro alla mediterranea\n- Scaloppine di pollo al limone\n- Cosce di pollo al forno\n- Roast-beef di vitello\n- Contorni vari\n- Insalate da comporre secondo i propri gusti\n- Focaccia ai dieci cereali e il resto venite a scoprirlo... vi aspettiamo!\nAperto a pranzo e a cena\nper info e ordinazioni\n349 6717644",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Zuppa di lenticchie",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Lasagna classica",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Rigatoni al ragù",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pasta al forno bianca",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Filetto di sgombro alla mediterranea",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Scaloppine di pollo al limone",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cosce di pollo al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Roast-beef di vitello",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Contorni vari",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Insalate da comporre secondo i propri gusti",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Focaccia ai dieci cereali e il resto venite a scoprirlo... vi aspettiamo!",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}

@@ -61,27 +61,27 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla carbonara",
+          "nome": "Pasta e patate con provola alla napoletana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con asparagi e zafferano",
+          "nome": "Risotto con zucca e gorgonzola",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Mezzi rigatoni con gorgonzola e noci",
-          "prezzo": "€7.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Cavatelli al grano arso con fagioli, cozze e pomodorino",
+          "nome": "Rigatoni con cavolfiore e salsiccia a punta di coltello",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di ceci",
+          "nome": "Fusilli con tonno, pomodorini e capperi",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Zuppa di lenticchie",
           "prezzo": "€6.00",
           "descrizione": "Con o senza pasta"
         }
@@ -91,14 +91,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Scaloppe di pollo al limone",
-          "prezzo": "€7.50",
-          "descrizione": "2 pezzi"
-        },
-        {
-          "nome": "Filetto di merluzzo gratinato con battuto di olive e capperi",
+          "nome": "Filetto di baccalà con olive, prezzemolo e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
+        },
+        {
+          "nome": "Bombette di capocollo con funghi misti",
+          "prezzo": "€7.50",
+          "descrizione": "5 pezzi"
         }
       ]
     }
