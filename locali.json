@@ -233,6 +233,72 @@
         },
         {"tipo": "cartella", "attiva": true}
       ]
+    },
+    {
+      "id": "stellablu",
+      "nome": "La Stella Blu",
+      "telefono": "333-800.60.08",
+      "indirizzo": "Via della Repubblica 95, 70015 Noci (BA)",
+      "comune": "Noci",
+      "url": "https://www.facebook.com/lastellablu",
+      "logo": "stellablu.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/lastellablu", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "dagiuseppe",
+      "nome": "Da Giuseppe",
+      "telefono": "375-749.23.62",
+      "indirizzo": "Via Giuseppe Di Vittorio 7, 70023 Gioia del Colle (BA)",
+      "comune": "Gioia del Colle",
+      "url": "https://www.facebook.com/profile.php?id=100064619451437",
+      "logo": "dagiuseppe.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=100064619451437", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "pranzo di oggi", "pranzo"], "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "viaroma",
+      "nome": "Via Roma Gastronomia",
+      "telefono": "349-671.76.44",
+      "indirizzo": "Via Roma 155, 70043 Monopoli (BA)",
+      "comune": "Monopoli",
+      "url": "https://www.facebook.com/Viaromagastronomia",
+      "logo": "viaroma.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/Viaromagastronomia", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "guaglio",
+      "nome": "Guagliò",
+      "riposo": ["lunedì"],
+      "telefono": "342-843.21.21",
+      "indirizzo": "Via Conversano 3, 70017 Putignano (BA)",
+      "comune": "Putignano",
+      "url": "https://www.facebook.com/guaglioputignano",
+      "logo": "guaglio.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/guaglioputignano", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
+    },
+    {
+      "id": "forem",
+      "nome": "Forem Bar",
+      "telefono": "080-476.78.23",
+      "indirizzo": "S.P. 240 Rutigliano-Conversano km 1.2, 70018 Rutigliano (BA)",
+      "comune": "Rutigliano",
+      "url": "https://www.facebook.com/Forembar",
+      "logo": "forem.jpg",
+      "fonti": [
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/Forembar", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "attiva": true},
+        {"tipo": "cartella", "attiva": true}
+      ]
     }
   ]
 }

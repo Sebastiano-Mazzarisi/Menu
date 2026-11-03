@@ -336,6 +336,36 @@ class BrowserCollector:
         page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=60000)
         input("Accedi nei due siti, poi torna qui e premi INVIO...")
 
+    def save_missing_logo(self, shop: dict[str, Any], page: Any) -> None:
+        """Locale nuovo senza logo in loghi\\: salva UNA VOLTA la foto del profilo della sua pagina
+        Facebook (o Instagram) come loghi\\<campo "logo"> (predefinito <id>.jpg). Da quel momento
+        sito, PDF, video e post usano quel logo come per tutti gli altri locali. Per cambiarlo basta
+        sostituire il file in loghi\\ (il programma non lo riscrive più)."""
+        if shop_logo_source(shop) is not None:
+            return
+        try:
+            address = page.evaluate("""() => {
+                const big = [...document.querySelectorAll('svg image')]
+                    .map(x => x.getAttribute('xlink:href') || x.getAttribute('href') || '')
+                    .filter(u => /fbcdn/.test(u) && /ctp=s(1[6-9][0-9]|[2-9][0-9][0-9])x/.test(u));
+                if (big.length) return big[0];
+                const ig = document.querySelector('header img');
+                return ig ? ig.src : '';
+            }""")
+            if not address:
+                print(f"  {shop['nome']} - logo non trovato sulla pagina")
+                return
+            data = page.request.get(address, timeout=30000).body()
+            import io
+            from PIL import Image
+            picture = Image.open(io.BytesIO(data)).convert("RGB")
+            LOGOS.mkdir(parents=True, exist_ok=True)
+            target = LOGOS / Path(shop.get("logo") or f"{shop['id']}.jpg").name
+            picture.save(target, quality=92)
+            print(f"  {shop['nome']} - logo salvato in loghi\\{target.name} ({picture.width}x{picture.height})")
+        except Exception as error:  # il logo non deve mai fermare la lettura del menu
+            print(f"  {shop['nome']} - logo non salvato: {error}")
+
     def capture(self, shop: dict[str, Any], source: dict[str, Any]) -> Path | None:
         self.start(source)
         page = self.context.new_page()
@@ -344,6 +374,7 @@ class BrowserCollector:
             page.goto(source["url"], wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(int(source.get("attesa_secondi", 6)) * 1000)
             dismiss_dialogs(page)
+            self.save_missing_logo(shop, page)
             if source.get("apri_storia"):
                 opened = False
                 if source.get("utente"):

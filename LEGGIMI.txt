@@ -12,8 +12,8 @@
 ================================================================================================
 1. A COSA SERVE
 ================================================================================================
-Menu raccoglie ogni giorno i "menu del giorno" di 13 rosticcerie (Putignano, Noci, Castellana
-Grotte, Conversano, Turi) dalle loro pagine Facebook/Instagram (post o storie) o dai loro siti, e
+Menu raccoglie ogni giorno i "menu del giorno" di 18 rosticcerie (Putignano, Noci, Castellana
+Grotte, Conversano, Turi, Gioia del Colle, Monopoli, Rutigliano) dalle loro pagine Facebook/Instagram (post o storie) o dai loro siti, e
 li pubblica:
   a) in una web app per il cellulare (PWA) su GitHub Pages:
        https://sebastiano-mazzarisi.github.io/Menu/   (link corto pubblico: https://tinyurl.com/menurosticcerie)
@@ -178,6 +178,10 @@ TIPI DI FONTE ("tipo"), tutte con "attiva": true/false e "nome":
   "cartella"         ingresso\<id>\ (foto messe a mano o salvate prima): SEMPRE l'ultima fonte.
 Nuovo locale: python Menu.py --aggiungi (procedura guidata) oppure a mano in locali.json + logo in
 loghi\. Tutto il resto (sito, PDF, video, Comuni, contatori) si adegua da solo.
+Logo mancante (dal 03/11/2026): se il file indicato in "logo" non esiste in loghi\, al primo giro
+la fonte "browser" salva da sola la foto del profilo della pagina Facebook/Instagram del locale
+(BrowserCollector.save_missing_logo) con quel nome. Si fa una volta sola: per cambiarlo basta
+mettere un altro file con lo stesso nome in loghi\.
 
 
 ================================================================================================
@@ -2106,3 +2110,15 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   pubblici. Nuove funzioni open_url (certificati scaduti: riprova con certifi) e short_link.
   Registro_click.gs: azione "suggerimento", funzioni suggerimento, foglioSuggerimenti, provaEmail.
   Copia precedente dello script: backup\Registro_click_2026-11-02_prima-dei-suggerimenti.gs
+- 03/11/2026: CINQUE NUOVI LOCALI (da 13 a 18), trovati cercando su Facebook chi pubblica ogni giorno
+  il menu, tutti con fonte "browser" (ultimo post della pagina Facebook) + "cartella", come gli altri:
+    stellablu   La Stella Blu (pescheria, locandina "Menù del giorno")   Noci           facebook.com/lastellablu
+    dagiuseppe  Da Giuseppe (alimentari, "Pranzo di oggi da Giuseppe")   Gioia del Colle facebook.com/profile.php?id=100064619451437
+                (parole_menu con in più "pranzo di oggi" e "pranzo": il post ha solo foto di piatti)
+    viaroma     Via Roma Gastronomia ("Menù di martedì 3/11/2026")       Monopoli       facebook.com/Viaromagastronomia
+    guaglio     Guagliò (ristorantino, "Aperti a pranzo" mar-ven, riposo lunedì) Putignano facebook.com/guaglioputignano
+                (ha un post "In evidenza" in cima: viene saltato perché non è un menu)
+    forem       Forem Bar (bar-tavola calda, "Menù del giorno")          Rutigliano     facebook.com/Forembar
+  I loghi non c'erano: aggiunta save_missing_logo (vedi capitolo 3), che li scarica da sola al primo
+  giro in loghi\<id>.jpg. Nuovi pulsanti dei Comuni: Gioia del Colle, Monopoli, Rutigliano.
+  Copie precedenti: backup\Menu_2026-11-03_prima-dei-nuovi-locali.py, backup\locali_2026-11-03_prima-dei-nuovi-locali.json
