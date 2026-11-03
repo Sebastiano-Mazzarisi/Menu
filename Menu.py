@@ -4096,6 +4096,10 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     save_pdf([page["a4"] for page in pages], PDF_SITE_DIR / COMPLETE_PDF)
     tick("PDF unico menu.pdf")
     (PDF_SITE_DIR / "mappa.html").write_text(MAP_PAGE_HTML, encoding="utf-8")  # link degli indirizzi
+    try:  # modulo "Suggerisci rosticceria" (link nella didascalia del post dei menu)
+        write_suggest_page(config)
+    except Exception as exc:
+        print(f"Pagina suggerisci.html non scritta: {exc}")
     song, online = ROOT / SONG, PDF_SITE_DIR / SITE_SONG  # musica dell'app (Menu.mp3) sul sito dei PDF:
     if song.is_file() and not online.is_file():           # file fisso, copiato UNA volta sola
         shutil.copy2(song, online)
@@ -4454,22 +4458,24 @@ def summary_caption_time() -> str:
         return datetime.now().strftime("%H:%M")
 
 
-CAPTION_TOP = "_" * 58      # riga sopra i link nella didascalia del post
-CAPTION_BOTTOM = "_" * 57   # riga sotto i link
+CAPTION_TOP = "_" * 38      # riga sopra i link nella didascalia del post (58 fino al 02/11/2026)
+CAPTION_BOTTOM = "_" * 37   # riga sotto i link (57 fino al 02/11/2026)
 
 
 def summary_caption(data: dict[str, Any]) -> str:
     """Didascalia dell'UNICO post della Pagina (dal 22/10/2026), es.
         Ultimo aggiornamento sabato 24 ottobre 2026 - 11:01
         Clicca su uno di questi link o su [Scopri di più].
-        ______________________________________   (58 trattini bassi)
+        ______________________________________   (38 trattini bassi)
         PDF - https://menurosticcerie.github.io/menu.pdf
         VIDEO - https://menurosticcerie.github.io/video.mp4
         WEBAPP - https://tinyurl.com/menurosticcerie
         MP3 - https://menurosticcerie.github.io/ascolta.html
-        ______________________________________    (57 trattini bassi)
+        Suggerisci rosticceria: https://tinyurl.com/suggeriscirosticceria   (dal 02/11/2026)
+        ______________________________________    (37 trattini bassi)
         .
-    Formato scelto da Nino il 24/10/2026 (CAPTION_TOP, CAPTION_BOTTOM, riga finale ".").
+    Formato scelto da Nino il 24/10/2026 (CAPTION_TOP, CAPTION_BOTTOM, riga finale "."); righe
+    accorciate di 20 trattini il 02/11/2026.
     Il link MP3 apre ascolta.html (audio in sottofondo + pagine del PDF), non il file mp3.
     Data e ora = ultima pubblicazione di PDF e video (dati/completo.json)."""
     try:
@@ -4481,7 +4487,8 @@ def summary_caption(data: dict[str, Any]) -> str:
     return (f"Ultimo aggiornamento {day} - {when:%H:%M}\n"
             f"Clicca su uno di questi link o su [Scopri di più].\n{CAPTION_TOP}\n"
             f"PDF - {site}{COMPLETE_PDF}\nVIDEO - {site}{COMPLETE_VIDEO}\nWEBAPP - {SHORT_URL}\n"
-            f"MP3 - {site}{LISTEN_PAGE}\n{CAPTION_BOTTOM}\n.")
+            f"MP3 - {site}{LISTEN_PAGE}\n" + (f"{suggest}\n" if (suggest := suggest_line()) else "")
+            + f"{CAPTION_BOTTOM}\n.")
 
 
 A4_SUMMARY_HEIGHT = round(1080 * 1754 / 1240)   # 1528: pagina riepilogativa con le proporzioni dell'A4
@@ -4876,6 +4883,7 @@ def clean_facebook_posts() -> None:
     except RuntimeError as exc:
         print(f"Non riesco a leggere i post della Pagina: {exc}")
         return
+    weather_ids = set(read_json(WEATHER_HISTORY, [])[:1])  # il post del meteo di oggi resta
     page_photo = re.compile(r"copertina|immagine del profilo|foto del profilo|cover photo|profile picture", re.I)
     remove, keep = [], []
     for post in posts:
@@ -4886,14 +4894,15 @@ def clean_facebook_posts() -> None:
             for sub in item.get("subattachments", {}).get("data", []) or [item]:
                 if sub.get("target", {}).get("id"):
                     media.append(sub["target"]["id"])
-        if post["id"] == keep_id or (not message and page_photo.search(post.get("story", ""))):
+        if post["id"] == keep_id or post["id"] in weather_ids or (
+                not message and page_photo.search(post.get("story", ""))):
             keep.append((post, first, []))
         else:
             remove.append((post, first, media))
     def show(rows):
         for post, first, media in rows:
             print(f"  {post.get('created_time', '')[:16].replace('T', ' ')}  {first[:80] or '(senza testo)'}")
-    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): il post con i link e i cambi di copertina/profilo")
+    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): il post con i link, il meteo e i cambi di copertina/profilo")
     show(keep)
     print(f"\nDA CANCELLARE ({len(remove)}):")
     show(remove)
@@ -4979,6 +4988,7 @@ def daily_summary(config: dict[str, Any], force: bool = False, refresh_pdf: bool
                 state["tentativi"] = int(state.get("tentativi", 0)) + 1
             # dal 22/10/2026 sulla Pagina c'è UN SOLO post: questa immagine con i link a PDF e video
             state["pubblicato"] = publish_summary_facebook(image, text)  # foto verticale intera
+            state["pubblicato_alle"] = datetime.now().isoformat(timespec="seconds")  # per menus_on_top
             print(f"Post del giorno pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}\n   {text}")
             keep_only_summary(state["pubblicato"])  # un solo post del giorno sulla Pagina
             state.pop("errore", None)
@@ -4998,6 +5008,517 @@ def daily_summary(config: dict[str, Any], force: bool = False, refresh_pdf: bool
             print(f"Riassunto NON pubblicato su Facebook: {exc}")
             notify_phone(f"Riassunto Facebook non pubblicato: {str(exc)[:120]}")
     save_json(SUMMARY_STATE, state)
+
+
+# ================================================================================================
+# POST DEL METEO (dal 02/11/2026): ogni mattina, al primo giro automatico dalle 08:00, una foto
+# verticale 1080x1350 con il meteo di oggi a Putignano, con la stessa grafica del Menu (colori,
+# caratteri, logo). Dati gratuiti e senza chiave da Open-Meteo (https://open-meteo.com, licenza
+# CC BY 4.0: va citata, lo fanno immagine e didascalia). Sulla Pagina resta UN SOLO post del meteo
+# (quello di oggi): i precedenti vengono cancellati. Pubblicato PRIMA del controllo delle
+# rosticcerie, così il post del giorno con i menu (rifatto a ogni giro con novità) resta in cima.
+# ================================================================================================
+WEATHER = DATA / "meteo"
+WEATHER_STATE = WEATHER / "stato.json"          # {"data", "pubblicato", "tentativi", "errore"?...}
+WEATHER_HISTORY = WEATHER / "pubblicati.json"   # id dei post del meteo ancora sulla Pagina
+WEATHER_API = "https://api.open-meteo.com/v1/forecast"
+# fasce orarie della striscia in basso: (nome, ora)
+WEATHER_SLOTS = (("Mattina", 9), ("Pranzo", 13), ("Pomeriggio", 17), ("Sera", 21))
+# codici WMO di Open-Meteo -> (descrizione, tipo di icona)
+WEATHER_CODES = {
+    0: ("Sereno", "sole"), 1: ("Quasi sereno", "sole"), 2: ("Poco nuvoloso", "sole_nuvole"),
+    3: ("Nuvoloso", "nuvole"), 45: ("Nebbia", "nebbia"), 48: ("Nebbia con brina", "nebbia"),
+    51: ("Pioggerella", "pioggia"), 53: ("Pioggerella", "pioggia"), 55: ("Pioggerella fitta", "pioggia"),
+    56: ("Pioggerella gelata", "pioggia"), 57: ("Pioggerella gelata", "pioggia"),
+    61: ("Pioggia debole", "pioggia"), 63: ("Pioggia", "pioggia"), 65: ("Pioggia forte", "pioggia"),
+    66: ("Pioggia gelata", "pioggia"), 67: ("Pioggia gelata", "pioggia"),
+    71: ("Neve debole", "neve"), 73: ("Neve", "neve"), 75: ("Neve forte", "neve"), 77: ("Nevischio", "neve"),
+    80: ("Rovesci", "rovesci"), 81: ("Rovesci", "rovesci"), 82: ("Rovesci forti", "rovesci"),
+    85: ("Rovesci di neve", "neve"), 86: ("Rovesci di neve", "neve"),
+    95: ("Temporale", "temporale"), 96: ("Temporale con grandine", "temporale"),
+    99: ("Temporale con grandine", "temporale"),
+}
+WET_CODES = {51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99}
+# venti con il nome che si usa in Puglia (da dove arrivano): N, NE, E, SE, S, SO, O, NO
+WIND_NAMES = ("tramontana", "grecale", "levante", "scirocco", "ostro", "libeccio", "ponente", "maestrale")
+WIND_FROM = ("nord", "nord-est", "est", "sud-est", "sud", "sud-ovest", "ovest", "nord-ovest")
+# sfondo della parte alta secondo il tempo (dal colore del cielo al crema del Menu)
+WEATHER_SKY = {"sole": "#ffd982", "sole_nuvole": "#ffe3a3", "nuvole": "#d9dde3", "nebbia": "#e2e0dc",
+               "pioggia": "#bccbdc", "rovesci": "#c4d2e2", "temporale": "#a9b2c4", "neve": "#e6eef6"}
+
+
+def weather_settings(settings: dict[str, Any]) -> dict[str, Any]:
+    """impostazioni > "meteo" di locali.json (tutte facoltative): attivo, ora (da quando si
+    pubblica), fino_alle (dopo quest'ora, se il PC era spento, il post di oggi si salta),
+    facebook, luogo, latitudine, longitudine."""
+    return {"attivo": True, "ora": "08:00", "fino_alle": "12:00", "facebook": True, "luogo": "Putignano",
+            "latitudine": 40.8510, "longitudine": 17.1220, **settings.get("meteo", {})}
+
+
+def clock_today(text: str) -> datetime:
+    hour, minute = (int(part) for part in str(text).split(":")[:2])
+    return datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+
+def weather_due(settings: dict[str, Any]) -> bool:
+    """È ora del post del meteo? Una volta al giorno, tra "ora" e "fino_alle". Se Facebook non ha
+    risposto si riprova ai giri successivi (al massimo 3 volte)."""
+    plan = weather_settings(settings)
+    if not plan["attivo"] or not plan["facebook"]:
+        return False
+    state = read_json(WEATHER_STATE, {})
+    if state.get("data") == date.today().isoformat() and (
+            state.get("pubblicato") or int(state.get("tentativi", 0)) >= 3):
+        return False
+    return clock_today(plan["ora"]) <= datetime.now() <= clock_today(plan["fino_alle"])
+
+
+def certifi_context(upgrade: bool = False):
+    """Contesto SSL con i certificati aggiornati del pacchetto certifi (installato o aggiornato da
+    solo con pip). Serve quando i certificati di Windows usati da Python sono vecchi
+    ("certificate has expired" / CERTIFICATE_VERIFY_FAILED). None se certifi non si può avere."""
+    import ssl
+    if upgrade:
+        print("Aggiorno i certificati di sicurezza di Python (certifi)...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--upgrade", "certifi"], check=False)
+    for attempt in range(2):
+        try:
+            import importlib
+            import certifi
+            if upgrade:
+                certifi = importlib.reload(certifi)
+            return ssl.create_default_context(cafile=certifi.where())
+        except ImportError:
+            if attempt == 0:
+                print("Installo certifi (certificati di sicurezza aggiornati, serve una sola volta)...")
+                subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "certifi"], check=False)
+    return None
+
+
+def weather_fetch(plan: dict[str, Any]) -> dict[str, Any]:
+    """Previsioni di OGGI da Open-Meteo (giornaliere + orarie), ora di Roma.
+    Se i certificati di Python sul PC sono scaduti si usano quelli di certifi (installato o
+    aggiornato da solo); come ultima possibilità http semplice (sono previsioni pubbliche, nessun
+    dato personale viaggia)."""
+    import ssl
+    import urllib.parse
+    query = urllib.parse.urlencode({
+        "latitude": plan["latitudine"], "longitude": plan["longitudine"], "timezone": "Europe/Rome",
+        "forecast_days": 1, "wind_speed_unit": "kmh",
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,"
+                 "precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,"
+                 "sunrise,sunset,uv_index_max",
+        "hourly": "temperature_2m,weather_code,precipitation_probability,is_day",
+    })
+    url = f"{WEATHER_API}?{query}"
+    # modi di collegarsi, in ordine: certificati del PC, certifi, certifi aggiornato, http semplice
+    ways = [lambda: (url, None), lambda: (url, certifi_context()), lambda: (url, certifi_context(upgrade=True)),
+            lambda: (url.replace("https://", "http://", 1), None)]
+    last: Exception | None = None
+    for way in ways:
+        for attempt in range(2):
+            try:
+                address, context = way()
+                if address.startswith("https://") and context is None and way is not ways[0]:
+                    break  # certifi non disponibile: si passa al modo successivo
+                with urllib.request.urlopen(address, timeout=30, context=context) as answer:
+                    if way is not ways[0]:
+                        print(f"   meteo letto con il modo n. {ways.index(way) + 1} (certificati del PC non validi)")
+                    return json.loads(answer.read().decode("utf-8"))
+            except Exception as exc:
+                last = exc
+                reason = getattr(exc, "reason", exc)
+                if isinstance(reason, ssl.SSLError) or "CERTIFICATE" in str(exc).upper():
+                    break  # problema di certificati: inutile riprovare allo stesso modo
+                time.sleep(5 * (attempt + 1))  # rete lenta al risveglio del PC: si riprova
+    raise RuntimeError(f"Open-Meteo non risponde: {last}")
+
+
+def weather_data(plan: dict[str, Any], raw: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Dati pronti per immagine e testo (numeri arrotondati, nomi in italiano)."""
+    raw = raw or weather_fetch(plan)
+    daily, hourly = raw["daily"], raw["hourly"]
+    hours = {int(stamp[11:13]): index for index, stamp in enumerate(hourly["time"])}
+    code = int(daily["weather_code"][0])
+    rain = int(daily.get("precipitation_probability_max", [0])[0] or 0)
+    if code in WET_CODES and rain < 35:
+        # il codice del giorno è il "peggiore": per poche gocce improbabili si usa il tempo più
+        # frequente tra le 8 e le 20
+        day_codes = [int(hourly["weather_code"][hours[h]]) for h in range(8, 21) if h in hours]
+        dry = [value for value in day_codes if value not in WET_CODES]
+        if dry:
+            code = max(set(dry), key=dry.count)
+    label, kind = WEATHER_CODES.get(code, ("Variabile", "sole_nuvole"))
+    slots = []
+    for name, hour in WEATHER_SLOTS:
+        if hour in hours:
+            index = hours[hour]
+            slot_code = int(hourly["weather_code"][index])
+            slots.append({"nome": name, "ora": f"{hour:02d}", "temp": round(hourly["temperature_2m"][index]),
+                          "pioggia": int(hourly["precipitation_probability"][index] or 0),
+                          "tipo": WEATHER_CODES.get(slot_code, ("", "sole_nuvole"))[1],
+                          "giorno": bool(hourly["is_day"][index])})
+    direction = daily.get("wind_direction_10m_dominant", [None])[0]
+    sector = int(((float(direction) + 22.5) % 360) // 45) if direction is not None else None
+    return {"luogo": plan["luogo"], "giorno": date.today(), "codice": code, "testo": label, "tipo": kind,
+            "max": round(daily["temperature_2m_max"][0]), "min": round(daily["temperature_2m_min"][0]),
+            "pioggia": rain, "mm": round(float(daily.get("precipitation_sum", [0])[0] or 0), 1),
+            "vento": round(daily.get("wind_speed_10m_max", [0])[0] or 0),
+            "raffiche": round(daily.get("wind_gusts_10m_max", [0])[0] or 0),
+            "vento_nome": WIND_NAMES[sector] if sector is not None else "",
+            "vento_da": WIND_FROM[sector] if sector is not None else "",
+            "alba": str(daily["sunrise"][0])[11:16], "tramonto": str(daily["sunset"][0])[11:16],
+            "uv": round(daily.get("uv_index_max", [0])[0] or 0), "fasce": slots}
+
+
+def weather_advice(data: dict[str, Any]) -> str:
+    """Il consiglio della giornata, una frase semplice."""
+    if data["tipo"] == "temporale" or data["pioggia"] >= 60 or data["mm"] >= 2:
+        advice = "Porta l'ombrello"
+    elif data["pioggia"] >= 30:
+        advice = "Ombrello in borsa, non si sa mai"
+    else:
+        advice = "Niente ombrello oggi"
+    if data["raffiche"] >= 50:
+        advice += ", e tieniti forte: c'è vento"
+    elif data["max"] >= 32:
+        advice += ", e bevi tanta acqua: fa caldo"
+    elif data["min"] <= 4:
+        advice += ", e copriti bene: fa freddo"
+    elif data["uv"] >= 8:
+        advice += ", e occhio al sole"
+    return advice
+
+
+def weather_icon(kind: str, day: bool = True) -> str:
+    """Icona SVG disegnata qui (stile del Menu: forme piene e morbide, niente emoji)."""
+    sun = ('<g><circle cx="50" cy="50" r="19" fill="#f6a723"/>' + "".join(
+        f'<rect x="47" y="12" width="6" height="13" rx="3" fill="#f6a723" transform="rotate({a} 50 50)"/>'
+        for a in range(0, 360, 45)) + "</g>")
+    moon = '<path d="M60 22a28 28 0 1 0 22 42A24 24 0 0 1 60 22z" fill="#8a97b5"/>'
+    small_sun = f'<g transform="translate(-8 -10) scale(.78)">{sun if day else moon}</g>'
+    cloud = ('<path d="M30 78h44a16 16 0 0 0 1-32 22 22 0 0 0-42-4 16 16 0 0 0-3 36z" '
+             'fill="{c}" stroke="#ffffff" stroke-width="3"/>')
+    drops = "".join(f'<path d="M{x} 84l-4 9a4 4 0 0 0 8 0z" fill="#2f78c4"/>' for x in (36, 50, 64))
+    flakes = "".join(f'<circle cx="{x}" cy="{y}" r="3.6" fill="#7ea6d8"/>'
+                     for x, y in ((36, 88), (50, 94), (64, 88)))
+    bolt = '<path d="M52 72l-12 18h9l-5 14 15-20h-9l6-12z" fill="#f6a723" stroke="#fff" stroke-width="2"/>'
+    fog = "".join(f'<rect x="{x}" y="{y}" width="{w}" height="7" rx="3.5" fill="#9aa1aa"/>'
+                  for x, y, w in ((20, 42, 60), (14, 56, 72), (24, 70, 56)))
+    body = {
+        "sole": sun if day else moon,
+        "sole_nuvole": small_sun + cloud.format(c="#e9edf2"),
+        "nuvole": '<g transform="translate(10 -12) scale(.8)">' + cloud.format(c="#c9d0d9") + "</g>"
+                  + cloud.format(c="#e1e6ec"),
+        "nebbia": fog,
+        "pioggia": cloud.format(c="#c3ccd7") + drops,
+        "rovesci": small_sun + cloud.format(c="#d3dae2") + drops,
+        "temporale": cloud.format(c="#a8b2c0") + bolt,
+        "neve": cloud.format(c="#dfe5ec") + flakes,
+    }.get(kind, small_sun + cloud.format(c="#e9edf2"))
+    return f'<svg viewBox="0 0 100 106" xmlns="http://www.w3.org/2000/svg">{body}</svg>'
+
+
+def weather_html(data: dict[str, Any]) -> str:
+    """Pagina 1080x1350 da fotografare, PENSATA PER IL CELLULARE (nel feed è larga ~390 punti:
+    nessuna scritta sotto i 28 px). In alto il cielo di oggi (colore secondo il tempo), poi la
+    giornata in quattro fasce, vento/alba/tramonto e il consiglio; in fondo solo la fonte
+    (dal 02/11/2026 senza il richiamo "E a pranzo? I menu delle rosticcerie su ...")."""
+    day = data["giorno"]
+    title = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]}"
+    sky = WEATHER_SKY.get(data["tipo"], "#ffe3a3")
+    slots = "".join(
+        f'<div class="sl"><div class="sn">{html.escape(slot["nome"])}</div><div class="si">'
+        f'{weather_icon(slot["tipo"], slot["giorno"])}</div><div class="st D">{slot["temp"]}°</div>'
+        f'<div class="sp{" hi" if slot["pioggia"] >= 40 else ""}">'
+        f'pioggia {slot["pioggia"]}%</div></div>' for slot in data["fasce"])
+    wind = f'{data["vento"]} km/h'
+    wind_label = f'Vento · {data["vento_nome"]}' if data["vento_nome"] else "Vento"
+    logo = APP_LOGO.as_uri() if APP_LOGO.exists() else ""
+    return f'''<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+*{{box-sizing:border-box}}html,body{{margin:0}}
+.c{{width:1080px;height:1350px;position:relative;overflow:hidden;color:#1e1a16;padding:46px 44px;
+  background:linear-gradient(180deg,{sky} 0,#f4efe6 640px);font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
+.D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
+.hd{{display:flex;align-items:center;gap:24px}}
+.hd img{{width:120px;height:120px;border-radius:26px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.1);object-fit:contain}}
+.kk{{font-size:32px;letter-spacing:.06em;text-transform:uppercase;color:#8a5306;font-weight:700}}
+h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
+.hero{{display:flex;align-items:center;gap:40px;margin-top:70px;padding-left:10px}}
+.big{{width:280px;height:280px;flex:none;filter:drop-shadow(0 8px 14px rgba(60,40,10,.15))}}
+.big svg{{width:100%;height:100%}}
+.cond{{font-size:62px;line-height:1.05;letter-spacing:-.01em}}
+.tt{{display:flex;align-items:baseline;gap:26px;margin-top:14px}}
+.mx{{font-size:150px;line-height:.9;color:#c2410c;letter-spacing:-.04em}}
+.mn{{font-size:72px;line-height:1;color:#2f78c4;letter-spacing:-.02em}}
+.lb{{font-size:28px;font-weight:700;color:#6b5f52;text-transform:uppercase;letter-spacing:.05em;display:block}}
+.g{{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:70px}}
+.sl{{background:#fff;border-radius:24px;padding:24px 10px 26px;text-align:center;box-shadow:0 3px 10px rgba(60,40,10,.10)}}
+.sn{{font-size:30px;font-weight:700;color:#6b5f52}}
+.si{{width:120px;height:120px;margin:6px auto 0}}.si svg{{width:100%;height:100%}}
+.st{{font-size:64px;line-height:1}}
+.sp{{font-size:28px;color:#6b5f52;margin-top:6px}}.sp.hi{{color:#2f78c4;font-weight:700}}
+.inf{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:22px}}
+.in{{background:#fff;border-radius:22px;padding:16px 20px;box-shadow:0 3px 10px rgba(60,40,10,.10)}}
+.in b{{display:block;font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-size:42px;line-height:1.1}}
+.in span{{font-size:28px;color:#6b5f52;font-weight:700}}
+.tip{{margin-top:50px;background:#1d7f46;color:#fff;border-radius:26px;padding:24px 30px;font-size:44px;
+  font-weight:700;line-height:1.15;display:flex;align-items:center;gap:20px}}
+.tip i{{font-style:normal;font-size:52px}}
+.ft{{position:absolute;left:44px;right:44px;bottom:34px;text-align:center}}
+.ft .q{{font-size:34px;font-weight:700;color:#6b5f52}}
+.ft .u{{font-size:52px;margin-top:2px}}.ft .u span{{color:#b8700a}}
+.ft .src{{font-size:24px;color:#9a8f82}}
+</style></head><body><div class="c">
+<div class="hd"><img src="{logo}"><div><div class="kk">Meteo a {html.escape(data["luogo"])}</div>
+<h1 class="D">{html.escape(title)}</h1></div></div>
+<div class="hero"><div class="big">{weather_icon(data["tipo"])}</div><div>
+<div class="cond D">{html.escape(data["testo"])}</div>
+<div class="tt"><div><span class="lb">massima</span><span class="mx D">{data["max"]}°</span></div>
+<div><span class="lb">minima</span><span class="mn D">{data["min"]}°</span></div></div></div></div>
+<div class="g">{slots}</div>
+<div class="inf"><div class="in"><span>{html.escape(wind_label)}</span><b>{html.escape(wind)}</b></div>
+<div class="in"><span>Alba</span><b>{data["alba"]}</b></div><div class="in"><span>Tramonto</span><b>{data["tramonto"]}</b></div></div>
+<div class="tip"><i>{"☂" if not weather_advice(data).startswith("Niente") else "👍"}</i>
+<span>{html.escape(weather_advice(data))}</span></div>
+<div class="ft"><div class="src">Previsioni: Open-Meteo.com</div></div>
+</div></body></html>'''
+
+
+def weather_caption(data: dict[str, Any]) -> str:
+    """Didascalia del post del meteo, MASSIMA SEMPLICITÀ (voluta da Nino il 02/11/2026), es.
+    "Putignano, il meteo di oggi, lunedì 2 novembre." Tutto il resto è nell'immagine (anche la
+    fonte Open-Meteo, obbligatoria per la licenza)."""
+    day = data["giorno"]
+    return (f"{data['luogo']}, il meteo di oggi, {SUMMARY_WEEKDAYS[day.weekday()].lower()} "
+            f"{day.day} {list(MONTHS)[day.month - 1]}.")
+
+
+def render_weather(data: dict[str, Any], target: Path) -> Path:
+    """Fotografa weather_html in target (JPEG 1080x1350)."""
+    page_file = target.with_suffix(".html")
+    page_file.write_text(weather_html(data), encoding="utf-8")
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(viewport={"width": 1080, "height": 1350})
+            page.goto(page_file.as_uri(), wait_until="load", timeout=60000)
+            try:
+                page.evaluate("document.fonts.ready.then(() => true)")
+            except Exception:
+                pass
+            page.wait_for_timeout(300)
+            page.screenshot(path=str(target), type="jpeg", quality=90)
+        finally:
+            browser.close()
+    return target
+
+
+def make_weather(config: dict[str, Any]) -> tuple[Path, str]:
+    """Crea dati/meteo/AAAA-MM-GG.jpg e .txt (immagine e didascalia del post del meteo)."""
+    plan = weather_settings(config.get("impostazioni", {}))
+    data = weather_data(plan)
+    WEATHER.mkdir(parents=True, exist_ok=True)
+    stem = WEATHER / date.today().isoformat()
+    text = weather_caption(data)
+    stem.with_suffix(".txt").write_text(text, encoding="utf-8")
+    image = render_weather(data, stem.with_suffix(".jpg"))
+    print(f"Meteo creato: {image.name} ({data['testo']}, {data['min']}°/{data['max']}°, pioggia {data['pioggia']}%)")
+    return image, text
+
+
+def weather_post(config: dict[str, Any], force: bool = False) -> None:
+    """Post del meteo sulla Pagina: una volta al giorno (weather_due) oppure subito con force
+    (--meteo). Toglie dalla Pagina i post del meteo precedenti: ne resta uno solo, quello di oggi."""
+    plan = weather_settings(config.get("impostazioni", {}))
+    if not force and not weather_due(config.get("impostazioni", {})):
+        return
+    state = read_json(WEATHER_STATE, {})
+    if state.get("data") != date.today().isoformat():
+        state = {"data": date.today().isoformat(), "tentativi": 0}
+    TIMER["fase"] = time.time()
+    state["tentativi"] = int(state.get("tentativi", 0)) + 1
+    try:
+        image, text = make_weather(config)
+        if not plan["facebook"]:
+            return
+        state["pubblicato"] = publish_summary_facebook(image, text)  # stessa foto verticale del post del giorno
+        state["ora"] = datetime.now().strftime("%H:%M")
+        state["pubblicato_alle"] = datetime.now().isoformat(timespec="seconds")
+        state.pop("errore", None)
+        print(f"Meteo pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
+        old = [post for post in read_json(WEATHER_HISTORY, []) if post != state["pubblicato"]]
+        save_json(WEATHER_HISTORY, [state["pubblicato"]] + (delete_facebook_posts(old) if old else []))
+        tick("post del meteo")
+    except LookupError as exc:  # Facebook non collegato: non serve riprovare
+        state.update({"errore": str(exc), "tentativi": 3})
+        print(f"Meteo NON pubblicato: {exc}")
+    except Exception as exc:  # rete, Open-Meteo, Facebook: si riprova al giro dopo (max 3 volte)
+        state["errore"] = str(exc)
+        print(f"Meteo NON pubblicato: {exc}")
+        if int(state.get("tentativi", 0)) >= 3:
+            notify_phone(f"Post del meteo non pubblicato: {str(exc)[:120]}")
+    finally:
+        WEATHER.mkdir(parents=True, exist_ok=True)
+        save_json(WEATHER_STATE, state)
+
+
+
+def menus_on_top(config: dict[str, Any]) -> None:
+    """ORDINE DELLA PAGINA (voluto da Nino il 02/11/2026): 1° il post dei menu, 2° il meteo.
+    Facebook mette in cima il post più recente: se il post dei menu è stato pubblicato PRIMA del
+    meteo di oggi (o non si sa quando), lo si ripubblica adesso, così torna sopra. Chiamata alla fine
+    di ogni giro automatico e dopo --meteo; se il giro ha già rifatto il post dei menu non fa nulla."""
+    weather = read_json(WEATHER_STATE, {})
+    if weather.get("data") != date.today().isoformat() or not weather.get("pubblicato_alle"):
+        return
+    summary = read_json(SUMMARY_STATE, {})
+    if summary.get("pubblicato") and str(summary.get("pubblicato_alle", "")) > weather["pubblicato_alle"]:
+        return  # i menu sono già sopra il meteo
+    if not read_json(FACEBOOK_CONFIG, {}).get("token"):
+        return
+    print("Ripubblico il post dei menu, così resta sopra il meteo")
+    daily_summary(config, force=True, refresh_pdf=False)
+
+# ================================================================================================
+# SUGGERISCI ROSTICCERIA (dal 02/11/2026): pagina suggerisci.html sul sito dei PDF con un modulo
+# (nome, Comune, link facoltativo) che invia i dati allo script Google Registro_click.gs
+# (?azione=suggerimento): una riga nel foglio "Suggerimenti" e un'email a s.mazzarisi@mazzarisi.it.
+# Nessun commento pubblico: chi suggerisce non vede gli altri suggerimenti. Nella didascalia del
+# post dei menu c'è la riga "Suggerisci rosticceria: <link corto TinyURL>".
+# ================================================================================================
+SUGGEST_PAGE = "suggerisci.html"
+SHORT_LINKS = DATA / "link-corti.json"   # {"https://...lungo": "https://tinyurl.com/..."}: creati una volta
+SUGGEST_ALIASES = ("suggeriscirosticceria", "suggerisci-rosticceria", "menurosticcerie-suggerisci")
+
+SUGGEST_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Suggerisci una rosticceria</title>
+<meta property="og:title" content="Suggerisci una rosticceria"><meta property="og:description" content="Menu rosticcerie di Putignano e dintorni: segnalaci una rosticceria che manca.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#f4efe6;color:#1e1a16;font:18px "Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif}
+.w{max-width:480px;margin:0 auto;padding:22px 16px 40px}
+.hd{display:flex;align-items:center;gap:14px}
+.hd img{width:64px;height:64px;border-radius:16px;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.1);object-fit:contain}
+.kk{font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:#b8700a;font-weight:700}
+h1{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800;font-size:30px;line-height:1.05;margin:2px 0 0;letter-spacing:-.01em}
+p.in{margin:18px 0 20px;line-height:1.4;color:#4d443a}
+.card{background:#fff;border-radius:20px;padding:20px 18px;box-shadow:0 3px 12px rgba(60,40,10,.10)}
+label{display:block;font-weight:700;margin:0 0 6px}label span{font-weight:400;color:#8a7f73}
+input{width:100%;font:inherit;padding:13px 14px;border:2px solid #e3d9c9;border-radius:14px;background:#fffdf9;margin-bottom:16px;outline:none}
+input:focus{border-color:#e8921e}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+button{width:100%;font:700 20px "Atkinson Hyperlegible","Segoe UI",sans-serif;padding:15px;border:0;border-radius:16px;background:#1d7f46;color:#fff;cursor:pointer}
+button:disabled{opacity:.6}
+.err{color:#b4501a;font-weight:700;min-height:1.2em;margin:-4px 0 12px}
+.ok{display:none;text-align:center;padding:30px 10px}
+.ok .v{width:76px;height:76px;border-radius:50%;background:#1d7f46;color:#fff;font-size:44px;display:grid;place-items:center;margin:0 auto 14px}
+.ok h2{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-size:28px;margin:0 0 8px}
+a.app{display:block;text-align:center;margin-top:22px;color:#b8700a;font-weight:700;text-decoration:none}
+</style></head><body><div class="w">
+<div class="hd"><img src="logo.jpg" alt=""><div><div class="kk">Menu rosticcerie</div><h1>Suggerisci una rosticceria</h1></div></div>
+<p class="in">Conosci una rosticceria di Putignano o dintorni che pubblica il menu del giorno e che nell'app non c'è? Segnalacela: la valuteremo.</p>
+<div class="card"><form id="f" novalidate>
+<label for="nome">Nome della rosticceria</label><input id="nome" maxlength="80" autocomplete="off" required>
+<label for="comune">Comune</label><input id="comune" maxlength="60" autocomplete="off" required>
+<label for="link">Link <span>(facoltativo: pagina Facebook, Instagram o sito)</span></label><input id="link" maxlength="300" inputmode="url" autocomplete="off">
+<div class="hp" aria-hidden="true"><input id="sito" tabindex="-1" autocomplete="off"></div>
+<div class="err" id="err"></div><button id="b">Invia</button></form>
+<div class="ok" id="ok"><div class="v">&#10003;</div><h2>Grazie!</h2><div>Il suggerimento è arrivato: lo valuteremo.</div></div></div>
+<a class="app" href="{{APP}}">Apri l'app Menu &rarr;</a>
+</div><script>
+var LOG = "{{LOG}}";
+var f = document.getElementById('f'), err = document.getElementById('err'), b = document.getElementById('b');
+function v(id) { return document.getElementById(id).value.trim(); }
+function fatto() { f.style.display = 'none'; document.getElementById('ok').style.display = 'block'; }
+f.addEventListener('submit', function (e) {
+  e.preventDefault(); err.textContent = '';
+  if (!v('nome') || !v('comune')) { err.textContent = 'Scrivi il nome della rosticceria e il Comune.'; return; }
+  if (!navigator.onLine) { err.textContent = 'Sembra che manchi la connessione: riprova.'; return; }
+  b.disabled = true; b.textContent = 'Invio...';
+  var q = new URLSearchParams({azione: 'suggerimento', nome: v('nome'), comune: v('comune'), link: v('link'),
+                               hp: v('sito'), dispositivo: navigator.userAgent.slice(0, 100)});
+  fetch(LOG + '?' + q.toString(), {redirect: 'follow'}).then(function (r) { return r.text(); }).then(function (t) {
+    t = (t || '').trim();
+    if (t === 'ok') return fatto();
+    b.disabled = false; b.textContent = 'Invia';
+    err.textContent = t === 'troppi' ? 'Oggi sono arrivati già molti suggerimenti: riprova domani.'
+                                     : 'Invio non riuscito: riprova tra poco.';
+  }).catch(function () { fatto(); });  // risposta non leggibile dal browser: la richiesta è comunque partita
+});
+</script></body></html>
+"""
+
+
+def open_url(address: str, timeout: int = 30) -> bytes:
+    """Legge un indirizzo https. Se i certificati di Python sul PC sono scaduti
+    (CERTIFICATE_VERIFY_FAILED) riprova con certifi e poi con certifi aggiornato."""
+    import ssl
+    last: Exception | None = None
+    for context in (lambda: None, certifi_context, lambda: certifi_context(upgrade=True)):
+        try:
+            with urllib.request.urlopen(address, timeout=timeout, context=context()) as answer:
+                return answer.read()
+        except Exception as exc:
+            last = exc
+            if not (isinstance(getattr(exc, "reason", exc), ssl.SSLError) or "CERTIFICATE" in str(exc).upper()):
+                raise
+    raise RuntimeError(f"certificati non validi: {last}")
+
+
+def short_link(url: str, aliases: tuple[str, ...] = ()) -> str:
+    """Link corto TinyURL per url, creato UNA volta e salvato in dati/link-corti.json. Prova prima i
+    nomi in aliases (tinyurl.com/<nome>), poi un codice qualsiasi. Se TinyURL non risponde restituisce
+    url (lungo) e riprova la volta dopo."""
+    import urllib.parse
+    saved = read_json(SHORT_LINKS, {})
+    if saved.get(url):
+        return saved[url]
+    for alias in list(aliases) + [""]:
+        query = {"url": url, **({"alias": alias} if alias else {})}
+        try:
+            text = open_url("https://tinyurl.com/api-create.php?" + urllib.parse.urlencode(query), 20)
+            text = text.decode("utf-8", "replace").strip()
+        except Exception as exc:
+            print(f"   link corto non creato ({alias or 'senza nome'}): {exc}")
+            continue
+        if text.startswith("https://tinyurl.com/") or text.startswith("http://tinyurl.com/"):
+            short = text.replace("http://", "https://", 1)
+            saved[url] = short
+            save_json(SHORT_LINKS, saved)
+            print(f"Link corto creato: {short} -> {url}")
+            return short
+    return url
+
+
+def write_suggest_page(config: dict[str, Any]) -> bool:
+    """Scrive pdf-sito/suggerisci.html (e logo.jpg) se c'è l'indirizzo dello script Google
+    (impostazioni > registro_click_url). True se la pagina c'è."""
+    log = config.get("impostazioni", {}).get("registro_click_url", "")
+    if not log:
+        return False
+    (PDF_SITE_DIR / SUGGEST_PAGE).write_text(
+        SUGGEST_PAGE_HTML.replace("{{LOG}}", log).replace("{{APP}}", SHORT_URL), encoding="utf-8")
+    if APP_LOGO.is_file():
+        try:
+            from PIL import Image
+            with Image.open(APP_LOGO) as logo:
+                logo.convert("RGB").resize((192, 192), Image.LANCZOS).save(PDF_SITE_DIR / "logo.jpg", quality=90)
+        except Exception:
+            shutil.copy2(APP_LOGO, PDF_SITE_DIR / "logo.jpg")
+    return True
+
+
+def suggest_line() -> str:
+    """Riga della didascalia del post dei menu, es. "Suggerisci rosticceria: https://tinyurl.com/...".
+    "" se la pagina non è ancora sul sito dei PDF."""
+    if not (PDF_SITE_DIR / SUGGEST_PAGE).is_file():
+        return ""
+    return f"Suggerisci rosticceria: {short_link(pdf_site()[0] + SUGGEST_PAGE, SUGGEST_ALIASES)}"
 
 
 PAGE_STATS = DATA / "statistiche.json"   # ultimi numeri della Pagina, letti anche dal Monitor
@@ -5211,6 +5732,10 @@ def main() -> None:
                         help="Collegamento ufficiale con la Pagina Facebook (Collega-Facebook.bat).")
     parser.add_argument("--facebook-prova", action="store_true",
                         help="Controlla che il collegamento con Facebook funzioni, senza pubblicare nulla.")
+    parser.add_argument("--meteo", action="store_true",
+                        help="Pubblica SUBITO il post del meteo di oggi (sostituisce quello già sulla Pagina).")
+    parser.add_argument("--meteo-prova", action="store_true",
+                        help="Crea immagine e testo del post del meteo e li apre, senza pubblicare.")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
@@ -5259,6 +5784,23 @@ def main() -> None:
         return
     if args.pulisci_facebook:  # una tantum: toglie dalla Pagina i vecchi post con foto e video dei menu
         clean_facebook_posts()
+        return
+    if args.meteo_prova:  # solo per vedere il post del meteo: non pubblica, non tocca lo stato
+        image, text = make_weather(config)
+        print(f"\n{text}")
+        if sys.platform == "win32":
+            os.startfile(image)
+        return
+    if args.meteo:  # Pubblica-meteo.bat: post del meteo subito (anche se oggi è già stato fatto)
+        start_manual_log("post del meteo")
+        if not take_lock():
+            print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
+            return
+        try:
+            weather_post(config, force=True)
+            menus_on_top(config)  # il post dei menu torna primo, il meteo resta secondo
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
         return
     if args.riassunto_prova:  # solo per vedere il post: non tocca lo stato, il post delle 11:30 parte lo stesso
         made = make_summary(config)
@@ -5319,6 +5861,12 @@ def main() -> None:
             print("Esecuzione precedente bloccata da oltre 20 minuti: salto questo giro.")
             return
         args.pubblica, args.solo_html, args.visibile, args.aggiungi, args.login = True, False, False, False, False
+        # post del meteo (dalle 08:00, una volta al giorno): PRIMA del controllo, così il post del
+        # giorno con i menu, rifatto subito dopo, resta il primo della Pagina
+        try:
+            weather_post(config)
+        except Exception as exc:
+            print(f"Meteo non pubblicato: {exc!r}")
         # riassunto del giorno (dalle 11:30): prima si ricontrollano TUTTE le rosticcerie, anche quelle
         # già aggiornate, così nel post ci sono i menu più recenti; poi immagine, testo e Facebook
         # all'ora del riassunto si ricontrollano TUTTE le rosticcerie; prima di quell'ora il post parte
@@ -5344,6 +5892,10 @@ def main() -> None:
             last = read_json(SUMMARY_STATE, {})
             if last.get("da_ripubblicare") and int(last.get("tentativi", 0)) < 3:
                 daily_summary(fresh, force=True, refresh_pdf=False)
+            try:  # 1° i menu, 2° il meteo: se il giro non ha rifatto il post dei menu lo si rifà qui
+                menus_on_top(fresh)
+            except Exception as exc:
+                print(f"Post dei menu non rimesso sopra il meteo: {exc!r}")
             tick("TOTALE del giro", total=True)
         except BaseException as exc:  # nel log, non in una finestra che nessuno vede
             import traceback
@@ -5414,9 +5966,10 @@ def start_manual_log(kind: str = "ricontrollo") -> None:
     print(f"\n=== {datetime.now():%Y-%m-%d %H:%M:%S} === (manuale, {kind})")
     if kind.startswith("ricontrollo di "):
         print(f"RICONTROLLO di {kind[15:]}: solo questa rosticceria, le altre restano come all'ultimo giro")
-    else:
-        print("CONTROLLO: ricontrolla solo le rosticcerie non ancora aggiornate oggi" if kind == "controllo"
-              else "RICONTROLLO: ricontrolla tutte le rosticcerie, anche quelle già aggiornate")
+    elif kind == "controllo":
+        print("CONTROLLO: ricontrolla solo le rosticcerie non ancora aggiornate oggi")
+    elif kind in ("ricontrollo", "riassunto per Facebook"):
+        print("RICONTROLLO: ricontrolla tutte le rosticcerie, anche quelle già aggiornate")
 
 
 def run(args: argparse.Namespace, config: dict[str, Any]) -> None:

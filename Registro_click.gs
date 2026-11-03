@@ -64,6 +64,8 @@ function registra(dati) {
  * GET ?azione=registra&d={json}: come doPost (visita o click), per il metodo "immagine" della pagina.
  * GET ?azione=sistema: toglie le righe di prova (Prova di funzionamento, PROVA..., DEBUG...) e aggiorna
  *   la scheda "Contatore" (visite e click di oggi, del mese, totali e giorno per giorno).
+ * GET ?azione=suggerimento&nome=..&comune=..&link=..&hp=..: rosticceria suggerita dalla pagina
+ *   suggerisci.html del sito dei PDF: riga nel foglio "Suggerimenti" + email a EMAIL_SUGGERIMENTI.
  * GET ?azione=ultima: indirizzo del foglio e numero dell'ultima riga, usati dal pulsante
  * "Accessi" della finestra di controllo (Monitor.py) per aprire il foglio sull'ultimo click.
  */
@@ -91,6 +93,9 @@ function doGet(e) {
     var s = statistiche(false), conti = {};
     for (var nome in s.righe) if (s.righe[nome].oggi) conti[nome] = s.righe[nome].oggi;
     return json({ data: s.data, conti: conti, totale: s.totali.oggi });
+  }
+  if (azione === 'suggerimento') {
+    return suggerimento(e.parameter || {});
   }
   if (azione === 'ultima') {
     var file = SpreadsheetApp.getActiveSpreadsheet();
@@ -368,4 +373,75 @@ function pulisciProve() {
   });
   PropertiesService.getScriptProperties().deleteProperty('conti');  // conteggi da ricalcolare
   return tolte;
+}
+
+
+/* =============================================================================================
+ * SUGGERIMENTI DI NUOVE ROSTICCERIE (dal 02/11/2026)
+ * La pagina https://menurosticcerie.github.io/suggerisci.html (link corto nella didascalia del
+ * post dei menu) chiama  ?azione=suggerimento&nome=...&comune=...&link=...&hp=...
+ * Ogni suggerimento: una riga nel foglio "Suggerimenti" (creato da solo, in fondo) e un'email a
+ * EMAIL_SUGGERIMENTI. Nessuno vede i suggerimenti degli altri: niente commenti pubblici.
+ * Protezioni: nome e Comune obbligatori, testi tagliati, campo nascosto "hp" (se pieno è un robot:
+ * si risponde "ok" ma non si salva nulla), al massimo MAX_SUGGERIMENTI_GIORNO al giorno.
+ * PRIMA VOLTA: nell'editor scegliere la funzione provaEmail e premere Esegui (Google chiede il
+ * permesso di inviare email: consentire), poi Esegui il deployment > Gestisci deployment >
+ * matita > Versione: Nuova versione > Esegui il deployment (l'indirizzo /exec resta lo stesso).
+ * ============================================================================================= */
+var EMAIL_SUGGERIMENTI = 's.mazzarisi@mazzarisi.it';
+var MAX_SUGGERIMENTI_GIORNO = 30;
+
+function pulito(valore, lunghezza) {
+  return String(valore || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, lunghezza);
+}
+
+function foglioSuggerimenti() {
+  var file = SpreadsheetApp.getActiveSpreadsheet();
+  var foglio = file.getSheetByName('Suggerimenti');
+  if (!foglio) {
+    foglio = file.insertSheet('Suggerimenti', file.getSheets().length);
+    foglio.appendRow(['Data', 'Ora', 'Rosticceria', 'Comune', 'Link', 'Dispositivo']);
+  }
+  return foglio;
+}
+
+function suggerimento(p) {
+  var nome = pulito(p.nome, 80), comune = pulito(p.comune, 60), link = pulito(p.link, 300);
+  if (pulito(p.hp, 10)) return ContentService.createTextOutput('ok');  // robot: finto ok, niente salvato
+  if (!nome || !comune) return ContentService.createTextOutput('mancano nome o Comune');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var foglio = foglioSuggerimenti();
+    var adesso = new Date();
+    var oggi = Utilities.formatDate(adesso, 'Europe/Rome', 'yyyy-MM-dd');
+    var righe = foglio.getLastRow();
+    if (righe > 1) {
+      var date = foglio.getRange(Math.max(2, righe - MAX_SUGGERIMENTI_GIORNO), 1,
+                                 Math.min(righe - 1, MAX_SUGGERIMENTI_GIORNO + 1), 1).getValues();
+      var diOggi = date.filter(function (r) { return giornoDi(r[0], 'Europe/Rome') === oggi; }).length;
+      if (diOggi >= MAX_SUGGERIMENTI_GIORNO) return ContentService.createTextOutput('troppi');
+    }
+    foglio.appendRow([oggi, Utilities.formatDate(adesso, 'Europe/Rome', 'HH:mm:ss'), nome, comune, link,
+                      pulito(p.dispositivo, 100)]);
+    MailApp.sendEmail({
+      to: EMAIL_SUGGERIMENTI,
+      subject: 'Menu rosticcerie - suggerita: ' + nome + ' (' + comune + ')',
+      body: 'Nuova rosticceria suggerita dalla pagina "Suggerisci rosticceria":\n\n' +
+            'Rosticceria: ' + nome + '\nComune: ' + comune + '\nLink: ' + (link || '(non indicato)') +
+            '\n\nInviato il ' + Utilities.formatDate(adesso, 'Europe/Rome', 'dd/MM/yyyy') + ' alle ' +
+            Utilities.formatDate(adesso, 'Europe/Rome', 'HH:mm') + '.\nTutti i suggerimenti: ' +
+            SpreadsheetApp.getActiveSpreadsheet().getUrl() + '#gid=' + foglio.getSheetId()
+    });
+    return ContentService.createTextOutput('ok');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Da eseguire UNA volta dall'editor: chiede il permesso di inviare email e ne manda una di prova. */
+function provaEmail() {
+  MailApp.sendEmail(EMAIL_SUGGERIMENTI, 'Menu rosticcerie - prova suggerimenti',
+                    'Funziona: i suggerimenti di nuove rosticcerie arriveranno a questo indirizzo.');
+  foglioSuggerimenti();
 }

@@ -27,7 +27,8 @@ li pubblica:
   c) sulla Pagina Facebook https://www.facebook.com/MenuRosticcerie (API ufficiale Graph):
        - post fissi "I menu in pdf" (1°, fissato in cima) e "I menu in video" (2°), con un commento
          di due righe (link + "Aggiornato <giorno> alle ore <hh:mm>") riscritto a ogni aggiornamento;
-       - post del giorno (11:30 o appena ci sono tutti i menu) = immagine riassuntiva + testo.
+       - post del giorno (11:30 o appena ci sono tutti i menu) = immagine riassuntiva + testo;
+       - post del METEO di Putignano (dalle 08:00, primo giro del mattino): vedi capitolo 7.
 Servizio gratuito e senza fini di lucro: va sempre detto nei testi pubblici. Tutto ciò che vede il
 pubblico è pensato prima per il CELLULARE.
 
@@ -65,6 +66,8 @@ FILE .BAT (per Nino: doppio clic)
   Collega-Facebook.bat      --facebook-collega e poi --post-link (collegamento Graph API)
   Pulisci-Facebook.bat      --pulisci-facebook (una tantum, con conferma)
   Prova-riassunto.bat / Pubblica-riassunto.bat   --riassunto-prova / --riassunto
+  Prova-meteo.bat / Pubblica-meteo.bat   --meteo-prova (crea e apre l'immagine, non pubblica) /
+                            --meteo (pubblica SUBITO il meteo di oggi, sostituendo quello sulla Pagina)
   Collega_GitHub.bat        collega la cartella al repository GitHub "Menu" (una volta sola)
 
 CARTELLE (in .gitignore = restano solo sul PC: profilo, errori, ingresso, archivio, dati, backup,
@@ -103,6 +106,9 @@ Foto, pdf-sito, Facebook\Video-*.mp4)
                                          {"pdf": {"post","commento","ora","fissato"}, "video": {...}}
                      post-link\          immagini 16:9 dei post fissi (pdf.jpg, video.jpg)
                      riassunti\          AAAA-MM-GG.jpg/.txt/.html del post del giorno + stato.json
+                     meteo\              AAAA-MM-GG.jpg/.txt/.html del post del meteo, stato.json
+                                         {"data","pubblicato","tentativi","ora","errore"?} e
+                                         pubblicati.json (id del post del meteo sulla Pagina)
                      notifica.json       {"bark": "https://api.day.app/CHIAVE"} notifiche iPhone (Bark)
                      pianificazione.json orari applicati all'attività di Windows
                      monitor.json        posizione della finestra del Monitor, link al foglio click
@@ -138,6 +144,10 @@ FILE GENERATI E PUBBLICATI SU GITHUB (repository Sebastiano-Mazzarisi/Menu, GitH
     "testo_per_tutti": false,             pulsante "Testo" (OCR del menu) visibile a tutti o solo admin
     "correzioni_ocr": [["fimghi","funghi"], ...],
     "riassunto": {"attivo": true, "ora": "11:30", "facebook": true},   post del giorno
+    "meteo": {"attivo": true, "ora": "08:00", "fino_alle": "12:00", "facebook": true,
+              "luogo": "Putignano", "latitudine": 40.8510, "longitudine": 17.1220},
+                                          post del meteo. FACOLTATIVO: se manca valgono questi
+                                          valori (weather_settings). "attivo": false lo spegne.
     facoltativi: "sito_pdf" (organizzazione GitHub del sito dei PDF, predefinito "menurosticcerie"),
                  "profilo_facebook", riassunto > "solo_primi": N (prove: solo i primi N locali)
   },
@@ -177,7 +187,8 @@ loghi\. Tutto il resto (sito, PDF, video, Comuni, contatori) si adegua da solo.
   --pubblica           giro completo + pubblicazione del sito su GitHub (Avvia.bat)
   --automatico         usato dall'attività di Windows: solo nella fascia oraria, senza finestre,
                        log in dati\automatico.log; giro (saltando chi ha già il menu di oggi) +
-                       pubblicazione + publish_complete (PDF/video/commenti) + post del giorno se dovuto
+                       pubblicazione + publish_complete (PDF/video/commenti) + post del giorno se dovuto;
+                       PRIMA del giro, se è ora (08:00-12:00, una volta al giorno), il post del meteo
   --salta-aggiornati   come l'automatico: non ricontrolla chi ha già il menu di oggi (Monitor "Controlla")
   --solo ID            locale segnalato come sbagliato: menu di oggi in dati\scartati, controllo
                        approfondito solo di quel locale (clic sul nome nel Monitor)
@@ -191,6 +202,8 @@ loghi\. Tutto il resto (sito, PDF, video, Comuni, contatori) si adegua da solo.
   --panorama           PDF di controllo: scheda del sito + fonte di ogni locale (Monitor "Panorama")
   --riassunto          ricontrolla tutto, pubblica, poi post del giorno su Facebook (se non già fatto)
   --riassunto-prova    crea immagine e testo del post del giorno senza pubblicare
+  --meteo-prova        crea immagine e testo del post del meteo (dati veri di oggi) e li apre
+  --meteo              pubblica SUBITO il post del meteo (toglie quello vecchio dalla Pagina)
   --pubblica-fb        (alias --pubblica-video) pubblica subito il post del giorno, sostituendo quello
                        di oggi (Monitor "Pubblica FB")
   --post-link [--forza]  post fissi "I menu in pdf"/"I menu in video": li crea se mancano, aggiunge i
@@ -299,6 +312,7 @@ keep_only_summary)
       VIDEO - https://menurosticcerie.github.io/video.mp4
       WEBAPP - https://tinyurl.com/menurosticcerie
       MP3 - https://menurosticcerie.github.io/ascolta.html
+      Suggerisci rosticceria: https://tinyurl.com/...   (dal 02/11/2026, vedi SUGGERIMENTI)
       -----
   (data e ora = ultima pubblicazione di PDF e video, dati\completo.json).
 - Il link MP3 NON porta al file menu.mp3 (aprirebbe il lettore scuro del browser) ma ad ascolta.html
@@ -318,8 +332,41 @@ keep_only_summary)
   link e immagine orizzontale, scartata: non più usata.)
 - I vecchi post "I menu in pdf" / "I menu in video" (publish_link_posts, update_link_comments,
   link_posts_after_daily, --post-link) NON si usano più: restano nel codice ma nessuno li chiama.
+POST DEL METEO (dal 02/11/2026: weather_post, make_weather, weather_data, weather_html,
+weather_caption, weather_icon, weather_advice - blocco "POST DEL METEO" dopo daily_summary)
+- Ogni mattina, al PRIMO giro automatico dalle 08:00 (meteo > "ora"), PRIMA del controllo delle
+  rosticcerie: foto VERTICALE 1080x1350 con la grafica del Menu (crema, arancio, verde, caratteri
+  Bricolage Grotesque / Atkinson Hyperlegible, logo dell'app):
+    in alto "METEO A PUTIGNANO" + giorno, sfondo del cielo colorato secondo il tempo (WEATHER_SKY);
+    icona grande (SVG disegnata in weather_icon, niente emoji), descrizione, massima e minima;
+    4 caselle Mattina 09 / Pranzo 13 / Pomeriggio 17 / Sera 21 (WEATHER_SLOTS) con icona (luna se
+    è buio), temperatura e probabilità di pioggia (in blu se >= 40%);
+    vento (con il nome pugliese: tramontana, grecale, levante, scirocco, ostro, libeccio, ponente,
+    maestrale), alba, tramonto; fascia verde con UN consiglio (weather_advice: ombrello sì/no/forse
+    + vento forte / caldo / freddo / UV); in fondo solo "Previsioni: Open-Meteo.com" (il
+    richiamo "E a pranzo? I menu delle rosticcerie su ..." è stato tolto il 02/11/2026).
+- Dati: Open-Meteo (gratuito, senza chiave, licenza CC BY 4.0 -> la fonte va SEMPRE citata,
+  lo fanno immagine e didascalia). Una sola chiamata (weather_fetch). Modi di collegarsi, in
+  ordine: certificati del PC; certifi (certifi_context, installato da solo con pip); certifi
+  aggiornato; http semplice (previsioni pubbliche). Serve perché sul PC di Nino Python dava
+  "CERTIFICATE_VERIFY_FAILED: certificate has expired" con i certificati di Windows. Il codice del
+  giorno di Open-Meteo è il "peggiore" della giornata: se dice pioggia ma la probabilità è < 35% si
+  usa il tempo più frequente tra le 8 e le 20 (weather_data).
+- Didascalia (weather_caption), MASSIMA SEMPLICITÀ, solo:
+      Putignano, il meteo di oggi, lunedì 2 novembre.
+  Tutto il resto (consiglio, fonte Open-Meteo) è nell'immagine.
+- Sulla Pagina resta UN SOLO post del meteo: dopo la pubblicazione i precedenti (dati\meteo\
+  pubblicati.json) vengono cancellati.
+- ORDINE DELLA PAGINA: 1° il post dei menu, 2° il meteo (Facebook mette in cima il più recente).
+  menus_on_top(): se il post dei menu è stato pubblicato prima del meteo di oggi (confronto tra
+  "pubblicato_alle" di dati\meteo\stato.json e di dati\riassunti\stato.json) lo ripubblica.
+  Chiamata alla fine di ogni giro automatico e dopo --meteo. Di solito il primo giro del giorno
+  rifà già da sé il post dei menu (impronta nuova) e menus_on_top non fa nulla.
+- Errori (rete, Open-Meteo, Facebook): si riprova ai giri successivi, al massimo 3 volte e solo
+  fino a meteo > "fino_alle" (12:00); al terzo errore notifica Bark sul cellulare. PC spento fino
+  a dopo le 12: quel giorno niente meteo (di pomeriggio non serve più).
 PULIZIA (clean_facebook_posts, Pulisci-Facebook.bat): elenca TUTTI i post della Pagina tranne quello
-del giorno (e i cambi di copertina/immagine del profilo, che non vanno cancellati) e, dopo "s" +
+del giorno, il post del meteo (e i cambi di copertina/immagine del profilo, che non vanno cancellati) e, dopo "s" +
 Invio, li cancella con le loro foto. Svuota dati\post-link.json.
 STATISTICHE DELLA PAGINA (page_stats, --statistiche, Statistiche.bat)
 - Follower (followers_count) e "mi piace" (fan_count) della Pagina; visualizzazioni di oggi e degli
@@ -331,6 +378,25 @@ STATISTICHE DELLA PAGINA (page_stats, --statistiche, Statistiche.bat)
   automatico; il Monitor le mostra in due righe sotto l'esito ("Facebook: 73 follower (+3 da ieri)
   (alle 10:59)" / "Visualizzazioni: 370 oggi · 781 in 28 giorni"). Metrica che funziona:
   page_media_view, con il permesso read_insights (aggiunto il 22/10/2026).
+SUGGERIMENTI DI NUOVE ROSTICCERIE (dal 02/11/2026: write_suggest_page, SUGGEST_PAGE_HTML,
+suggest_line, short_link, open_url - blocco "SUGGERISCI ROSTICCERIA" dopo il meteo)
+- Riga nella didascalia del post dei menu (dopo MP3): "Suggerisci rosticceria: <link corto>".
+  Il link corto è TinyURL (api-create.php, senza account), creato UNA volta da short_link: prova
+  tinyurl.com/suggeriscirosticceria, poi altri nomi (SUGGEST_ALIASES), poi un codice qualsiasi;
+  salvato in dati\link-corti.json. Se TinyURL non risponde si usa il link lungo e si riprova dopo.
+  La riga compare solo se pdf-sito\suggerisci.html esiste.
+- Il link apre https://menurosticcerie.github.io/suggerisci.html (scritta da publish_complete insieme
+  a mappa.html, con logo.jpg 192x192): modulo per il telefono con la grafica del Menu, campi Nome
+  della rosticceria e Comune (obbligatori) e Link (facoltativo), pulsante Invia, poi "Grazie!".
+  Campo nascosto "sito" contro i robot.
+- Invio: GET allo script Google (impostazioni > registro_click_url) con ?azione=suggerimento&nome=
+  &comune=&link=&hp=&dispositivo=. Registro_click.gs (funzione suggerimento): riga nel foglio
+  "Suggerimenti" del Foglio Google "Menu" (Data, Ora, Rosticceria, Comune, Link, Dispositivo) ed
+  email a s.mazzarisi@mazzarisi.it (EMAIL_SUGGERIMENTI) con il link al foglio. Massimo 30 al giorno
+  (MAX_SUGGERIMENTI_GIORNO, risposta "troppi"). Nessuno vede i suggerimenti degli altri.
+- Lo script Google NON si aggiorna da solo: dopo una modifica a Registro_click.gs va incollato
+  nell'editor Apps Script; la prima volta eseguire provaEmail (permesso di inviare email) e poi
+  Esegui il deployment > Gestisci deployment > matita > Nuova versione > Esegui il deployment.
 SICUREZZA: il token sta solo in dati\facebook.json (fuori da GitHub). Non stamparlo nei log.
 
 
@@ -2014,3 +2080,29 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
 - 24/10/2026 (12:00): didascalia del post del giorno (summary_caption) nel formato voluto da Nino:
   le due righe "-----" sopra e sotto i link diventano righe di trattini bassi (CAPTION_TOP = 58,
   CAPTION_BOTTOM = 57) e in fondo c'è una riga con un punto ".".
+- 02/11/2026: POST DEL METEO DI PUTIGNANO ogni mattina alle 08:00 (primo giro automatico), prima del
+  controllo delle rosticcerie. Foto verticale 1080x1350 con la grafica del Menu, dati Open-Meteo,
+  un consiglio semplice ("Porta l'ombrello" / "Niente ombrello oggi"...) e il richiamo all'app dei
+  menu. Un solo post del meteo sulla Pagina (il vecchio viene tolto); Pulisci-Facebook non lo
+  cancella. Nuovi comandi --meteo-prova / --meteo e file Prova-meteo.bat / Pubblica-meteo.bat;
+  impostazioni facoltative in locali.json > impostazioni > "meteo". Dettagli nel capitolo 7.
+  Copia precedente: backup\Menu_2026-11-02_prima-del-meteo.py
+- 02/11/2026 (23:05): la prima prova di Pubblica-meteo.bat falliva con "CERTIFICATE_VERIFY_FAILED:
+  certificate has expired" (certificati di Python/Windows vecchi sul PC). weather_fetch ora prova
+  da sola certifi (installato/aggiornato con pip) e, come ultima possibilità, http. Corretto anche
+  start_manual_log: la riga "RICONTROLLO: ricontrolla tutte le rosticcerie" compariva anche nei
+  giri manuali che non controllano niente (meteo, pubblicazione FB, solo-html).
+- 02/11/2026 (23:15): 1) il post dei menu deve stare SEMPRE sopra il meteo: menus_on_top() (vedi
+  capitolo 7), salvata l'ora di pubblicazione ("pubblicato_alle") nei due stati; --meteo ora prende
+  anche il blocco dati\automatico.lock. 2) Didascalia del post dei menu: le due righe di trattini
+  bassi accorciate di 20 (CAPTION_TOP 58 -> 38, CAPTION_BOTTOM 57 -> 37).
+- 02/11/2026 (23:16): didascalia del post del meteo ridotta a una sola riga, es.
+  "Putignano, il meteo di oggi, lunedì 2 novembre." (voluto da Nino: massima semplicità).
+- 02/11/2026 (23:19): tolta dall'immagine del meteo la riga "E a pranzo? I menu delle rosticcerie su
+  tinyurl.com/menurosticcerie"; in fondo resta solo la fonte. Spazi ridistribuiti nella pagina.
+- 02/11/2026 (23:45): SUGGERISCI ROSTICCERIA. Nuova riga nella didascalia del post dei menu con un
+  link corto TinyURL a suggerisci.html (modulo: nome, Comune, link facoltativo); i suggerimenti vanno
+  nel foglio "Suggerimenti" e arrivano per email a s.mazzarisi@mazzarisi.it. Niente commenti
+  pubblici. Nuove funzioni open_url (certificati scaduti: riprova con certifi) e short_link.
+  Registro_click.gs: azione "suggerimento", funzioni suggerimento, foglioSuggerimenti, provaEmail.
+  Copia precedente dello script: backup\Registro_click_2026-11-02_prima-dei-suggerimenti.gs
