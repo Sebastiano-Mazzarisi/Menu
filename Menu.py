@@ -1296,10 +1296,29 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
     # senza data scritta vale il giorno di pubblicazione del post (un post di ieri non è di oggi)
     day = written_day or (posted if posted and posted < date.today() else date.today())
     lines = [line for line in clean.splitlines() if not line.lower().startswith(("altro", "mostra"))]
+    lines = cut_post_lines(lines, source)
     path = folder / f"{day.isoformat()}_testo.json"
     save_json(path, {"data": day.isoformat(), "testo": clean, "sezioni": [
         {"titolo": "Menu del giorno", "piatti": [{"nome": line, "prezzo": "", "descrizione": ""} for line in lines]}]})
     return Result(path, day, name, checked)
+
+
+def cut_post_lines(lines: list[str], source: dict[str, Any]) -> list[str]:
+    """Righe del menu dentro un post lungo (fonte con "testo_dopo" / "testo_prima_di", espressioni
+    regolari senza maiuscole/minuscole): si tengono le righe PRIMA della prima che corrisponde a
+    "testo_prima_di" e DOPO l'ultima, sopra quella, che corrisponde a "testo_dopo". Es. Da Giuseppe:
+    dopo "...ti aspettano oggi", prima di "Dai sapori..." (indirizzo, telefono e hashtag via).
+    Se una delle due non si trova, quel taglio non si fa."""
+    start, end = 0, len(lines)
+    if source.get("testo_prima_di"):
+        found = [i for i, line in enumerate(lines) if re.search(source["testo_prima_di"], line, re.I)]
+        if found:
+            end = found[0]
+    if source.get("testo_dopo"):  # l'ULTIMA riga che corrisponde, prima della fine del menu
+        found = [i for i in range(end) if re.search(source["testo_dopo"], lines[i], re.I)]
+        if found:
+            start = found[-1] + 1
+    return lines[start:end] or lines
 
 
 MENU_WORDS = ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti"]
@@ -1585,6 +1604,10 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         raise RuntimeError("browser non disponibile")
     image = browser.capture(shop, source)
     if image is None:  # post solo testo
+        return text_post_result(shop, source, folder, browser.last_text, checked, browser.last_posted)
+    if source.get("menu_nel_testo") and (browser.last_text or "").strip():
+        # il locale scrive il menu nel testo del post e le foto sono solo piatti (es. Da Giuseppe,
+        # "PRANZO DI OGGI DA GIUSEPPE!" + elenco): vale il testo, la foto resta in dati/catture
         return text_post_result(shop, source, folder, browser.last_text, checked, browser.last_posted)
     photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
     seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())

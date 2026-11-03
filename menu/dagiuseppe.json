@@ -1,0 +1,41 @@
+{
+  "data": "2026-11-03",
+  "testo": "PRANZO DI OGGI DA GIUSEPPE!\nIL MENU DI OGGI È TUTTO DA GUSTARE!\nSe ancora non sai cosa mangiare a pranzo, guarda quante bontà ti aspettano oggi\nParmigiana\nOrecchiette salsiccia e funghi\nPennette con zucchine e gamberetti\nSalsiccia\nCotolette\nSpezzatino con cipolla\nDai sapori della tradizione ai primi piatti sfiziosi, oggi hai solo l’imbarazzo della scelta!\nALIMENTARI DA GIUSEPPE DAL 2010\nVia Giuseppe Di Vittorio, 7 – Gioia del Colle\nPrenota al 375 749 2362\nSe sei a Gioia del Colle o nei dintorni, non pensarci troppo: passa da Giuseppe per il tuo pranzo!\n#AlimentariDaGiuseppe #GioiaDelColle #PranzoDiOggi #PranzoGioiaDelColle #PausaPranzo PranzoInZona PiattiDelGiorno PranzoDaGiuseppe DoveMangiareAGioiaDelColle CucinaPugliese GioiaDelColleBari",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Parmigiana",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Orecchiette salsiccia e funghi",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pennette con zucchine e gamberetti",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Salsiccia",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cotolette",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Spezzatino con cipolla",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}

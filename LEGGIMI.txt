@@ -174,6 +174,9 @@ TIPI DI FONTE ("tipo"), tutte con "attiva": true/false e "nome":
                      selettore_testo, scorri, data ("novita"...), parole_menu, richiede_recente,
                      attesa_secondi, apri_storia (storia Instagram), canale, utente, profilo,
                      post_da_controllare (predefinito 5), parti_storia (3).
+                     menu_nel_testo (true: il menu è il TESTO del post, le foto sono solo piatti),
+                     testo_dopo / testo_prima_di (espressioni regolari: quali righe del testo
+                     tenere, vedi cut_post_lines; es. Da Giuseppe).
   "storia_facebook"  storia Facebook (es. Le delizie di Michela). Chiavi: url, profilo, canale,
                      fuori_schermo (Chrome vero ma fuori dallo schermo: le storie non vanno headless).
   "pagina"           sito web con il menu scritto (Pane & Co: parse_paneeco). Chiavi: url, sezioni.
@@ -2134,3 +2137,11 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   scarta più un post che vale come menu fisso. Fuori dai giorni indicati (sabato, domenica, lunedì) il
   locale resta "in arrivo" oppure CHIUSO nei giorni di "riposo". Vale per qualsiasi locale.
   Copia precedente: backup\Menu_2026-11-03_prima-del-menu-fisso.py
+- 03/11/2026 (13:15): MENU NEL TESTO DEL POST CON FOTO. Da Giuseppe scrive il menu nel testo
+  ("PRANZO DI OGGI DA GIUSEPPE! ... Parmigiana, Orecchiette salsiccia e funghi...") e mette foto di
+  piatti senza scritte. Nuova chiave della fonte "browser": "menu_nel_testo": true -> browser_result
+  usa il testo (text_post_result, file AAAA-MM-GG_testo.json, scheda riga per riga) anche se il post
+  ha foto. Nuova funzione cut_post_lines con "testo_prima_di" (prima riga dove finisce il menu: "Dai
+  sapori", indirizzo, "Prenota", hashtag) e "testo_dopo" (ultima riga prima dei piatti: "...ti
+  aspettano oggi"): restano solo i piatti. Se una delle due frasi manca, quel taglio non si fa.
+  Copia precedente: backup\Menu_2026-11-03_prima-del-menu-nel-testo.py

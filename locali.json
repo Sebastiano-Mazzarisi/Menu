@@ -256,7 +256,7 @@
       "url": "https://www.facebook.com/profile.php?id=100064619451437",
       "logo": "dagiuseppe.jpg",
       "fonti": [
-        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=100064619451437", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "pranzo di oggi", "pranzo"], "attiva": true},
+        {"tipo": "browser", "nome": "Facebook", "url": "https://www.facebook.com/profile.php?id=100064619451437", "selettore": "[aria-posinset='1'] a[href*='/photo'] img", "selettore_testo": "[aria-posinset='1'] [data-ad-preview='message']", "scorri": true, "data": "novita", "parole_menu": ["menu", "menù", "primi", "secondi", "contorni", "del giorno", "piatti", "antipasti", "pranzo di oggi", "pranzo"], "menu_nel_testo": true, "testo_dopo": "aspettano oggi|men[uù] di oggi|pranzo di oggi", "testo_prima_di": "^dai sapori|alimentari da giuseppe|^via |prenota|#", "attiva": true},
         {"tipo": "cartella", "attiva": true}
       ]
     },
