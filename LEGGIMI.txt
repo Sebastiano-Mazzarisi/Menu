@@ -2198,3 +2198,5 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Nuovi comandi --reel-prova / --reel e file Prova-reel.bat / Pubblica-reel.bat.
   Limite di Facebook: 30 pubblicazioni via API in 24 ore (Reel, post e meteo insieme).
   Copia precedente: backup\Menu_2026-11-03_prima-del-reel.py
+- 03/11/2026 (14:10): Reel, primo avvio con KeyError 'video': le pagine di all_shop_pages hanno solo "a4" (la
+  pagina A4 di menu.pdf). make_reel ora usa page["a4"], messa al centro dello sfondo verticale.

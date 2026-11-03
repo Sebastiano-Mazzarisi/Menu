@@ -5577,7 +5577,7 @@ def reel_due(config: dict[str, Any]) -> str:
 
 
 def reel_frame(picture, title: str):
-    """Una pagina del Reel: la pagina del locale (1080x1350, come nel video) al centro di uno
+    """Una pagina del Reel: la pagina del locale (la stessa A4 di menu.pdf e del video) al centro di uno
     sfondo verticale 1080x1920, con la data in alto e l'indirizzo dell'app in basso."""
     from PIL import Image, ImageDraw
     frame = Image.new("RGB", (REEL_W, REEL_H), VIDEO_BG)
@@ -5619,7 +5619,7 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
     try:
         with Image.open(first) as cover:
             frames = [(cover.convert("RGB").resize((REEL_W, REEL_H), Image.LANCZOS), REEL_FIRST_SECONDS)]
-        frames += [(reel_frame(page["video"], title), seconds) for page in pages]
+        frames += [(reel_frame(page["a4"], title), seconds) for page in pages]  # stessa pagina di menu.pdf
         lines = []
         for index, (image, duration) in enumerate(frames):
             image.save(work / f"{index:03d}.png")
