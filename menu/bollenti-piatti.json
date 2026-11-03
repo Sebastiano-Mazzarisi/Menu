@@ -1,0 +1,91 @@
+{
+  "data": "2026-11-03",
+  "testo": "MENÙ DI MARTEDÌ\nPRIMI PIATTI\n●MINESTRONE DI VERDURE FRESCHE 5,0\n●PASTA E MINESTRONE 5,0\n●CANNELLONI RICOTTA E SPINACI 5,0\n●SPAGHETTI ALLA CARBONARA DI ZUCCA 5,5\n●PENNETTE ALL'ARRABBIATA 4,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●SCALOPPINE DI VITELLO AL LIMONE\n●SALSICCIA DI NORCIA ARROSTO CON POMODORINI, SCALOGNO E OLIVE\n●STRACCETTI DI POLLO AL CURRY\n●MELANZANE RIPIENE\n●FILETTO DI ORATA AL SUGO DI CROSTACEI\n●PIZZA DI PATATE\n●SFORMATO DI VERDURE VEGETARIANO",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI MARTEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MINESTRONE DI VERDURE FRESCHE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PASTA E MINESTRONE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CANNELLONI RICOTTA E SPINACI 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPAGHETTI ALLA CARBONARA DI ZUCCA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PENNETTE ALL'ARRABBIATA 4,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SCALOPPINE DI VITELLO AL LIMONE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SALSICCIA DI NORCIA ARROSTO CON POMODORINI, SCALOGNO E OLIVE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STRACCETTI DI POLLO AL CURRY",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MELANZANE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FILETTO DI ORATA AL SUGO DI CROSTACEI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PIZZA DI PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SFORMATO DI VERDURE VEGETARIANO",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
