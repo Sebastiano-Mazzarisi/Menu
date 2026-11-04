@@ -4640,6 +4640,31 @@ CAPTION_TOP = "_" * 38      # riga sopra i link nella didascalia del post (58 fi
 CAPTION_BOTTOM = "_" * 37   # riga sotto i link (57 fino al 02/11/2026)
 
 
+def hashtag_line(*topics: str) -> str:
+    """Crea una riga di hashtag Facebook leggibili, senza accenti, spazi o duplicati."""
+    tags = []
+    for topic in topics:
+        plain = unicodedata.normalize("NFKD", str(topic)).encode("ascii", "ignore").decode()
+        words = re.findall(r"[A-Za-z0-9]+", plain)
+        tag = "#" + "".join(word[:1].upper() + word[1:] for word in words)
+        if len(tag) > 1 and tag.casefold() not in {item.casefold() for item in tags}:
+            tags.append(tag)
+    return " ".join(tags)
+
+
+def with_hashtags(text: str, *topics: str) -> str:
+    """Mette gli hashtag nell'ultimo rigo; sostituisce un'eventuale vecchia riga di soli hashtag."""
+    tag_line = hashtag_line(*topics)
+    lines = text.rstrip().splitlines()
+    if lines and re.fullmatch(r"\s*(?:#[A-Za-z0-9]+\s*)+", lines[-1]):
+        lines[-1] = tag_line
+    elif tag_line:
+        if lines:
+            lines.append("")
+        lines.append(tag_line)
+    return "\n".join(lines)
+
+
 def summary_caption(data: dict[str, Any]) -> str:
     """Didascalia del post dei menu, SEMPLIFICATA il 04/11/2026 (voluta da Nino), es.
         https://tinyurl.com/menurostpdf
@@ -4659,7 +4684,8 @@ def summary_caption(data: dict[str, Any]) -> str:
     suggest = suggest_link()
     if suggest:
         lines += [suggest, "Suggerisci rosticceria", CAPTION_LINE]
-    return "\n".join(lines)
+    towns = [entry["comune"] for entry in data["pronti"] + data["attesa"]]
+    return with_hashtags("\n".join(lines), "menu del giorno", "rosticcerie", *towns)
 
 
 CAPTION_LINE = "=" * 10   # riga di separazione della didascalia del post dei menu (dal 04/11/2026)
@@ -4917,13 +4943,16 @@ def link_text(key: str, current: str = "") -> str:
     if not current.strip():
         site = pdf_site()[0]
         first = f"Pdf: {site}{COMPLETE_PDF}" if key == "pdf" else f"Video: {site}{COMPLETE_VIDEO}"
-        return f"{first}\n{line}" if line else first
+        text = f"{first}\n{line}" if line else first
+        return with_hashtags(text, "menu del giorno", "rosticcerie", "Putignano")
     if not line:
-        return current
+        return with_hashtags(current, "menu del giorno", "rosticcerie", "Putignano")
     if UPDATED_LINE.search(current):
-        return UPDATED_LINE.sub(line, current, count=1)
-    first, _, rest = current.partition("\n")
-    return f"{first}\n{line}" + (f"\n{rest}" if rest else "")
+        text = UPDATED_LINE.sub(line, current, count=1)
+    else:
+        first, _, rest = current.partition("\n")
+        text = f"{first}\n{line}" + (f"\n{rest}" if rest else "")
+    return with_hashtags(text, "menu del giorno", "rosticcerie", "Putignano")
 
 
 def link_comment(key: str) -> str:
@@ -5472,8 +5501,9 @@ def weather_caption(data: dict[str, Any]) -> str:
     "Putignano, il meteo di oggi, lunedì 2 novembre." Tutto il resto è nell'immagine (anche la
     fonte Open-Meteo, obbligatoria per la licenza)."""
     day = data["giorno"]
-    return (f"{data['luogo']}, il meteo di oggi, {SUMMARY_WEEKDAYS[day.weekday()].lower()} "
+    text = (f"{data['luogo']}, il meteo di oggi, {SUMMARY_WEEKDAYS[day.weekday()].lower()} "
             f"{day.day} {list(MONTHS)[day.month - 1]}.")
+    return with_hashtags(text, "meteo", data["luogo"], "previsioni del tempo")
 
 
 def render_weather(data: dict[str, Any], target: Path) -> Path:
@@ -5525,8 +5555,8 @@ def weather_post(config: dict[str, Any], force: bool = False) -> None:
         image, text = make_weather(config)
         if not plan["facebook"]:
             return
-        # SENZA descrizione (voluto da Nino il 04/11/2026): tutto è nell'immagine; il testo resta solo nel .txt
-        state["pubblicato"] = publish_summary_facebook(image, "")
+        # Tutto è già nell'immagine: nella descrizione resta soltanto l'ultimo rigo di hashtag.
+        state["pubblicato"] = publish_summary_facebook(image, text.splitlines()[-1])
         state["ora"] = datetime.now().strftime("%H:%M")
         state["pubblicato_alle"] = datetime.now().isoformat(timespec="seconds")
         state.pop("errore", None)
@@ -5549,8 +5579,8 @@ def weather_post(config: dict[str, Any], force: bool = False) -> None:
 
 # ================================================================================================
 # FARMACIA DI TURNO (dal 04/11/2026): ogni mattina, al primo giro dalle 08:00, una scheda verticale
-# 1080x1350 con la farmacia di Putignano del fine settimana successivo. Il post Facebook non ha
-# didascalia: è un'anteprima cliccabile che apre il PDF, nel quale indirizzi e telefoni sono link.
+# 1080x1350 con la farmacia di Putignano del fine settimana successivo. Il post Facebook ha solo
+# gli hashtag; il PDF contiene indirizzi e telefoni cliccabili.
 # Alla fine di ogni giro l'ordine della Pagina viene ripristinato: menu, meteo, farmacia.
 # ================================================================================================
 PHARMACY = DATA / "farmacia"
@@ -5826,7 +5856,7 @@ def pharmacy_caption(data: dict[str, Any]) -> str:
               f"Orari: {GUARDIA_MEDICA['orari']}",
               f"Fonti e aggiornamenti: {data['fonte']} · {GUARDIA_MEDICA['fonte']}",
               "Prima di andare, è consigliabile telefonare."]
-    return "\n".join(lines)
+    return with_hashtags("\n".join(lines), "farmacia di turno", "Putignano", "continuita assistenziale")
 
 
 def render_pharmacy(data: dict[str, Any], target: Path, boxes: list | None = None) -> Path:
@@ -5943,8 +5973,8 @@ def pharmacy_post(config: dict[str, Any], force: bool = False) -> bool:
         image, text = make_pharmacy(config)
         if not plan["facebook"]:
             return False
-        # come il meteo: FOTO verticale, SENZA descrizione (dal 04/11/2026; prima era un post con link)
-        state["pubblicato"] = publish_summary_facebook(image, "")
+        # Tutto è già nell'immagine: nella descrizione resta soltanto l'ultimo rigo di hashtag.
+        state["pubblicato"] = publish_summary_facebook(image, text.splitlines()[-1])
         state["pdf"] = "farmacia.pdf"
         state["ora"] = datetime.now().strftime("%H:%M")
         state["pubblicato_alle"] = datetime.now().isoformat(timespec="seconds")
@@ -6168,7 +6198,7 @@ def reel_post(config: dict[str, Any], force: bool = False) -> bool:
 
 
 # ================================================================================================
-# NOTIZIE LOCALI: nuova immagine ogni ora alle hh:15. Il post non ha descrizione e sostituisce
+# NOTIZIE LOCALI: nuova immagine ogni ora alle hh:15. Il post ha solo hashtag e sostituisce
 # quello dell'ora precedente. Subito dopo viene ripubblicato il Menu, così l'ordine della Pagina è:
 # 1) Menu rosticcerie, 2) News, 3) Meteo, 4) Farmacie.
 # ================================================================================================
@@ -6204,7 +6234,7 @@ def make_news() -> tuple[Path, list[Any], list[str]]:
 
 
 def news_post(force: bool = False) -> bool:
-    """Crea e pubblica le News senza descrizione, eliminando il post News precedente."""
+    """Crea e pubblica le News con soli hashtag pertinenti, eliminando il post precedente."""
     if not force and not news_due():
         return False
     state = read_json(NEWS_STATE, {})
@@ -6213,7 +6243,9 @@ def news_post(force: bool = False) -> bool:
         image, items, errors = make_news()
         if len(items) < 5:
             raise RuntimeError(f"trovate soltanto {len(items)} notizie valide")
-        newest = publish_summary_facebook(image, "")
+        towns = [item.town for item in items]
+        text = hashtag_line("notizie locali", *towns)
+        newest = publish_summary_facebook(image, text)
         previous = [post for post in read_json(NEWS_HISTORY, []) if post and post != newest]
         left = delete_facebook_posts(previous) if previous else []
         save_json(NEWS_HISTORY, [newest] + left)
