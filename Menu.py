@@ -4624,32 +4624,28 @@ CAPTION_BOTTOM = "_" * 37   # riga sotto i link (57 fino al 02/11/2026)
 
 
 def summary_caption(data: dict[str, Any]) -> str:
-    """Didascalia dell'UNICO post della Pagina (dal 22/10/2026), es.
-        Ultimo aggiornamento sabato 24 ottobre 2026 - 11:01
-        Clicca su uno di questi link o su [Scopri di più].
-        ______________________________________   (38 trattini bassi)
-        PDF - https://menurosticcerie.github.io/menu.pdf
-        VIDEO - https://menurosticcerie.github.io/video.mp4
-        WEBAPP - https://tinyurl.com/menurosticcerie
-        MP3 - https://menurosticcerie.github.io/ascolta.html
-        Suggerisci rosticceria: https://tinyurl.com/suggeriscirosticceria   (dal 02/11/2026)
-        ______________________________________    (37 trattini bassi)
-        .
-    Formato scelto da Nino il 24/10/2026 (CAPTION_TOP, CAPTION_BOTTOM, riga finale "."); righe
-    accorciate di 20 trattini il 02/11/2026.
-    Il link MP3 apre ascolta.html (audio in sottofondo + pagine del PDF), non il file mp3.
+    """Didascalia del post dei menu, SEMPLIFICATA il 04/11/2026 (voluta da Nino), es.
+        https://tinyurl.com/menurostpdf
+        Menu 4 novembre ore 09:00
+        ==========
+        https://tinyurl.com/suggrost
+        Suggerisci rosticceria
+        ==========
+    Primo link = menu.pdf, secondo = suggerisci.html, entrambi con link corti TinyURL (short_link).
     Data e ora = ultima pubblicazione di PDF e video (dati/completo.json)."""
     try:
         when = datetime.fromisoformat(read_json(COMPLETE_STATE, {}).get("ora", ""))
     except (TypeError, ValueError):
         when = datetime.now()
-    day = f"{SUMMARY_WEEKDAYS[when.weekday()].lower()} {when.day} {list(MONTHS)[when.month - 1]} {when.year}"
-    site = pdf_site()[0]
-    return (f"Ultimo aggiornamento {day} - {when:%H:%M}\n"
-            f"Clicca su uno di questi link o su [Scopri di più].\n{CAPTION_TOP}\n"
-            f"PDF - {site}{COMPLETE_PDF}\nVIDEO - {site}{COMPLETE_VIDEO}\nWEBAPP - {SHORT_URL}\n"
-            f"MP3 - {site}{LISTEN_PAGE}\n" + (f"{suggest}\n" if (suggest := suggest_line()) else "")
-            + f"{CAPTION_BOTTOM}\n.")
+    pdf = short_link(pdf_site()[0] + COMPLETE_PDF, MENU_PDF_ALIASES)
+    lines = [pdf, f"Menu {when.day} {list(MONTHS)[when.month - 1]} ore {when:%H:%M}", CAPTION_LINE]
+    suggest = suggest_link()
+    if suggest:
+        lines += [suggest, "Suggerisci rosticceria", CAPTION_LINE]
+    return "\n".join(lines)
+
+
+CAPTION_LINE = "=" * 10   # riga di separazione della didascalia del post dei menu (dal 04/11/2026)
 
 
 A4_SUMMARY_HEIGHT = round(1080 * 1754 / 1240)   # 1528: pagina riepilogativa con le proporzioni dell'A4
@@ -5728,13 +5724,13 @@ def pharmacy_html(data: dict[str, Any]) -> str:
         hours = "".join(f"<b>{html.escape(part.strip())}</b>" for part in entry["orari"].split("·") if part.strip())
         other = (f'<div class="nm D">{html.escape(entry["nome"])}</div>' if len(names) > 1 else "")
         cards.append(f'<div class="sl"><div class="sn">{SUMMARY_WEEKDAYS[day.weekday()]} {day.day}</div>'
-                     f'{other}<span class="lb">apertura</span><div class="hh D">{hours}</div>'
+                     f'{other}<div class="hh D">{hours}</div>'
                      + (f'<div class="ad" data-index="{index}" data-link-kind="indirizzo">{html.escape(street(entry["indirizzo"]))}</div>'
                         f'<div class="ph D" data-index="{index}" data-link-kind="telefono">☎ {html.escape(format_phone(entry["telefono"]))}</div>'
                         if len(names) > 1 else "") + '</div>')
     if len(names) == 1:  # stessa farmacia sabato e domenica: indirizzo e telefono una volta sola, grandi
         hero_info = (f'<div class="addr" data-index="0" data-link-kind="indirizzo">{html.escape(street(first["indirizzo"]))}</div>'
-                     f'<span class="lb">telefono</span><div class="tel D" data-index="0" data-link-kind="telefono">'
+                     f'<div class="tel D" data-index="0" data-link-kind="telefono">'
                      f'{html.escape(format_phone(first["telefono"]))}</div>')
         hero_name = names[0]
     else:
@@ -5756,20 +5752,22 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em;white-spac
 .big{{width:250px;height:250px;flex:none;filter:drop-shadow(0 8px 14px rgba(60,40,10,.15))}}
 .big svg{{width:100%;height:100%}}
 .cond{{font-size:62px;line-height:1.05;letter-spacing:-.01em}}
-.addr{{font-size:32px;color:#6b5f52;font-weight:700;margin:10px 0 14px;line-height:1.2}}
+.addr{{font-size:30px;color:#6b5f52;font-weight:700;margin:10px 0 12px;line-height:1.2}}
 .tel{{font-size:84px;line-height:1;color:#15803d;letter-spacing:-.02em}}
 .lb{{font-size:28px;font-weight:700;color:#6b5f52;text-transform:uppercase;letter-spacing:.05em;display:block}}
 .g{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:{60 if len(names) == 1 else 40}px}}
 .sl{{background:#fff;border-radius:24px;padding:24px 22px 26px;text-align:center;box-shadow:0 3px 10px rgba(60,40,10,.10)}}
-.sn{{font-size:40px;font-weight:700;color:#1e1a16;margin-bottom:10px}}
+.sn{{font-size:30px;font-weight:700;color:#6b5f52;margin-bottom:8px}}
 .nm{{font-size:32px;line-height:1.05;margin-bottom:10px;color:#15803d}}
-.hh b{{display:block;font-size:52px;line-height:1.15;font-weight:800}}
+.hh b{{display:block;font-size:56px;line-height:1.1;font-weight:800}}
 .ad{{font-size:28px;color:#6b5f52;margin-top:10px}}.ph{{font-size:40px;color:#15803d;margin-top:4px}}
 .in{{margin-top:22px;background:#fff;border-radius:22px;padding:18px 24px;box-shadow:0 3px 10px rgba(60,40,10,.10);
   display:flex;align-items:center;justify-content:space-between;gap:20px}}
 .in span{{font-size:28px;color:#6b5f52;font-weight:700;display:block}}
 .in b{{display:block;font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-size:40px;line-height:1.1}}
-.in .gh{{font-size:28px;color:#1e1a16;font-weight:700;line-height:1.3;margin-top:4px}}
+.in .gt{{font-size:42px;line-height:1.05}}
+.in .gs{{font-size:30px;color:#6b5f52;font-weight:700;margin-top:2px}}
+.in .gh{{font-size:28px;color:#1e1a16;font-weight:700;line-height:1.3;margin-top:8px}}
 .tip{{margin-top:34px;background:#1d7f46;color:#fff;border-radius:26px;padding:24px 30px;font-size:44px;
   font-weight:700;line-height:1.15;display:flex;align-items:center;gap:20px}}
 .tip i{{font-style:normal;font-size:52px}}
@@ -5781,7 +5779,7 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em;white-spac
 <div class="hero"><div class="big">{pharmacy_icon()}</div><div>
 <div class="cond D">{html.escape(hero_name)}</div>{hero_info}</div></div>
 <div class="g">{"".join(cards)}</div>
-<div class="in"><div><span>Ex Guardia Medica</span><div class="gh">Sabato 10:00–13:00 · 15:30–22:30<br>Domenica 8:00–13:00 · 15:30–22:30</div></div>
+<div class="in"><div><div class="gt D">Continuità assistenziale</div><div class="gs">(ex Guardia medica)</div><div class="gh">Sabato 10:00–13:00 · 15:30–22:30<br>Domenica 8:00–13:00 · 15:30–22:30</div></div>
 <div style="text-align:right"><span data-index="-1" data-link-kind="guardia-indirizzo">Via Cappuccini, 7</span>
 <b data-index="-1" data-link-kind="guardia-telefono">{format_phone(GUARDIA_MEDICA['telefono'])}</b></div></div>
 <div class="tip"><i>☎</i><span>Prima di andare, telefona</span></div>
@@ -6220,7 +6218,8 @@ def menus_on_top(config: dict[str, Any]) -> None:
 # ================================================================================================
 SUGGEST_PAGE = "suggerisci.html"
 SHORT_LINKS = DATA / "link-corti.json"   # {"https://...lungo": "https://tinyurl.com/..."}: creati una volta
-SUGGEST_ALIASES = ("suggeriscirosticceria", "suggerisci-rosticceria", "menurosticcerie-suggerisci")
+SUGGEST_ALIASES = ("suggrost", "suggerisci-rost", "suggeriscimenu", "suggeriscirosticceria")  # dal più corto
+MENU_PDF_ALIASES = ("menurostpdf", "menuoggipdf", "menudioggi", "menurosticceriepdf")       # link corto di menu.pdf
 
 SUGGEST_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Suggerisci una rosticceria</title>
@@ -6299,13 +6298,19 @@ def open_url(address: str, timeout: int = 30) -> bytes:
 
 
 def short_link(url: str, aliases: tuple[str, ...] = ()) -> str:
+    # memoria per url E nomi provati: cambiando l'elenco dei nomi (es. nomi più corti, 04/11/2026)
+    # il link si ricrea da solo invece di riusare quello vecchio
+    return short_link_cached(url, aliases, f"{url} | {','.join(aliases)}" if aliases else url)
+
+
+def short_link_cached(url: str, aliases: tuple[str, ...], key: str) -> str:
     """Link corto TinyURL per url, creato UNA volta e salvato in dati/link-corti.json. Prova prima i
     nomi in aliases (tinyurl.com/<nome>), poi un codice qualsiasi. Se TinyURL non risponde restituisce
     url (lungo) e riprova la volta dopo."""
     import urllib.parse
     saved = read_json(SHORT_LINKS, {})
-    if saved.get(url):
-        return saved[url]
+    if saved.get(key):
+        return saved[key]
     for alias in list(aliases) + [""]:
         query = {"url": url, **({"alias": alias} if alias else {})}
         try:
@@ -6316,7 +6321,7 @@ def short_link(url: str, aliases: tuple[str, ...] = ()) -> str:
             continue
         if text.startswith("https://tinyurl.com/") or text.startswith("http://tinyurl.com/"):
             short = text.replace("http://", "https://", 1)
-            saved[url] = short
+            saved[key] = short
             save_json(SHORT_LINKS, saved)
             print(f"Link corto creato: {short} -> {url}")
             return short
@@ -6346,7 +6351,14 @@ def suggest_line() -> str:
     "" se la pagina non è ancora sul sito dei PDF."""
     if not (PDF_SITE_DIR / SUGGEST_PAGE).is_file():
         return ""
-    return f"Suggerisci rosticceria: {short_link(pdf_site()[0] + SUGGEST_PAGE, SUGGEST_ALIASES)}"
+    return f"Suggerisci rosticceria: {suggest_link()}"
+
+
+def suggest_link() -> str:
+    """Link corto della pagina suggerisci.html ("" se non è ancora sul sito dei PDF)."""
+    if not (PDF_SITE_DIR / SUGGEST_PAGE).is_file():
+        return ""
+    return short_link(pdf_site()[0] + SUGGEST_PAGE, SUGGEST_ALIASES)
 
 
 PAGE_STATS = DATA / "statistiche.json"   # ultimi numeri della Pagina, letti anche dal Monitor

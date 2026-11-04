@@ -2212,4 +2212,21 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   accorciati (senza "70017 Putignano (BA)"). farmacia.pdf con i link resta creato come prima.
   publish_pharmacy_link non si usa più (resta nel codice).
   Copia precedente: backup\Menu_2026-11-04_prima-di-meteo-farmacia-senza-testo.py
+- 04/11/2026 (09:00): 1) LINK CORTI PIÙ CORTI: short_link ricorda i link per indirizzo E nomi provati
+  (short_link_cached), così cambiando i nomi si ricreano da soli. Nomi provati in ordine (TinyURL usa il
+  primo libero): menu.pdf -> MENU_PDF_ALIASES ("menurostpdf", "menuoggipdf", "menudioggi",
+  "menurosticceriepdf"); suggerisci.html -> SUGGEST_ALIASES ("suggrost", "suggerisci-rost",
+  "suggeriscimenu", "suggeriscirosticceria"). Nota: tinyurl.com/menupdf è già di qualcun altro.
+  2) DIDASCALIA DEL POST DEI MENU SEMPLIFICATA (summary_caption, CAPTION_LINE = 10 "="):
+       <link corto di menu.pdf>
+       Menu 4 novembre ore 09:00
+       ==========
+       <link corto di suggerisci.html>
+       Suggerisci rosticceria
+       ==========
+     (tolti PDF/VIDEO/WEBAPP/MP3 e "Ultimo aggiornamento"; CAPTION_TOP/BOTTOM non si usano più).
+  3) IMMAGINE FARMACIA: tolte le scritte "TELEFONO" e "APERTURA"; terzo riquadro con titolo grande
+  "Continuità assistenziale" (Bricolage 42 px) e sotto "(ex Guardia medica)"; caratteri e misure
+  come il meteo (nomi dei giorni 30 px grigi come le fasce del meteo, orari in Bricolage).
+  Copia precedente: backup\Menu_2026-11-04_prima-di-didascalia-semplice.py
 
