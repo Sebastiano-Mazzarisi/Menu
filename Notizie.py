@@ -11,14 +11,15 @@ pubblici; il filtro geografico considera titolo e categorie, non il corpo dell'a
 from __future__ import annotations
 
 import argparse
+import difflib
 import html
 import json
+import math
 import re
 import ssl
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
@@ -43,14 +44,39 @@ TOWNS = {
 }
 
 SOURCES = (
-    {"name": "Informatissimo", "url": "https://www.informatissimo.net/?format=feed&type=rss"},
-    {"name": "Faxonline", "url": "https://www.faxonline.it/feed/"},
-    {"name": "Noci Gazzettino", "url": "https://www.nocigazzettino.it/feed/", "town": "Noci"},
+    {"name": "InfoAlert Putignano", "url": "https://putignano.infoalert365.it/feed/",
+     "town": "Putignano", "authority": 1.0},
+    {"name": "Informatissimo", "url": "https://www.informatissimo.net/?format=feed&type=rss",
+     "authority": 0.82},
+    {"name": "Faxonline", "url": "https://www.faxonline.it/feed/", "authority": 0.82},
+    {"name": "TRM", "url": "https://www.trmtv.it/feed", "authority": 0.78},
+    {"name": "Noci Gazzettino", "url": "https://www.nocigazzettino.it/feed/", "town": "Noci",
+     "authority": 0.74},
     {"name": "PugliaNews24", "url": "https://www.puglianews24.eu/notizie/castellana-grotte/feed",
      "town": "Castellana Grotte"},
     {"name": "ViviCastellana", "url": "https://www.vivicastellanagrotte.it/index.php/notizietop",
      "town": "Castellana Grotte", "kind": "vivi"},
 )
+
+STOP_WORDS = {
+    "a", "ad", "al", "alla", "alle", "allo", "anche", "che", "con", "da", "dal", "dalla",
+    "delle", "di", "e", "gli", "i", "il", "in", "la", "le", "lo", "nel", "nella", "per",
+    "su", "tra", "un", "una", "uno", "putignano", "noci", "castellana", "grotte", "alberobello",
+}
+
+# Le parole sono divise per peso: prima la sicurezza e i servizi che incidono subito sulla vita locale,
+# poi amministrazione/economia e infine eventi e costume.
+INTEREST_TERMS = (
+    (18, ("allerta", "emergenza", "incendio", "incidente", "arrest", "omicidio", "rapina",
+          "scompar", "evacu", "maltempo", "chiusura", "interruzione")),
+    (14, ("ordinanza", "viabil", "traffico", "scuol", "ospedale", "sanità", "acqua", "rifiuti",
+          "ferrovia", "treno", "autobus", "lavori pubblici", "protezione civile")),
+    (10, ("comune", "consiglio comunale", "bando", "contribut", "lavoro", "imprese", "tari",
+          "bilancio", "elezioni", "ambiente")),
+    (6, ("evento", "festival", "carnevale", "concerto", "spettacolo", "mostra", "sagra", "sport")),
+)
+
+LOW_VALUE_TERMS = ("oroscopo", "necrolog", "auguri", "buon compleanno", "foto del giorno")
 
 
 @dataclass
@@ -60,6 +86,10 @@ class News:
     published: datetime
     source: str
     town: str
+    summary: str = ""
+    category: str = "altro"
+    score: float = 0.0
+    duplicate_sources: tuple[str, ...] = ()
 
 
 def clean(value: str | None) -> str:
@@ -125,17 +155,115 @@ def read_source(source: dict[str, str]) -> list[News]:
         title = clean(item.findtext("title"))
         link = clean(item.findtext("link"))
         categories = " ".join(clean(node.text) for node in item.findall("category"))
-        town = find_town(f"{title} {categories}", source.get("town"))
+        summary = clean(item.findtext("description"))
+        # Molti feed (in particolare Faxonline) indicano il comune soltanto nell'URL.
+        town = find_town(f"{title} {categories} {link} {summary[:400]}", source.get("town"))
         if not title or not link or not town:
             continue
         found.append(News(title=title, link=link, published=parse_date(item.findtext("pubDate")),
-                          source=source["name"], town=town))
+                          source=source["name"], town=town, summary=summary[:1200]))
     return found
 
 
-def normalized_title(value: str) -> str:
+def title_tokens(value: str) -> set[str]:
     words = re.findall(r"[a-zà-ù0-9]+", value.casefold())
-    return " ".join(word for word in words if word not in {"putignano", "noci", "castellana", "grotte"})
+    return {word for word in words if len(word) > 2 and word not in STOP_WORDS}
+
+
+def normalized_title(value: str) -> str:
+    return " ".join(sorted(title_tokens(value)))
+
+
+def same_story(left: News, right: News) -> bool:
+    """Riconosce lo stesso fatto anche quando le testate usano titoli diversi."""
+    if left.link.rstrip("/") == right.link.rstrip("/"):
+        return True
+    a, b = title_tokens(left.title), title_tokens(right.title)
+    if not a or not b:
+        return False
+    overlap = len(a & b) / len(a | b)
+    sequence = difflib.SequenceMatcher(None, normalized_title(left.title),
+                                       normalized_title(right.title)).ratio()
+    # Titoli molto corti richiedono un accordo più forte per evitare falsi positivi.
+    shared = len(a & b)
+    return overlap >= 0.52 or sequence >= 0.80 or (shared >= 4 and overlap >= 0.38)
+
+
+def classify(item: News) -> str:
+    text = f"{item.title} {item.summary}".casefold()
+    groups = (
+        ("sicurezza", ("allerta", "incend", "incident", "arrest", "omicid", "rapina", "maltempo")),
+        ("servizi", ("viabil", "traffico", "scuol", "osped", "sanità", "rifiuti", "acqua", "treno")),
+        ("amministrazione", ("comune", "sindac", "consiglio", "ordinanza", "bando", "bilancio")),
+        ("economia", ("lavoro", "impres", "commerc", "turismo", "agricol")),
+        ("eventi", ("evento", "festival", "carnevale", "concerto", "spettacolo", "mostra", "sagra")),
+        ("sport", ("sport", "partita", "campionato", "pallavolo", "calcio", "pallamano")),
+    )
+    for category, terms in groups:
+        if any(term in text for term in terms):
+            return category
+    return "altro"
+
+
+def interest_score(item: News, now: datetime) -> float:
+    text = f"{item.title} {item.summary[:700]}".casefold()
+    age_hours = max(0.0, (now - item.published).total_seconds() / 3600) if item.published != datetime.min else 720
+    # La freschezza conta molto: dopo due giorni il vantaggio temporale si riduce nettamente.
+    score = 30 * math.exp(-age_hours / 48)
+    score += 25 if item.town == "Putignano" else 9
+    source = next((source for source in SOURCES if source["name"] == item.source), {})
+    score += 10 * float(source.get("authority", 0.65))
+    for weight, terms in INTEREST_TERMS:
+        matches = sum(1 for term in terms if term in text)
+        if matches:
+            score += weight + min(matches - 1, 2) * 2
+    if any(term in text for term in LOW_VALUE_TERMS):
+        score -= 18
+    # Un titolo concreto, con numeri o una località esplicita, è in genere più informativo.
+    if re.search(r"\d", item.title):
+        score += 2
+    if item.town.casefold().split()[0] in item.title.casefold():
+        score += 3
+    return round(score, 2)
+
+
+def is_obsolete(item: News, now: datetime) -> bool:
+    """Esclude contenuti che non sono più utili, soprattutto le allerte a rapida scadenza."""
+    if item.published == datetime.min:
+        return True
+    age_hours = max(0.0, (now - item.published).total_seconds() / 3600)
+    text = f"{item.title} {item.summary[:300]}".casefold()
+    weather_alert = any(term in text for term in (
+        "allerta", "situazione meteo", "bollettino meteo", "previsioni meteo", "rischio meteo"
+    )) and any(term in text for term in (
+        "meteo", "temporali", "vento", "idrogeolog", "arancione", "gialla", "rossa", "protezione civile"
+    ))
+    # Le allerte vengono normalmente emesse il pomeriggio per il giorno seguente: 30 ore consentono
+    # di mostrarle durante la loro validità, ma non nella rassegna del mattino successivo.
+    return weather_alert and age_hours > 30
+
+
+def merge_duplicates(items: list[News], now: datetime) -> list[News]:
+    clusters: list[list[News]] = []
+    for item in sorted(items, key=lambda value: value.published, reverse=True):
+        cluster = next((group for group in clusters if any(same_story(item, other) for other in group)), None)
+        if cluster is None:
+            clusters.append([item])
+        else:
+            cluster.append(item)
+
+    merged: list[News] = []
+    for cluster in clusters:
+        for item in cluster:
+            item.category = classify(item)
+            item.score = interest_score(item, now)
+        representative = max(cluster, key=lambda value: (value.score, len(value.summary), value.published))
+        sources = tuple(dict.fromkeys(value.source for value in cluster))
+        representative.duplicate_sources = sources
+        # Conferme indipendenti aumentano l'affidabilità e l'interesse, senza creare doppioni.
+        representative.score = round(representative.score + min(8, (len(sources) - 1) * 4), 2)
+        merged.append(representative)
+    return merged
 
 
 def collect(limit: int = 5) -> tuple[list[News], list[str]]:
@@ -150,23 +278,27 @@ def collect(limit: int = 5) -> tuple[list[News], list[str]]:
         raise RuntimeError("nessuna fonte ha restituito notizie" + ("; " + "; ".join(errors) if errors else ""))
 
     now = datetime.now()
-    recent = [item for item in all_news if item.published >= now - timedelta(days=10)]
+    all_news = [item for item in all_news if not is_obsolete(item, now)]
+    recent = [item for item in all_news if item.published >= now - timedelta(days=4)]
     if len(recent) < limit:
-        recent = [item for item in all_news if item.published >= now - timedelta(days=30)]
-    recent.sort(key=lambda item: (item.town == "Putignano", item.published), reverse=True)
+        recent = [item for item in all_news if item.published >= now - timedelta(days=7)]
+    ranked = sorted(merge_duplicates(recent, now), key=lambda item: (item.score, item.published), reverse=True)
 
     chosen: list[News] = []
-    towns: Counter[str] = Counter()
-    seen: set[str] = set()
-    for item in recent:
-        key = normalized_title(item.title)
-        if key in seen or towns[item.town] >= 2:
+    for item in ranked:
+        # Non più di tre notizie dello stesso comune e due dello stesso argomento nella scheda.
+        town_cap = 3 if item.town == "Putignano" else 2
+        if sum(value.town == item.town for value in chosen) >= town_cap:
+            continue
+        if sum(value.category == item.category for value in chosen) >= 2:
             continue
         chosen.append(item)
-        seen.add(key)
-        towns[item.town] += 1
         if len(chosen) == limit:
             break
+    # Se i vincoli di varietà sono troppo stretti, completa comunque il numero richiesto.
+    if len(chosen) < limit:
+        remaining = [item for item in ranked if item not in chosen]
+        chosen.extend(remaining[:limit - len(chosen)])
     return chosen, errors
 
 
@@ -180,31 +312,41 @@ def news_icon() -> str:
 
 def card(item: News, index: int) -> str:
     when = item.published.strftime("%d/%m · %H:%M") if item.published != datetime.min else ""
+    size_class = " xlong" if len(item.title) > 105 else (" long" if len(item.title) > 72 else "")
+    sources = " + ".join(item.duplicate_sources) if len(item.duplicate_sources) > 1 else item.source
     return f'''<div class="card"><div class="num">{index}</div><div class="body">
-<div class="meta"><b>{html.escape(item.town)}</b><span>{html.escape(item.source)} · {when}</span></div>
-<div class="title D">{html.escape(item.title)}</div></div></div>'''
+<div class="meta"><b>{html.escape(item.town)}</b><span>{html.escape(sources)} · {when}</span></div>
+<div class="title D{size_class}">{html.escape(item.title)}</div></div></div>'''
 
 
 def page_html(items: list[News]) -> str:
     logo = LOGO.as_uri() if LOGO.exists() else ""
     sources = " · ".join(dict.fromkeys(item.source for item in items))
+    weekdays = ("Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica")
+    months = ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+              "settembre", "ottobre", "novembre", "dicembre")
+    today = datetime.now()
+    date_title = f"{weekdays[today.weekday()]} {today.day} {months[today.month - 1]}"
     return f'''<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
 *{{box-sizing:border-box}}html,body{{margin:0}}.D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
 .c{{width:1080px;height:1350px;position:relative;overflow:hidden;padding:46px 44px;color:#1e1a16;
-background:linear-gradient(180deg,#d7e9f4 0,#f4efe6 650px);font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
+background:linear-gradient(180deg,#dce2e9 0,#f4efe6 640px);font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
 .hd{{display:flex;align-items:center;gap:24px}}.hd img{{width:120px;height:120px;border-radius:26px;background:#fff;object-fit:contain;box-shadow:0 4px 14px #0002}}
-.kk{{font-size:30px;letter-spacing:.06em;text-transform:uppercase;color:#8a5306;font-weight:700}}
-h1{{font-size:72px;line-height:1;margin:2px 0 0;letter-spacing:-.025em}}
-.intro{{height:178px;display:flex;align-items:center;gap:28px;padding:8px 22px 0}}.ico{{width:150px;height:150px;filter:drop-shadow(0 7px 13px #0002)}}
-.ico svg{{width:100%;height:100%}}.lead{{font-size:35px;line-height:1.15;color:#3e6653;font-weight:700}}
-.list{{display:grid;gap:14px}}.card{{min-height:158px;background:#fff;border-radius:25px;padding:19px 24px;display:flex;gap:20px;align-items:flex-start;box-shadow:0 4px 13px #3c280f1c}}
-.num{{width:54px;height:54px;border-radius:16px;background:#1d7f46;color:#fff;display:grid;place-items:center;flex:none;font:800 30px "Bricolage Grotesque","Segoe UI",sans-serif}}
-.body{{min-width:0}}.meta{{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}}.meta b{{font-size:25px;color:#15713f}}.meta span{{font-size:21px;color:#8f7e6d}}
-.title{{font-size:34px;line-height:1.08;letter-spacing:-.01em}}.ft{{position:absolute;left:44px;right:44px;bottom:28px;text-align:center;font-size:22px;color:#8f857a}}
-</style></head><body><div class="c"><div class="hd"><img src="{logo}"><div><div class="kk">Notizie · Putignano e dintorni</div><h1 class="D">Oggi nel territorio</h1></div></div>
-<div class="intro"><div class="ico">{news_icon()}</div><div class="lead">Una selezione automatica delle notizie locali più recenti</div></div>
+.kk{{font-size:32px;letter-spacing:.06em;text-transform:uppercase;color:#8a5306;font-weight:700}}
+h1{{font-size:68px;line-height:1;margin:2px 0 0;letter-spacing:-.025em}}
+.strap{{height:100px;margin:34px 0 20px;background:#1d7f46;color:#fff;border-radius:26px;padding:15px 26px;display:flex;align-items:center;gap:20px;font-size:38px;font-weight:700}}
+.strap .ico{{width:70px;height:70px;flex:none}}.strap .ico svg{{width:100%;height:100%}}
+.list{{display:grid;gap:14px}}.card{{height:178px;background:#fff;border-radius:25px;padding:20px 24px;display:flex;gap:20px;align-items:flex-start;box-shadow:0 4px 13px #3c280f1c}}
+.num{{width:58px;height:58px;border-radius:17px;background:#1d7f46;color:#fff;display:grid;place-items:center;flex:none;font:800 32px "Bricolage Grotesque","Segoe UI",sans-serif}}
+.body{{min-width:0}}.meta{{display:flex;align-items:baseline;gap:14px;margin-bottom:7px;white-space:nowrap;overflow:hidden}}
+.meta b{{font-size:27px;color:#15713f}}.meta span{{font-size:23px;color:#7d7165;overflow:hidden;text-overflow:ellipsis}}
+.title{{font-size:38px;line-height:1.04;letter-spacing:-.012em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}}
+.title.long{{font-size:35px}}.title.xlong{{font-size:32px;line-height:1.03}}
+.ft{{position:absolute;left:44px;right:44px;bottom:25px;text-align:center;font-size:23px;color:#8f857a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+</style></head><body><div class="c"><div class="hd"><img src="{logo}"><div><div class="kk">Notizie a Putignano e dintorni</div><h1 class="D">{html.escape(date_title)}</h1></div></div>
+<div class="strap"><div class="ico">{news_icon()}</div><span>Le {len(items)} notizie locali da sapere</span></div>
 <div class="list">{''.join(card(item, index) for index, item in enumerate(items, 1))}</div>
 <div class="ft">Fonti: {html.escape(sources)} · aggiornato alle {datetime.now():%H:%M}</div></div></body></html>'''
 
@@ -229,12 +371,9 @@ def render(items: list[News], target: Path) -> Path:
     return target
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Crea la schermata delle notizie di Putignano e dintorni.")
-    parser.add_argument("--apri", action="store_true", help="Apre l'immagine dopo averla creata.")
-    parser.add_argument("--numero", type=int, default=5, choices=range(3, 7), metavar="3-6")
-    args = parser.parse_args()
-    items, errors = collect(args.numero)
+def create(limit: int = 5) -> tuple[Path, list[News], list[str]]:
+    """Crea immagine e JSON; è richiamabile sia da riga di comando sia da Menu.py."""
+    items, errors = collect(limit)
     OUT.mkdir(parents=True, exist_ok=True)
     stem = OUT / datetime.now().strftime("%Y-%m-%d")
     image = render(items, stem.with_suffix(".jpg"))
@@ -242,6 +381,15 @@ def main() -> None:
                "notizie": [{**asdict(item), "published": item.published.isoformat()} for item in items],
                "errori": errors}
     stem.with_suffix(".json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return image, items, errors
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Crea la schermata delle notizie di Putignano e dintorni.")
+    parser.add_argument("--apri", action="store_true", help="Apre l'immagine dopo averla creata.")
+    parser.add_argument("--numero", type=int, default=5, choices=range(3, 7), metavar="3-6")
+    args = parser.parse_args()
+    image, items, errors = create(args.numero)
     print(f"Notizie create: {image} ({len(items)} articoli)")
     for item in items:
         print(f"- {item.town}: {item.title} [{item.source}]")

@@ -3278,20 +3278,37 @@ def create_schedule(settings: dict[str, Any]) -> bool:
     if done.returncode != 0:
         print("Pianificazione NON riuscita: " + (done.stderr or done.stdout).strip())
         return False
+    # Seconda attività, separata dal controllo delle rosticcerie: parte ogni ora alle hh:15,
+    # anche di notte, e richiama soltanto la rassegna delle notizie.
+    news_xml_file = DATA / "notizie_attivita.xml"
+    news_arguments = html.escape(f'"{ROOT / "Menu.py"}" --notizie-auto', quote=False)
+    news_xml = xml.replace(start_at, f"{date.today().isoformat()}T00:15:00", 1)
+    news_xml = news_xml.replace(f"<Interval>PT{plan['ogni_minuti']}M</Interval>",
+                                "<Interval>PT60M</Interval>", 1)
+    news_xml = re.sub(r"<Duration>PT[^<]+</Duration>", "<Duration>PT23H1M</Duration>", news_xml, count=1)
+    news_xml = news_xml.replace(arguments, news_arguments, 1)
+    news_xml_file.write_text(news_xml, encoding="utf-16")
+    news_done = subprocess.run(["schtasks", "/Create", "/F", "/TN", "Menu Notizie", "/XML", str(news_xml_file)],
+                               capture_output=True, text=True,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if news_done.returncode != 0:
+        print("Pianificazione notizie NON riuscita: " + (news_done.stderr or news_done.stdout).strip())
+        return False
     save_json(SCHEDULE_STATE, {**plan, "versione": SCHEDULE_VERSION})
-    print(f"Pianificazione attiva: ogni {plan['ogni_minuti']} minuti dalle {plan['dalle']} alle {plan['alle']}.")
+    print(f"Pianificazione attiva: menu ogni {plan['ogni_minuti']} minuti dalle {plan['dalle']} alle "
+          f"{plan['alle']}; notizie ogni ora alle hh:15.")
     return True
 
 
-SCHEDULE_VERSION = 3  # cambia questo numero quando cambiano le impostazioni dell'attività: la ricreano da sole
+SCHEDULE_VERSION = 4  # v4: attività separata "Menu Notizie", ogni ora alle hh:15
 
 
 def task_exists() -> bool:
-    """True se l'attività "Menu" esiste ancora in Utilità di pianificazione di Windows."""
+    """True se le attività "Menu" e "Menu Notizie" esistono in Utilità di pianificazione."""
     import subprocess
-    done = subprocess.run(["schtasks", "/Query", "/TN", "Menu"], capture_output=True, text=True,
-                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    return done.returncode == 0
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    return all(subprocess.run(["schtasks", "/Query", "/TN", name], capture_output=True, text=True,
+                              creationflags=flags).returncode == 0 for name in ("Menu", "Menu Notizie"))
 
 
 def ensure_schedule(settings: dict[str, Any]) -> None:
@@ -5044,6 +5061,7 @@ def clean_facebook_posts() -> None:
         print(f"Non riesco a leggere i post della Pagina: {exc}")
         return
     weather_ids = set(read_json(WEATHER_HISTORY, [])[:1])  # il post del meteo di oggi resta
+    news_ids = set(read_json(NEWS_HISTORY, [])[:1])  # e il post orario delle notizie
     pharmacy_ids = set(read_json(PHARMACY_HISTORY, [])[:1])  # e la farmacia del prossimo weekend
     page_photo = re.compile(r"copertina|immagine del profilo|foto del profilo|cover photo|profile picture", re.I)
     remove, keep = [], []
@@ -5055,7 +5073,7 @@ def clean_facebook_posts() -> None:
             for sub in item.get("subattachments", {}).get("data", []) or [item]:
                 if sub.get("target", {}).get("id"):
                     media.append(sub["target"]["id"])
-        if post["id"] == keep_id or post["id"] in weather_ids or post["id"] in pharmacy_ids or (
+        if post["id"] == keep_id or post["id"] in news_ids or post["id"] in weather_ids or post["id"] in pharmacy_ids or (
                 not message and page_photo.search(post.get("story", ""))):
             keep.append((post, first, []))
         else:
@@ -5063,8 +5081,8 @@ def clean_facebook_posts() -> None:
     def show(rows):
         for post, first, media in rows:
             print(f"  {post.get('created_time', '')[:16].replace('T', ' ')}  {first[:80] or '(senza testo)'}")
-    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): il post con i link, il meteo, "
-          "la farmacia e i cambi di copertina/profilo")
+    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): Menu, News, Meteo, "
+          "Farmacia e i cambi di copertina/profilo")
     show(keep)
     print(f"\nDA CANCELLARE ({len(remove)}):")
     show(remove)
@@ -6149,7 +6167,90 @@ def reel_post(config: dict[str, Any], force: bool = False) -> bool:
     return False
 
 
-def facebook_top_posts(limit: int = 3) -> list[str]:
+# ================================================================================================
+# NOTIZIE LOCALI: nuova immagine ogni ora alle hh:15. Il post non ha descrizione e sostituisce
+# quello dell'ora precedente. Subito dopo viene ripubblicato il Menu, così l'ordine della Pagina è:
+# 1) Menu rosticcerie, 2) News, 3) Meteo, 4) Farmacie.
+# ================================================================================================
+NEWS = DATA / "notizie"
+NEWS_STATE = NEWS / "stato.json"
+NEWS_HISTORY = NEWS / "pubblicati.json"
+
+
+def news_slot(now: datetime | None = None) -> str:
+    """Identificatore dell'aggiornamento orario, per esempio 2026-11-04 13:15."""
+    now = now or datetime.now()
+    return now.replace(minute=15, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M")
+
+
+def news_due(now: datetime | None = None) -> bool:
+    """True dal minuto 15 in poi, finché la fascia oraria corrente non è stata pubblicata."""
+    now = now or datetime.now()
+    if now.minute < 15:
+        return False
+    return read_json(NEWS_STATE, {}).get("fascia") != news_slot(now)
+
+
+def make_news() -> tuple[Path, list[Any], list[str]]:
+    """Crea la scheda 1080x1350 con le cinque notizie selezionate e il relativo JSON."""
+    from Notizie import create
+    image, items, errors = create(5)
+    print(f"Notizie create: {image.name} ({len(items)} articoli)")
+    for item in items:
+        print(f"- {item.town}: {item.title} [{item.source}]")
+    if errors:
+        print("Fonti non raggiunte: " + " | ".join(errors))
+    return image, items, errors
+
+
+def news_post(force: bool = False) -> bool:
+    """Crea e pubblica le News senza descrizione, eliminando il post News precedente."""
+    if not force and not news_due():
+        return False
+    state = read_json(NEWS_STATE, {})
+    TIMER["fase"] = time.time()
+    try:
+        image, items, errors = make_news()
+        if len(items) < 5:
+            raise RuntimeError(f"trovate soltanto {len(items)} notizie valide")
+        newest = publish_summary_facebook(image, "")
+        previous = [post for post in read_json(NEWS_HISTORY, []) if post and post != newest]
+        left = delete_facebook_posts(previous) if previous else []
+        save_json(NEWS_HISTORY, [newest] + left)
+        state = {"data": date.today().isoformat(), "fascia": news_slot(), "pubblicato": newest,
+                 "pubblicato_alle": datetime.now().isoformat(timespec="seconds"),
+                 "immagine": image.name, "errori_fonti": errors}
+        print(f"Notizie pubblicate su Facebook: https://www.facebook.com/{newest}")
+        tick("post delle notizie")
+        return True
+    except Exception as exc:
+        state["errore"] = str(exc)
+        state["ultimo_tentativo"] = datetime.now().isoformat(timespec="seconds")
+        print(f"Notizie NON pubblicate: {exc}")
+        notify_phone(f"Post delle notizie non pubblicato: {str(exc)[:120]}")
+        return False
+    finally:
+        NEWS.mkdir(parents=True, exist_ok=True)
+        save_json(NEWS_STATE, state)
+
+
+def news_hourly(config: dict[str, Any], force: bool = False) -> bool:
+    """Aggiorna le News e rimette il Menu sopra di esse, verificando i primi due post."""
+    if not force and not news_due():
+        return False
+    if not news_post(force=force):
+        return False
+    daily_summary(config, force=True, refresh_pdf=False)
+    wanted = [read_json(SUMMARY_STATE, {}).get("pubblicato", ""),
+              read_json(NEWS_STATE, {}).get("pubblicato", "")]
+    current = facebook_top_posts(2)
+    if not all(wanted) or current[:2] != wanted:
+        raise RuntimeError(f"ordine Facebook inatteso dopo le notizie: {current[:2]}")
+    print("Ordine Facebook verificato: 1° Menu rosticcerie, 2° News")
+    return True
+
+
+def facebook_top_posts(limit: int = 4) -> list[str]:
     """Id dei post più recenti pubblicati dalla Pagina, nell'ordine mostrato da Facebook."""
     link = read_json(FACEBOOK_CONFIG, {})
     if not link.get("token") or not link.get("pagina_id"):
@@ -6161,52 +6262,55 @@ def facebook_top_posts(limit: int = 3) -> list[str]:
 
 
 def enforce_top_three(config: dict[str, Any], force: bool = False) -> None:
-    """Mantiene i primi tre post nell'ordine fisso Menu, Meteo, Farmacia.
+    """Mantiene i primi quattro post nell'ordine fisso Menu, News, Meteo, Farmacia.
 
-    Facebook ordina per data di pubblicazione, quindi i tre post vengono ricreati al contrario:
-    prima Farmacia, poi Meteo, infine Menu. I rispettivi metodi eliminano le versioni precedenti.
-    Nel giro automatico si interviene solo dopo l'orario della farmacia o se quella di oggi esiste
-    già; se l'ordine è corretto non viene ripubblicato nulla.
+    Facebook ordina per data di pubblicazione, quindi i post vengono ricreati al contrario:
+    prima Farmacia, poi Meteo, News e infine Menu. Ogni metodo elimina la versione precedente.
+    Se l'ordine è già corretto non viene ripubblicato nulla.
     """
     link = read_json(FACEBOOK_CONFIG, {})
     if not link.get("token") or not link.get("pagina_id"):
         return
     today = date.today().isoformat()
-    pharmacy = read_json(PHARMACY_STATE, {})
-    if not force and pharmacy.get("data") != today and not pharmacy_due(config.get("impostazioni", {})):
+    news = read_json(NEWS_STATE, {})
+    if not force and news.get("data") != today:
         return
+    pharmacy = read_json(PHARMACY_STATE, {})
     weather = read_json(WEATHER_STATE, {})
     summary = read_json(SUMMARY_STATE, {})
-    wanted = [summary.get("pubblicato", ""), weather.get("pubblicato", ""), pharmacy.get("pubblicato", "")]
+    wanted = [summary.get("pubblicato", ""), news.get("pubblicato", ""),
+              weather.get("pubblicato", ""), pharmacy.get("pubblicato", "")]
     try:
-        current = facebook_top_posts(3)
+        current = facebook_top_posts(4)
     except Exception as exc:
         current = []
         print(f"Ordine dei post non letto da Facebook: {exc}")
-    fresh = weather.get("data") == today and pharmacy.get("data") == today
-    if not force and fresh and all(wanted) and current[:3] == wanted:
-        print("Ordine Facebook già corretto: Menu, Meteo, Farmacia")
+    if not force and all(wanted) and current[:4] == wanted:
+        print("Ordine Facebook già corretto: Menu, News, Meteo, Farmacia")
         return
 
-    print("Ripristino i primi tre post: 1° Menu, 2° Meteo, 3° Farmacia")
+    print("Ripristino i primi quattro post: 1° Menu, 2° News, 3° Meteo, 4° Farmacia")
     if not pharmacy_post(config, force=True):
         raise RuntimeError("non è stato possibile pubblicare il post Farmacia")
     weather_post(config, force=True)
     if not read_json(WEATHER_STATE, {}).get("pubblicato"):
         raise RuntimeError("non è stato possibile pubblicare il post Meteo")
+    if not news_post(force=True):
+        raise RuntimeError("non è stato possibile pubblicare il post News")
     daily_summary(config, force=True, refresh_pdf=False)
 
     wanted = [read_json(SUMMARY_STATE, {}).get("pubblicato", ""),
+              read_json(NEWS_STATE, {}).get("pubblicato", ""),
               read_json(WEATHER_STATE, {}).get("pubblicato", ""),
               read_json(PHARMACY_STATE, {}).get("pubblicato", "")]
-    current = facebook_top_posts(3)
-    if current[:3] != wanted:
-        raise RuntimeError(f"ordine Facebook inatteso: {current[:3]}")
-    print("Ordine Facebook verificato: 1° Menu, 2° Meteo, 3° Farmacia")
+    current = facebook_top_posts(4)
+    if current[:4] != wanted:
+        raise RuntimeError(f"ordine Facebook inatteso: {current[:4]}")
+    print("Ordine Facebook verificato: 1° Menu, 2° News, 3° Meteo, 4° Farmacia")
 
 
 def menus_on_top(config: dict[str, Any]) -> None:
-    """Compatibilità con i richiami esistenti: ora mantiene tutti e tre i post fissi."""
+    """Compatibilità con i richiami esistenti: mantiene i quattro post fissi."""
     enforce_top_three(config)
 
 # ================================================================================================
@@ -6576,6 +6680,11 @@ def main() -> None:
                         help="Pubblica SUBITO il post del meteo di oggi (sostituisce quello già sulla Pagina).")
     parser.add_argument("--meteo-prova", action="store_true",
                         help="Crea immagine e testo del post del meteo e li apre, senza pubblicare.")
+    parser.add_argument("--notizie", action="store_true",
+                        help="Aggiorna e pubblica SUBITO le News come secondo post della Pagina.")
+    parser.add_argument("--notizie-prova", action="store_true",
+                        help="Crea e apre l'immagine delle cinque News, senza pubblicare.")
+    parser.add_argument("--notizie-auto", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--farmacia", action="store_true",
                         help="Pubblica SUBITO la farmacia di turno del prossimo fine settimana.")
     parser.add_argument("--farmacia-prova", action="store_true",
@@ -6632,6 +6741,38 @@ def main() -> None:
         return
     if args.pulisci_facebook:  # una tantum: toglie dalla Pagina i vecchi post con foto e video dei menu
         clean_facebook_posts()
+        return
+    if args.notizie_prova:
+        image, _items, _errors = make_news()
+        if sys.platform == "win32":
+            os.startfile(image)
+        return
+    if args.notizie_auto:  # attività Windows separata: 00:15, 01:15, ... 23:15
+        try:
+            ensure_schedule(config.get("impostazioni", {}))
+        except Exception:
+            pass
+        start_auto_log()
+        if not take_lock():
+            print("Un'altra esecuzione è in corso: le notizie verranno aggiornate al giro successivo.")
+            return
+        try:
+            news_hourly(config)
+        except BaseException as exc:
+            import traceback
+            print(f"ERRORE NOTIZIE: {exc!r}\n{traceback.format_exc()}")
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
+    if args.notizie:
+        start_manual_log("post delle notizie")
+        if not take_lock():
+            print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
+            return
+        try:
+            news_hourly(config, force=True)
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
         return
     if args.meteo_prova:  # solo per vedere il post del meteo: non pubblica, non tocca lo stato
         image, text = make_weather(config)
@@ -6774,10 +6915,10 @@ def main() -> None:
                 reel_post(fresh)
             except Exception as exc:
                 print(f"Reel non pubblicato: {exc!r}")
-            try:  # Facebook mostra sempre: 1° Menu, 2° Meteo, 3° Farmacia
+            try:  # Facebook mostra sempre: 1° Menu, 2° News, 3° Meteo, 4° Farmacia
                 enforce_top_three(fresh)
             except Exception as exc:
-                print(f"Ordine Menu/Meteo/Farmacia non ripristinato: {exc!r}")
+                print(f"Ordine Menu/News/Meteo/Farmacia non ripristinato: {exc!r}")
             tick("TOTALE del giro", total=True)
         except BaseException as exc:  # nel log, non in una finestra che nessuno vede
             import traceback
