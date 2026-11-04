@@ -4826,7 +4826,8 @@ def publish_summary_link(image: Path, text: str) -> str:
         facebook_call("", {"id": url, "scrape": "true", "access_token": token}, version=version, method="POST")
     except RuntimeError:
         pass
-    answer = facebook_call(f"{link['pagina_id']}/feed", {"message": text, "link": url, "access_token": token},
+    # Nessuna descrizione nel post: solo l'anteprima cliccabile che apre il PDF.
+    answer = facebook_call(f"{link['pagina_id']}/feed", {"link": url, "access_token": token},
                            version=version, method="POST")
     return answer.get("id", "")
 
@@ -5045,6 +5046,7 @@ def clean_facebook_posts() -> None:
         print(f"Non riesco a leggere i post della Pagina: {exc}")
         return
     weather_ids = set(read_json(WEATHER_HISTORY, [])[:1])  # il post del meteo di oggi resta
+    pharmacy_ids = set(read_json(PHARMACY_HISTORY, [])[:1])  # e la farmacia del prossimo weekend
     page_photo = re.compile(r"copertina|immagine del profilo|foto del profilo|cover photo|profile picture", re.I)
     remove, keep = [], []
     for post in posts:
@@ -5055,7 +5057,7 @@ def clean_facebook_posts() -> None:
             for sub in item.get("subattachments", {}).get("data", []) or [item]:
                 if sub.get("target", {}).get("id"):
                     media.append(sub["target"]["id"])
-        if post["id"] == keep_id or post["id"] in weather_ids or (
+        if post["id"] == keep_id or post["id"] in weather_ids or post["id"] in pharmacy_ids or (
                 not message and page_photo.search(post.get("story", ""))):
             keep.append((post, first, []))
         else:
@@ -5063,7 +5065,8 @@ def clean_facebook_posts() -> None:
     def show(rows):
         for post, first, media in rows:
             print(f"  {post.get('created_time', '')[:16].replace('T', ' ')}  {first[:80] or '(senza testo)'}")
-    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): il post con i link, il meteo e i cambi di copertina/profilo")
+    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): il post con i link, il meteo, "
+          "la farmacia e i cambi di copertina/profilo")
     show(keep)
     print(f"\nDA CANCELLARE ({len(remove)}):")
     show(remove)
@@ -5527,6 +5530,403 @@ def weather_post(config: dict[str, Any], force: bool = False) -> None:
         save_json(WEATHER_STATE, state)
 
 
+# ================================================================================================
+# FARMACIA DI TURNO (dal 04/11/2026): ogni mattina, al primo giro dalle 08:00, una scheda verticale
+# 1080x1350 con la farmacia di Putignano del fine settimana successivo. Il post Facebook non ha
+# didascalia: è un'anteprima cliccabile che apre il PDF, nel quale indirizzi e telefoni sono link.
+# Alla fine di ogni giro l'ordine della Pagina viene ripristinato: menu, meteo, farmacia.
+# ================================================================================================
+PHARMACY = DATA / "farmacia"
+PHARMACY_STATE = PHARMACY / "stato.json"
+PHARMACY_HISTORY = PHARMACY / "pubblicati.json"
+PHARMACY_SOURCE = "https://www.saperecomune.it/puglia/putignano/farmacie-di-turno"
+GUARDIA_MEDICA = {"nome": "Continuità Assistenziale (Ex Guardia Medica)",
+                  "indirizzo": "Via Cappuccini, 7, 70017 Putignano (BA)",
+                  "telefono": "0805840815",
+                  "orari": "Sabato 10:00–13:00 · 15:30–22:30  |  Domenica 8:00–13:00 · 15:30–22:30",
+                  "fonte": "https://sist.sanita.puglia.it/web/asl-bari/continuita-assistenziale"}
+
+
+def pharmacy_settings(settings: dict[str, Any]) -> dict[str, Any]:
+    """impostazioni > "farmacia" di locali.json (tutte facoltative)."""
+    return {"attivo": True, "ora": "08:00", "fino_alle": "12:00", "facebook": True,
+            "fonte": PHARMACY_SOURCE, **settings.get("farmacia", {})}
+
+
+def next_weekend(day: date | None = None) -> tuple[date, date]:
+    """Dal lunedì al sabato il sabato imminente; la domenica il fine settimana seguente."""
+    day = day or date.today()
+    days = (5 - day.weekday()) % 7
+    if day.weekday() == 6:
+        days = 6
+    saturday = day + timedelta(days=days)
+    return saturday, saturday + timedelta(days=1)
+
+
+def pharmacy_due(settings: dict[str, Any]) -> bool:
+    """È ora del post della farmacia? Una volta al giorno, con al massimo tre tentativi."""
+    plan = pharmacy_settings(settings)
+    if not plan["attivo"] or not plan["facebook"]:
+        return False
+    state = read_json(PHARMACY_STATE, {})
+    if state.get("data") == date.today().isoformat() and (
+            state.get("pubblicato") or int(state.get("tentativi", 0)) >= 3):
+        return False
+    return clock_today(plan["ora"]) <= datetime.now() <= clock_today(plan["fino_alle"])
+
+
+def fetch_public_page(url: str) -> str:
+    """Legge una pagina pubblica provando prima i certificati del PC e poi quelli di certifi."""
+    import ssl
+    request = urllib.request.Request(url, headers={"User-Agent": "MenuRosticcerie/1.0 (+pagina Facebook)"})
+    context_builders = [lambda: None, lambda: certifi_context(), lambda: certifi_context(upgrade=True)]
+    last: Exception | None = None
+    for index, make_context in enumerate(context_builders):
+        context = make_context()
+        if context is None and index > 0:
+            continue
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(request, timeout=35, context=context) as answer:
+                    charset = answer.headers.get_content_charset() or "utf-8"
+                    return answer.read().decode(charset, errors="replace")
+            except Exception as exc:
+                last = exc
+                reason = getattr(exc, "reason", exc)
+                if isinstance(reason, ssl.SSLError) or "CERTIFICATE" in str(exc).upper():
+                    break
+                time.sleep(3 * (attempt + 1))
+    raise RuntimeError(f"la pagina dei turni non risponde: {last}")
+
+
+def html_text(fragment: str) -> str:
+    """Testo semplice da un piccolo frammento HTML."""
+    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", fragment))).strip()
+
+
+def pharmacy_when_covers(text: str, target: date) -> bool:
+    """La dicitura del sito (giorno singolo oppure intervallo «da ... a ...») comprende target?"""
+    value = plain(html_text(text)).lower()
+    month_names = list(MONTHS)
+    exact = f"{SUMMARY_WEEKDAYS[target.weekday()].lower()} {target.day} {month_names[target.month - 1]}"
+    if value == plain(exact).lower():
+        return True
+    interval = re.fullmatch(r"da\s+\w+\s+(\d{1,2})(?:\s+(\w+))?\s+a\s+\w+\s+(\d{1,2})\s+(\w+)", value)
+    if not interval:
+        return False
+    first_day, first_month, last_day, last_month = interval.groups()
+    last_month_number = MONTHS.get(last_month)
+    first_month_number = MONTHS.get(first_month or last_month)
+    if not first_month_number or not last_month_number:
+        return False
+    start_year = target.year - 1 if first_month_number > last_month_number and target.month == last_month_number else target.year
+    end_year = start_year + (1 if last_month_number < first_month_number else 0)
+    try:
+        start = date(start_year, first_month_number, int(first_day))
+        end = date(end_year, last_month_number, int(last_day))
+    except ValueError:
+        return False
+    return start <= target <= end
+
+
+def pharmacy_data(source_html: str | None = None, today: date | None = None,
+                  source_url: str = PHARMACY_SOURCE) -> dict[str, Any]:
+    """Trova SOLO le farmacie nel Comune di Putignano assegnate al prossimo fine settimana."""
+    saturday, sunday = next_weekend(today)
+    wanted = {saturday.isoformat(): "sabato", sunday.isoformat(): "domenica"}
+    page = source_html if source_html is not None else fetch_public_page(source_url)
+    found: dict[str, dict[str, str]] = {}
+    for match in re.finditer(r"<article\b([^>]*)>(.*?)</article>", page, re.IGNORECASE | re.DOTALL):
+        attrs, body = match.groups()
+        css = re.search(r'class=["\']([^"\']*)', attrs, re.IGNORECASE)
+        if not css or "ftc-pharm" not in css.group(1).split():
+            continue
+        days_match = re.search(r'data-giorni=["\']([^"\']*)', attrs, re.IGNORECASE)
+        days = set(days_match.group(1).split()) if days_match else set()
+        relevant = days.intersection(wanted)
+        if not relevant:
+            continue
+        address_match = re.search(r'data-dove=["\']([^"\']+)', body, re.IGNORECASE)
+        phone_match = re.search(r'data-tel=["\']([^"\']+)', body, re.IGNORECASE)
+        name_match = re.search(r"<h3\b[^>]*>(.*?)</h3>", body, re.IGNORECASE | re.DOTALL)
+        address = html.unescape(address_match.group(1)).replace(" · ", ", ").strip() if address_match else ""
+        if "putignano" not in address.lower() or not phone_match or not name_match:
+            continue
+        name = html_text(re.sub(r"<span\b.*?</span>", "", name_match.group(1), flags=re.I | re.S))
+        if not name.lower().startswith("farmacia "):
+            name = "Farmacia " + name
+        entry = {"nome": name, "indirizzo": address, "telefono": html.unescape(phone_match.group(1)).strip()}
+        for iso_day in relevant:
+            target = date.fromisoformat(iso_day)
+            hours = ""
+            for row in re.findall(r"<li\b[^>]*>(.*?)</li>", body, re.IGNORECASE | re.DOTALL):
+                when_match = re.search(r'<span\b[^>]*class=["\'][^"\']*quando[^"\']*["\'][^>]*>(.*?)</span>',
+                                       row, re.IGNORECASE | re.DOTALL)
+                hour_match = re.search(r'<span\b[^>]*class=["\'][^"\']*ora[^"\']*["\'][^>]*>(.*?)</span>',
+                                       row, re.IGNORECASE | re.DOTALL)
+                if when_match and hour_match and pharmacy_when_covers(when_match.group(1), target):
+                    hours = html_text(hour_match.group(1))
+                    break
+            if not hours:
+                raise RuntimeError(f"orari non trovati per {target:%d/%m/%Y} ({name})")
+            opening, marker, availability = hours.partition("reperibile")
+            found[iso_day] = {**entry, "orari": opening.strip(" ·"),
+                              "reperibilita": (marker + availability).strip() if marker else ""}
+    missing = [iso for iso in wanted if iso not in found]
+    if missing:
+        readable = ", ".join(datetime.strptime(iso, "%Y-%m-%d").strftime("%d/%m/%Y") for iso in missing)
+        raise RuntimeError(f"turno di Putignano non trovato per {readable}")
+    # Due schede distinte anche se la farmacia è la stessa: gli orari del sabato e della domenica
+    # possono essere diversi.
+    entries = [{**found[day.isoformat()], "giorni": [day]} for day in (saturday, sunday)]
+    return {"sabato": saturday, "domenica": sunday, "farmacie": entries,
+            "fonte": source_url, "verificato": datetime.now()}
+
+
+def format_phone(value: str) -> str:
+    digits = re.sub(r"\D", "", value)
+    return f"{digits[:3]} {digits[3:6]} {digits[6:]}" if len(digits) == 10 else value
+
+
+def weekend_title(data: dict[str, Any]) -> str:
+    saturday, sunday = data["sabato"], data["domenica"]
+    if saturday.month == sunday.month:
+        return f"Sabato {saturday.day} e domenica {sunday.day} {list(MONTHS)[saturday.month - 1]}"
+    return (f"Sabato {saturday.day} {list(MONTHS)[saturday.month - 1]} e domenica {sunday.day} "
+            f"{list(MONTHS)[sunday.month - 1]}")
+
+
+def pharmacy_icon() -> str:
+    """Marchio farmacia moderno e immediatamente riconoscibile, nello stile delle icone del meteo."""
+    return '''<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+<rect x="31" y="31" width="238" height="238" rx="58" fill="#fff"/>
+<path d="M116 57h68v59h59v68h-59v59h-68v-59H57v-68h59z" fill="#159447"/>
+<path d="M103 168h94c-5 30-23 48-47 48s-42-18-47-48z" fill="#fff"/>
+<path d="M145 92c29 8 36 25 13 39-24 14-19 28 8 35" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round"/>
+<circle cx="147" cy="87" r="10" fill="#fff"/>
+</svg>'''
+
+
+def pharmacy_html(data: dict[str, Any]) -> str:
+    """Pagina 1080x1350 nello stile del meteo, con una scheda e gli orari per ciascun giorno."""
+    cards = []
+    for entry in data["farmacie"]:
+        day = entry["giorni"][0]
+        label = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]}"
+        cards.append(f'''<div class="card"><div class="day">{html.escape(label)}</div>
+<div class="name D">{html.escape(entry["nome"].upper())}</div>
+<div class="hours"><span>APERTURA</span><b>{html.escape(entry["orari"])}</b></div>
+<div class="details"><div class="line address" data-index="{len(cards)}" data-link-kind="indirizzo"><span class="pin">●</span><span>{html.escape(entry["indirizzo"])}</span></div>
+<div class="line phone" data-index="{len(cards)}" data-link-kind="telefono"><span>☎</span><span>{html.escape(format_phone(entry["telefono"]))}</span></div></div></div>''')
+    logo = APP_LOGO.as_uri() if APP_LOGO.exists() else ""
+    title = weekend_title(data)
+    return f'''<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+*{{box-sizing:border-box}}html,body{{margin:0}}
+.c{{width:1080px;height:1350px;position:relative;overflow:hidden;color:#1e1a16;padding:46px 44px;
+ background:linear-gradient(180deg,#cfdfef 0,#f4efe6 720px);font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
+.D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
+.hd{{display:flex;align-items:center;gap:24px}}.hd img{{width:120px;height:120px;border-radius:26px;background:#fff;
+ box-shadow:0 4px 14px rgba(0,0,0,.1);object-fit:contain}}
+.kk{{font-size:32px;letter-spacing:.06em;text-transform:uppercase;color:#8a5306;font-weight:700}}
+h1{{font-size:68px;line-height:1.03;margin:4px 0 0;letter-spacing:-.025em}}
+.hero{{width:170px;height:170px;margin:10px auto 4px;
+ filter:drop-shadow(0 9px 15px rgba(30,70,40,.15))}}.hero svg{{width:100%;height:100%}}
+.cards{{display:grid;grid-template-columns:1fr;gap:24px}}
+.card{{background:#fff;border-radius:24px;padding:14px 26px 16px;box-shadow:0 4px 14px rgba(60,40,10,.12);
+ display:grid;grid-template-columns:1fr 1.13fr;grid-template-areas:"day day" "name hours" "details hours";column-gap:25px}}
+.day{{grid-area:day;font-size:25px;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:.04em}}
+.name{{grid-area:name;font-size:40px;line-height:1.02;margin:3px 0 5px;letter-spacing:-.02em}}
+.hours{{grid-area:hours;border-left:3px solid #e6ded2;padding-left:24px;align-self:center}}
+.hours>span{{font-size:22px;color:#8a5306;font-weight:700;letter-spacing:.06em}}.hours b{{display:block;font-size:32px;line-height:1.1;margin-top:3px}}
+.details{{grid-area:details}}.line{{display:flex;align-items:center;gap:12px;color:#6b5f52;font-size:25px;line-height:1.1;margin-top:6px}}
+.line>span:first-child{{width:42px;height:42px;border-radius:12px;background:#e1f3e7;color:#15803d;display:grid;place-items:center;flex:none}}
+.pin{{font-size:20px}}.phone{{color:#1e1a16;font-weight:700;font-size:35px}}
+.guardia{{margin-top:16px;background:#eef6ff;border:3px solid #b8d7ee;border-radius:24px;padding:17px 24px;
+ display:grid;grid-template-columns:1.14fr .86fr;gap:24px;align-items:center;box-shadow:0 3px 10px rgba(35,86,120,.10)}}
+.gm-title{{display:flex;align-items:center;gap:13px;font-size:31px;color:#17658e;margin-bottom:7px}}.gm-cross{{width:43px;height:43px;
+ border-radius:13px;background:#17658e;color:#fff;display:grid;place-items:center;font-size:29px}}
+.gm-hours{{font-size:23px;line-height:1.25;color:#334e5d;font-weight:700}}.gm-contact{{border-left:3px solid #c7ddea;padding-left:22px}}
+.guardia .line{{font-size:23px;margin-top:7px}}.guardia .line>span:first-child{{background:#d8ebf7;color:#17658e}}
+.guardia .phone{{font-size:32px}}
+.tip{{position:absolute;left:44px;right:44px;bottom:83px;background:#1d7f46;color:#fff;border-radius:24px;padding:20px 26px;
+ font-size:34px;font-weight:700;line-height:1.15;text-align:center}}
+.src{{position:absolute;left:44px;right:44px;bottom:32px;text-align:center;font-size:24px;color:#8f857a}}
+</style></head><body><div class="c">
+<div class="hd"><img src="{logo}"><div><div class="kk">Farmacia di turno</div><h1 class="D">{html.escape(title)}</h1></div></div>
+<div class="hero">{pharmacy_icon()}</div><div class="cards">{''.join(cards)}</div>
+<div class="guardia"><div><div class="gm-title D"><span class="gm-cross">+</span> Ex Guardia Medica</div>
+<div class="gm-hours">Sabato 10:00–13:00 · 15:30–22:30<br>Domenica 8:00–13:00 · 15:30–22:30</div></div>
+<div class="gm-contact"><div class="line address" data-index="-1" data-link-kind="guardia-indirizzo"><span class="pin">●</span><span>Via Cappuccini, 7</span></div>
+<div class="line phone" data-index="-1" data-link-kind="guardia-telefono"><span>☎</span><span>{format_phone(GUARDIA_MEDICA['telefono'])}</span></div></div></div>
+<div class="tip">Tocca il post: nel PDF indirizzo e telefono sono cliccabili</div>
+<div class="src">Fonti: SapereComune.it · ASL Bari · verificato alle {data['verificato']:%H:%M}</div>
+</div></body></html>'''
+
+
+def pharmacy_caption(data: dict[str, Any]) -> str:
+    """Testo Facebook: qui indirizzo e telefono possono diventare collegamenti, nell'immagine no."""
+    import urllib.parse
+    lines = [f"Farmacia di turno a Putignano — {weekend_title(data).lower()}."]
+    for entry in data["farmacie"]:
+        day = entry["giorni"][0]
+        days = f"{SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
+        query = urllib.parse.quote_plus(f"{entry['nome']}, {entry['indirizzo']}")
+        digits = re.sub(r"\D", "", entry["telefono"])
+        international = digits if digits.startswith("39") else "39" + digits
+        lines += ["", f"{days.capitalize()} — {entry['nome']}", f"Apertura: {entry['orari']}"]
+        lines += [f"Indirizzo: {entry['indirizzo']}",
+                  f"Google Maps: https://www.google.com/maps/search/?api=1&query={query}",
+                  f"Telefono: {format_phone(entry['telefono'])}", f"Chiama: tel:+{international}"]
+    lines += ["", f"Apri il PDF cliccabile: {pdf_site()[0]}farmacia.pdf",
+              "", "Ex Guardia Medica (Continuità Assistenziale)",
+              f"Indirizzo: {GUARDIA_MEDICA['indirizzo']}",
+              f"Telefono: {format_phone(GUARDIA_MEDICA['telefono'])}",
+              f"Orari: {GUARDIA_MEDICA['orari']}",
+              f"Fonti e aggiornamenti: {data['fonte']} · {GUARDIA_MEDICA['fonte']}",
+              "Prima di andare, è consigliabile telefonare."]
+    return "\n".join(lines)
+
+
+def render_pharmacy(data: dict[str, Any], target: Path, boxes: list | None = None) -> Path:
+    page_file = target.with_suffix(".html")
+    page_file.write_text(pharmacy_html(data), encoding="utf-8")
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(viewport={"width": 1080, "height": 1350})
+            page.goto(page_file.as_uri(), wait_until="load", timeout=60000)
+            try:
+                page.evaluate("document.fonts.ready.then(() => true)")
+            except Exception:
+                pass
+            page.wait_for_timeout(300)
+            if boxes is not None:
+                found = page.evaluate("""() => {
+                  const box = e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+                  return [...document.querySelectorAll('[data-link-kind]')]
+                    .map(e => [Number(e.dataset.index), e.dataset.linkKind, box(e)]); }""")
+                boxes.extend((index, kind, tuple(rect)) for index, kind, rect in found)
+            page.screenshot(path=str(target), type="jpeg", quality=90)
+        finally:
+            browser.close()
+    return target
+
+
+def make_pharmacy(config: dict[str, Any]) -> tuple[Path, str]:
+    plan = pharmacy_settings(config.get("impostazioni", {}))
+    data = pharmacy_data(source_url=plan["fonte"])
+    PHARMACY.mkdir(parents=True, exist_ok=True)
+    stem = PHARMACY / date.today().isoformat()
+    text = pharmacy_caption(data)
+    stem.with_suffix(".txt").write_text(text, encoding="utf-8")
+    boxes: list = []
+    image = render_pharmacy(data, stem.with_suffix(".jpg"), boxes)
+    from PIL import Image
+    with Image.open(image) as opened:
+        page = opened.convert("RGB")
+    for index, kind, box in boxes:
+        entry = GUARDIA_MEDICA if index < 0 else data["farmacie"][index]
+        uri = maps_link(entry["nome"], entry["indirizzo"]) if kind.endswith("indirizzo") else tel_link(entry["telefono"])
+        add_link(page, box, uri)
+    pdf = stem.with_suffix(".pdf")
+    save_pdf([page], pdf)
+    PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(pdf, PDF_SITE_DIR / "farmacia.pdf")
+    names = ", ".join(entry["nome"] for entry in data["farmacie"])
+    print(f"Farmacia creata: {image.name} e {pdf.name} ({weekend_title(data)}: {names})")
+    return image, text
+
+
+PHARMACY_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
+<meta property="og:type" content="website"><meta property="og:title" content="{title}">
+<meta property="og:url" content="{url}">
+<meta property="og:image" content="{image}"><meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1350">
+<meta http-equiv="refresh" content="0; url=farmacia.pdf?v={stamp}"></head>
+<body style="font:18px system-ui,sans-serif;margin:2em"><p><a href="farmacia.pdf?v={stamp}">Apri la farmacia di turno (PDF cliccabile)</a></p></body></html>
+"""
+
+
+def publish_pharmacy_link(image: Path, text: str) -> str:
+    """Post Facebook CON LINK: toccando l'anteprima si apre farmacia.html, che porta subito al
+    PDF. Nel PDF indirizzo e telefono sono vere zone cliccabili."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
+    site = pdf_site()[0]
+    stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(image, PDF_SITE_DIR / "farmacia.jpg")
+    url = f"{site}farmacia.html?v={stamp}"
+    (PDF_SITE_DIR / "farmacia.html").write_text(PHARMACY_PAGE_HTML.format(
+        title="Farmacia di turno a Putignano", url=url,
+        image=f"{site}farmacia.jpg?v={stamp}", stamp=stamp), encoding="utf-8")
+    if not publish_pdf_site():
+        raise RuntimeError("pagina della farmacia non pubblicata sul sito dei PDF")
+    for _ in range(36):
+        try:
+            with urllib.request.urlopen(f"{site}farmacia.html?controllo={stamp}", timeout=20) as answer:
+                if f"v={stamp}" in answer.read().decode("utf-8", "replace"):
+                    break
+        except Exception:
+            pass
+        time.sleep(5)
+    else:
+        print("   la pagina della farmacia non risulta ancora online: pubblico lo stesso")
+    token, version = link["token"], link.get("versione", "")
+    try:
+        facebook_call("", {"id": url, "scrape": "true", "access_token": token}, version=version, method="POST")
+    except RuntimeError:
+        pass
+    # Nessuna didascalia: Facebook mostra soltanto l'anteprima cliccabile della scheda.
+    answer = facebook_call(f"{link['pagina_id']}/feed", {"link": url, "access_token": token},
+                           version=version, method="POST")
+    return answer.get("id", "")
+
+
+def pharmacy_post(config: dict[str, Any], force: bool = False) -> bool:
+    """Crea e pubblica il post; restituisce True solo se Facebook ha ricevuto il nuovo post."""
+    plan = pharmacy_settings(config.get("impostazioni", {}))
+    if not force and not pharmacy_due(config.get("impostazioni", {})):
+        return False
+    state = read_json(PHARMACY_STATE, {})
+    if state.get("data") != date.today().isoformat():
+        state = {"data": date.today().isoformat(), "tentativi": 0}
+    TIMER["fase"] = time.time()
+    state["tentativi"] = int(state.get("tentativi", 0)) + 1
+    published = False
+    try:
+        image, text = make_pharmacy(config)
+        if not plan["facebook"]:
+            return False
+        state["pubblicato"] = publish_pharmacy_link(image, text)
+        state["pdf"] = "farmacia.pdf"
+        state["ora"] = datetime.now().strftime("%H:%M")
+        state["pubblicato_alle"] = datetime.now().isoformat(timespec="seconds")
+        state.pop("errore", None)
+        print(f"Farmacia pubblicata su Facebook: https://www.facebook.com/{state['pubblicato']}")
+        old = [post for post in read_json(PHARMACY_HISTORY, []) if post != state["pubblicato"]]
+        save_json(PHARMACY_HISTORY, [state["pubblicato"]] + (delete_facebook_posts(old) if old else []))
+        tick("post della farmacia")
+        published = True
+    except LookupError as exc:
+        state.update({"errore": str(exc), "tentativi": 3})
+        print(f"Farmacia NON pubblicata: {exc}")
+    except Exception as exc:
+        state["errore"] = str(exc)
+        print(f"Farmacia NON pubblicata: {exc}")
+        if int(state.get("tentativi", 0)) >= 3:
+            notify_phone(f"Post della farmacia non pubblicato: {str(exc)[:120]}")
+    finally:
+        PHARMACY.mkdir(parents=True, exist_ok=True)
+        save_json(PHARMACY_STATE, state)
+    return published
+
+
 
 # ------------------------------------------------------------------------------------------------
 # REEL DEL GIORNO SULLA PAGINA FACEBOOK (vedi LEGGIMI.txt > Reel del giorno)
@@ -5726,21 +6126,65 @@ def reel_post(config: dict[str, Any], force: bool = False) -> bool:
     return False
 
 
-def menus_on_top(config: dict[str, Any]) -> None:
-    """ORDINE DELLA PAGINA (voluto da Nino il 02/11/2026): 1° il post dei menu, 2° il meteo.
-    Facebook mette in cima il post più recente: se il post dei menu è stato pubblicato PRIMA del
-    meteo di oggi (o non si sa quando), lo si ripubblica adesso, così torna sopra. Chiamata alla fine
-    di ogni giro automatico e dopo --meteo; se il giro ha già rifatto il post dei menu non fa nulla."""
+def facebook_top_posts(limit: int = 3) -> list[str]:
+    """Id dei post più recenti pubblicati dalla Pagina, nell'ordine mostrato da Facebook."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        return []
+    answer = facebook_call(f"{link['pagina_id']}/feed", {
+        "fields": "id,created_time", "limit": str(limit), "access_token": link["token"]},
+        version=link.get("versione", ""))
+    return [str(post.get("id", "")) for post in answer.get("data", []) if post.get("id")]
+
+
+def enforce_top_three(config: dict[str, Any], force: bool = False) -> None:
+    """Mantiene i primi tre post nell'ordine fisso Menu, Meteo, Farmacia.
+
+    Facebook ordina per data di pubblicazione, quindi i tre post vengono ricreati al contrario:
+    prima Farmacia, poi Meteo, infine Menu. I rispettivi metodi eliminano le versioni precedenti.
+    Nel giro automatico si interviene solo dopo l'orario della farmacia o se quella di oggi esiste
+    già; se l'ordine è corretto non viene ripubblicato nulla.
+    """
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        return
+    today = date.today().isoformat()
+    pharmacy = read_json(PHARMACY_STATE, {})
+    if not force and pharmacy.get("data") != today and not pharmacy_due(config.get("impostazioni", {})):
+        return
     weather = read_json(WEATHER_STATE, {})
-    if weather.get("data") != date.today().isoformat() or not weather.get("pubblicato_alle"):
-        return
     summary = read_json(SUMMARY_STATE, {})
-    if summary.get("pubblicato") and str(summary.get("pubblicato_alle", "")) > weather["pubblicato_alle"]:
-        return  # i menu sono già sopra il meteo
-    if not read_json(FACEBOOK_CONFIG, {}).get("token"):
+    wanted = [summary.get("pubblicato", ""), weather.get("pubblicato", ""), pharmacy.get("pubblicato", "")]
+    try:
+        current = facebook_top_posts(3)
+    except Exception as exc:
+        current = []
+        print(f"Ordine dei post non letto da Facebook: {exc}")
+    fresh = weather.get("data") == today and pharmacy.get("data") == today
+    if not force and fresh and all(wanted) and current[:3] == wanted:
+        print("Ordine Facebook già corretto: Menu, Meteo, Farmacia")
         return
-    print("Ripubblico il post dei menu, così resta sopra il meteo")
+
+    print("Ripristino i primi tre post: 1° Menu, 2° Meteo, 3° Farmacia")
+    if not pharmacy_post(config, force=True):
+        raise RuntimeError("non è stato possibile pubblicare il post Farmacia")
+    weather_post(config, force=True)
+    if not read_json(WEATHER_STATE, {}).get("pubblicato"):
+        raise RuntimeError("non è stato possibile pubblicare il post Meteo")
     daily_summary(config, force=True, refresh_pdf=False)
+
+    wanted = [read_json(SUMMARY_STATE, {}).get("pubblicato", ""),
+              read_json(WEATHER_STATE, {}).get("pubblicato", ""),
+              read_json(PHARMACY_STATE, {}).get("pubblicato", "")]
+    current = facebook_top_posts(3)
+    if current[:3] != wanted:
+        raise RuntimeError(f"ordine Facebook inatteso: {current[:3]}")
+    print("Ordine Facebook verificato: 1° Menu, 2° Meteo, 3° Farmacia")
+
+
+def menus_on_top(config: dict[str, Any]) -> None:
+    """Compatibilità con i richiami esistenti: ora mantiene tutti e tre i post fissi."""
+    enforce_top_three(config)
 
 # ================================================================================================
 # SUGGERISCI ROSTICCERIA (dal 02/11/2026): pagina suggerisci.html sul sito dei PDF con un modulo
@@ -6095,6 +6539,10 @@ def main() -> None:
                         help="Pubblica SUBITO il post del meteo di oggi (sostituisce quello già sulla Pagina).")
     parser.add_argument("--meteo-prova", action="store_true",
                         help="Crea immagine e testo del post del meteo e li apre, senza pubblicare.")
+    parser.add_argument("--farmacia", action="store_true",
+                        help="Pubblica SUBITO la farmacia di turno del prossimo fine settimana.")
+    parser.add_argument("--farmacia-prova", action="store_true",
+                        help="Crea immagine e testo della farmacia di turno e li apre, senza pubblicare.")
     parser.add_argument("--reel-prova", action="store_true",
                         help="Crea il Reel di oggi (video verticale) e lo apre, senza pubblicare.")
     parser.add_argument("--reel", action="store_true",
@@ -6154,14 +6602,29 @@ def main() -> None:
         if sys.platform == "win32":
             os.startfile(image)
         return
+    if args.farmacia_prova:  # crea soltanto la schermata: nessuna modifica allo stato/Facebook
+        image, text = make_pharmacy(config)
+        print(f"\n{text}")
+        if sys.platform == "win32":
+            os.startfile(image)
+        return
+    if args.farmacia:  # pubblicazione immediata, anche se oggi è già stata fatta
+        start_manual_log("farmacia di turno")
+        if not take_lock():
+            print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
+            return
+        try:
+            enforce_top_three(config, force=True)
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
     if args.meteo:  # Pubblica-meteo.bat: post del meteo subito (anche se oggi è già stato fatto)
         start_manual_log("post del meteo")
         if not take_lock():
             print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
             return
         try:
-            weather_post(config, force=True)
-            menus_on_top(config)  # il post dei menu torna primo, il meteo resta secondo
+            enforce_top_three(config, force=True)
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
@@ -6195,6 +6658,7 @@ def main() -> None:
             return
         try:
             daily_summary(config, force=True)
+            enforce_top_three(config)
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
@@ -6208,7 +6672,9 @@ def main() -> None:
         args.pubblica, args.salta_aggiornati, args.solo_html, args.solo = True, False, False, None
         try:
             run(args, config)
-            daily_summary(read_json(CONFIG, config))
+            fresh = read_json(CONFIG, config)
+            daily_summary(fresh)
+            enforce_top_three(fresh)
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
@@ -6242,12 +6708,6 @@ def main() -> None:
             print("Esecuzione precedente bloccata da oltre 20 minuti: salto questo giro.")
             return
         args.pubblica, args.solo_html, args.visibile, args.aggiungi, args.login = True, False, False, False, False
-        # post del meteo (dalle 08:00, una volta al giorno): PRIMA del controllo, così il post del
-        # giorno con i menu, rifatto subito dopo, resta il primo della Pagina
-        try:
-            weather_post(config)
-        except Exception as exc:
-            print(f"Meteo non pubblicato: {exc!r}")
         # riassunto del giorno (dalle 11:30): prima si ricontrollano TUTTE le rosticcerie, anche quelle
         # già aggiornate, così nel post ci sono i menu più recenti; poi immagine, testo e Facebook
         # all'ora del riassunto si ricontrollano TUTTE le rosticcerie; prima di quell'ora il post parte
@@ -6277,10 +6737,10 @@ def main() -> None:
                 reel_post(fresh)
             except Exception as exc:
                 print(f"Reel non pubblicato: {exc!r}")
-            try:  # 1° i menu, 2° il meteo: se il giro non ha rifatto il post dei menu lo si rifà qui
-                menus_on_top(fresh)
+            try:  # Facebook mostra sempre: 1° Menu, 2° Meteo, 3° Farmacia
+                enforce_top_three(fresh)
             except Exception as exc:
-                print(f"Post dei menu non rimesso sopra il meteo: {exc!r}")
+                print(f"Ordine Menu/Meteo/Farmacia non ripristinato: {exc!r}")
             tick("TOTALE del giro", total=True)
         except BaseException as exc:  # nel log, non in una finestra che nessuno vede
             import traceback
