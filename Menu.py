@@ -4208,14 +4208,75 @@ def complete_fingerprint(config: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(parts, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()[:16]
 
 
+def info_cards() -> list[tuple[Path, list]]:
+    """Schede 1080x1350 da mettere nell'ultime pagine di menu.pdf, nell'ordine Notizie, Meteo,
+    Farmacia: le immagini già fatte per Facebook (dati\\notizie, dati\\meteo, dati\\farmacia).
+    Notizie e meteo solo se sono di oggi; la farmacia anche dei giorni prima (vale per il fine
+    settimana in arrivo, al massimo 6 giorni). Ogni elemento: (immagine, zone cliccabili)."""
+    today = date.today()
+    found = []
+    for folder, days in ((NEWS, 0), (WEATHER, 0), (PHARMACY, 6)):
+        images = sorted((path for path in folder.glob("????-??-??.jpg")), reverse=True) if folder.is_dir() else []
+        for path in images:
+            try:
+                age = (today - date.fromisoformat(path.stem)).days
+            except ValueError:
+                continue
+            if 0 <= age <= days:
+                links = read_json(path.with_name(path.stem + "-link.json"), [])
+                found.append((path, [(tuple(box), uri) for box, uri in links]))
+            break
+    return found
+
+
+def info_fingerprint() -> str:
+    """Impronta delle schede dell'ultime pagine di menu.pdf (cambia quando ne cambia una)."""
+    return hashlib.sha256("|".join(file_hash(card) for card, _ in info_cards()).encode()).hexdigest()[:16]
+
+
+INFO_CARD_WIDTH = 940   # larghezza della scheda nella pagina A4 (1240): bordi larghi, vedi info_pages
+
+
+def info_pages() -> list:
+    """Ultime pagine di menu.pdf (dopo i locali): Notizie, Meteo e Farmacia, UNA PER FOGLIO, A4 come
+    le altre pagine (1240x1754). La scheda (1080x1350, quella dei post) è rimpicciolita a 940 px e
+    messa al centro, con margini larghi su tutti i lati: così le scritte restano lontane dai bordi
+    anche se la pagina viene ritagliata in verticale 9:16 per un Reel (al centro di una A4 un
+    riquadro 9:16 alto quanto la pagina è largo circa 987 px). Indirizzi e telefoni della farmacia
+    cliccabili (zone salvate da make_pharmacy)."""
+    from PIL import Image
+    width, height = 1240, 1754
+    scale = INFO_CARD_WIDTH / 1080
+    card_w, card_h = INFO_CARD_WIDTH, round(1350 * scale)
+    dx, dy = (width - card_w) // 2, (height - card_h) // 2
+    pages = []
+    for path, card_links in info_cards():
+        page = Image.new("RGB", (width, height), (244, 239, 230))
+        with Image.open(path) as opened:
+            card = opened.convert("RGB").resize((card_w, card_h), Image.LANCZOS)
+        page.paste(card, (dx, dy))
+        page.info["links"] = move_links(card_links, scale, dx, dy)
+        pages.append(page)
+    return pages
+
+
 def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool = False) -> bool:
     """PDF di ogni locale, PDF completo e video con le stesse pagine sul sito dei PDF (vedi sopra).
     only_pdf=True (Rifai-solo-PDF.bat, --solo-pdf): rifà e pubblica SOLO i PDF (più mappa.html e le
     pagine di ascolta.html), senza video e senza toccare il post di Facebook; l'impronta in
     completo.json non cambia, così il giro automatico rifà il video se serve."""
     stamp = complete_fingerprint(config)
-    if not force and read_json(COMPLETE_STATE, {}).get("impronta") == stamp \
+    info = info_fingerprint()
+    saved = read_json(COMPLETE_STATE, {})
+    if not force and saved.get("impronta") == stamp \
             and (PDF_SITE_DIR / COMPLETE_PDF).is_file() and (PDF_SITE_DIR / COMPLETE_VIDEO).is_file():
+        if saved.get("info") != info and not only_pdf:
+            # cambiate solo notizie/meteo/farmacia (ultima pagina): si rifà SOLO il PDF, senza
+            # video e senza ripubblicare su Facebook (le notizie cambiano ogni ora)
+            print("Ultime pagine di menu.pdf (notizie, meteo, farmacia) cambiate: rifaccio solo i PDF.")
+            if publish_complete(config, force=True, only_pdf=True):
+                save_json(COMPLETE_STATE, {**read_json(COMPLETE_STATE, {}), "info": info})
+            return True
         print("Menu completo (PDF e video): niente di nuovo da pubblicare.")
         return True
     TIMER["fase"] = time.time()
@@ -4236,7 +4297,12 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     except Exception as exc:
         print(f"Pagina riepilogativa non creata: {exc}")
     tick("pagina riepilogativa (prima pagina)")
-    save_pdf([page["a4"] for page in pages], PDF_SITE_DIR / COMPLETE_PDF)
+    try:  # ULTIME pagine di menu.pdf: notizie, meteo e farmacia, una per foglio (info_pages)
+        extra = info_pages()
+    except Exception as exc:
+        extra = []
+        print(f"Pagine notizie/meteo/farmacia non create: {exc}")
+    save_pdf([page["a4"] for page in pages] + extra, PDF_SITE_DIR / COMPLETE_PDF)
     tick("PDF unico menu.pdf")
     (PDF_SITE_DIR / "mappa.html").write_text(MAP_PAGE_HTML, encoding="utf-8")  # link degli indirizzi
     try:  # modulo "Suggerisci rosticceria" (link nella didascalia del post dei menu)
@@ -4268,7 +4334,7 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     tick("invio del sito dei PDF a GitHub")
     if not sent:
         return False
-    save_json(COMPLETE_STATE, {"impronta": stamp, "ora": datetime.now().isoformat(timespec="seconds"),
+    save_json(COMPLETE_STATE, {"impronta": stamp, "info": info, "ora": datetime.now().isoformat(timespec="seconds"),
                                "locali": sum(1 for page in pages if page["tipo"] != "riepilogo"), "pronti": sum(1 for page in pages if page["tipo"] == "menu"),
                                "video": bool(video)})
     site = pdf_site(config.get("impostazioni", {}))[0]
@@ -5903,6 +5969,8 @@ def make_pharmacy(config: dict[str, Any]) -> tuple[Path, str]:
         add_link(page, box, uri)
     pdf = stem.with_suffix(".pdf")
     save_pdf([page], pdf)
+    # zone cliccabili ricordate accanto all'immagine: servono alle ultime pagine di menu.pdf (info_pages)
+    save_json(stem.with_name(stem.name + "-link.json"), [[list(box), uri] for box, uri in page.info.get("links", [])])
     PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
     shutil.copy2(pdf, PDF_SITE_DIR / "farmacia.pdf")
     names = ", ".join(entry["nome"] for entry in data["farmacie"])

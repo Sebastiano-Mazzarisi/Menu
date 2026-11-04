@@ -2229,4 +2229,24 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   "Continuità assistenziale" (Bricolage 42 px) e sotto "(ex Guardia medica)"; caratteri e misure
   come il meteo (nomi dei giorni 30 px grigi come le fasce del meteo, orari in Bricolage).
   Copia precedente: backup\Menu_2026-11-04_prima-di-didascalia-semplice.py
+- 04/11/2026 (17:20): ULTIMA PAGINA DI menu.pdf CON NOTIZIE, METEO E FARMACIA. Dopo le pagine dei locali
+  c'è un solo foglio (info_page) con le tre schede già fatte per Facebook, una sotto l'altra e larghe
+  come le pagine A4 (1240 px; foglio alto circa 4700 px): sul cellulare il PDF si legge a tutta
+  larghezza scorrendo, con le scritte grandi come nei post. info_cards sceglie le immagini:
+  dati\notizie e dati\meteo solo di oggi, dati\farmacia anche dei 6 giorni prima (vale per il fine
+  settimana in arrivo); se una manca il foglio ha le altre, se mancano tutte il foglio non c'è.
+  Indirizzi e telefoni della farmacia sono cliccabili: make_pharmacy salva le zone in
+  dati\farmacia\AAAA-MM-GG-link.json (dalla prossima farmacia creata). Il foglio è SOLO in menu.pdf
+  (non nel video né in ascolta.html, che vogliono pagine tutte uguali). Le notizie cambiano ogni
+  ora: publish_complete confronta info_fingerprint (impronta delle tre schede, salvata come "info" in
+  dati\completo.json) e, se è cambiata solo quella, rifà SOLO i PDF (only_pdf) senza video e senza
+  ripubblicare il post su Facebook.
+  Copia precedente: backup\Menu_2026-11-04_prima-della-pagina-info.py
+- 04/11/2026 (17:30): CAMBIATO (non piaceva il foglio unico): notizie, meteo e farmacia sono ora TRE
+  FOGLI SEPARATI in fondo a menu.pdf, in quest'ordine, A4 come gli altri (1240x1754). info_pages
+  sostituisce info_page: la scheda di ogni post (1080x1350) è rimpicciolita a INFO_CARD_WIDTH = 940 px
+  e messa al centro, con margini larghi: le scritte restano lontane dai bordi anche ritagliando la
+  pagina in verticale 9:16 per un Reel (riquadro centrale largo circa 987 px). I fogli sono solo nel
+  PDF (non nel video); il resto (info_cards, info_fingerprint, solo PDF quando cambiano) è uguale.
+  Copia precedente: backup\Menu_2026-11-04_prima-dei-tre-fogli.py
 
