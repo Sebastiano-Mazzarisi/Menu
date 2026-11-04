@@ -1,0 +1,67 @@
+{
+  "data": "2026-11-04",
+  "testo": "Troccoli all'amatriciana\nLasagne alla bolognese\nPolpette della nonna al sugo\nPolpo arrosto\nCapocollo alla brace\nPatate al forno\nCrema di fave e cicoria\nParmigiana di patate\nOmelette di zucchine farcita\nCardoncelli arrosto\nPizza rustica di verdure",
+  "da_foto": "2026-11-04_online.jpg",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Troccoli all'amatriciana",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Lasagne alla bolognese",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Polpette della nonna al sugo",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Polpo arrosto",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Capocollo alla brace",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Patate al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Crema di fave e cicoria",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Parmigiana di patate",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Omelette di zucchine farcita",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cardoncelli arrosto",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pizza rustica di verdure",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
