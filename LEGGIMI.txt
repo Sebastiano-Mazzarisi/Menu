@@ -2249,4 +2249,25 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   pagina in verticale 9:16 per un Reel (riquadro centrale largo circa 987 px). I fogli sono solo nel
   PDF (non nel video); il resto (info_cards, info_fingerprint, solo PDF quando cambiano) è uguale.
   Copia precedente: backup\Menu_2026-11-04_prima-dei-tre-fogli.py
+- 04/11/2026 (17:45): margini dei tre fogli notizie/meteo/farmacia DIMEZZATI (troppo ampi): INFO_CARD_WIDTH
+  da 940 a 1090 px -> margini laterali 75 px (prima 150), sopra e sotto circa 200 px (prima 290).
+  Con un ritaglio 9:16 per un Reel ora i lati della scheda verrebbero tagliati di circa 50 px.
+  Copia precedente: backup\Menu_2026-11-04_prima-dei-margini-dimezzati.py
 
+- 04/11/2026 (18:00): LINK CLICCABILI nella pagina della farmacia (farmacia.pdf e ultimo foglio di
+  menu.pdf). In pharmacy_html ogni zona cliccabile ha data-index (n. farmacia, -1 = Continuità
+  assistenziale) e data-link-kind; render_pharmacy ne legge i riquadri e make_pharmacy crea i link:
+  tipo che finisce in "indirizzo" -> Google Maps (maps_link, nome + indirizzo), altrimenti -> chiamata
+  (tel_link). Zone: nome della farmacia (riquadro grande se è una sola, "nome-indirizzo"; nome nelle
+  schede dei giorni se sono due), indirizzo -> Maps; telefono -> chiamata; Continuità assistenziale:
+  titolo, "(ex Guardia medica)" e orari -> Maps, "Via Cappuccini, 7" -> Maps, numero -> chiamata.
+  I link valgono per le farmacie create da ora (Pubblica-meteo.bat, --farmacia, giro del mattino).
+  Copia precedente: backup\Menu_2026-11-04_prima-dei-link-farmacia.py
+- 04/11/2026 (18:10): FARMACIA SENZA LINK RIFATTA DA SOLA. refresh_pharmacy_links (chiamata all'inizio di
+  publish_complete, quindi a ogni giro automatico e con Rifai-solo-PDF.bat): se l'immagine della
+  farmacia di OGGI non ha il suo AAAA-MM-GG-link.json la rifà con make_pharmacy SENZA pubblicare su
+  Facebook (immagine, farmacia.pdf cliccabile sul sito, zone cliccabili); se la fonte non risponde
+  riprova al giro dopo. Solo per l'immagine di oggi (quelle dei giorni prima possono riguardare un
+  altro fine settimana). info_fingerprint ora conta anche le zone cliccabili: quando compare il
+  -link.json menu.pdf viene rifatto (solo PDF) e l'ultimo foglio diventa cliccabile.
+  Copia precedente: backup\Menu_2026-11-04_prima-della-farmacia-rifatta.py

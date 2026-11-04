@@ -4230,11 +4230,31 @@ def info_cards() -> list[tuple[Path, list]]:
 
 
 def info_fingerprint() -> str:
-    """Impronta delle schede dell'ultime pagine di menu.pdf (cambia quando ne cambia una)."""
-    return hashlib.sha256("|".join(file_hash(card) for card, _ in info_cards()).encode()).hexdigest()[:16]
+    """Impronta delle schede dell'ultime pagine di menu.pdf (cambia quando ne cambia una o quando
+    cambiano le sue zone cliccabili, es. il -link.json della farmacia appena creato)."""
+    parts = [file_hash(card) + json.dumps(links, sort_keys=True) for card, links in info_cards()]
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()[:16]
 
 
-INFO_CARD_WIDTH = 940   # larghezza della scheda nella pagina A4 (1240): bordi larghi, vedi info_pages
+def refresh_pharmacy_links(config: dict[str, Any]) -> None:
+    """Farmacia di OGGI creata senza zone cliccabili (manca AAAA-MM-GG-link.json, es. fatta prima
+    del 04/11/2026 o da una versione vecchia): la rifà da sola SENZA pubblicare su Facebook
+    (make_pharmacy), così farmacia.pdf e l'ultimo foglio di menu.pdf diventano cliccabili.
+    Solo per l'immagine di oggi (una dei giorni prima potrebbe riferirsi a un altro fine settimana).
+    Se non riesce (sito della fonte irraggiungibile) riprova al giro successivo."""
+    stem = PHARMACY / date.today().isoformat()
+    if not stem.with_suffix(".jpg").is_file() or stem.with_name(stem.name + "-link.json").is_file():
+        return
+    if not pharmacy_settings(config.get("impostazioni", {})).get("attivo", True):
+        return
+    print("Farmacia di oggi senza link cliccabili: la rifaccio (senza pubblicare su Facebook).")
+    try:
+        make_pharmacy(config)
+    except Exception as exc:
+        print(f"Farmacia non rifatta (riprovo al prossimo giro): {exc}")
+
+
+INFO_CARD_WIDTH = 1090  # larghezza della scheda nella pagina A4 (1240): margini laterali 75 px (04/11/2026: dimezzati, prima 940 = 150 px)
 
 
 def info_pages() -> list:
@@ -4265,6 +4285,7 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     only_pdf=True (Rifai-solo-PDF.bat, --solo-pdf): rifà e pubblica SOLO i PDF (più mappa.html e le
     pagine di ascolta.html), senza video e senza toccare il post di Facebook; l'impronta in
     completo.json non cambia, così il giro automatico rifà il video se serve."""
+    refresh_pharmacy_links(config)  # farmacia di oggi senza zone cliccabili: la rifà (niente Facebook)
     stamp = complete_fingerprint(config)
     info = info_fingerprint()
     saved = read_json(COMPLETE_STATE, {})
@@ -5836,7 +5857,7 @@ def pharmacy_html(data: dict[str, Any]) -> str:
     for index, entry in enumerate(entries):
         day = entry["giorni"][0]
         hours = "".join(f"<b>{html.escape(part.strip())}</b>" for part in entry["orari"].split("·") if part.strip())
-        other = (f'<div class="nm D">{html.escape(entry["nome"])}</div>' if len(names) > 1 else "")
+        other = (f'<div class="nm D" data-index="{index}" data-link-kind="nome-indirizzo">{html.escape(entry["nome"])}</div>' if len(names) > 1 else "")
         cards.append(f'<div class="sl"><div class="sn">{SUMMARY_WEEKDAYS[day.weekday()]} {day.day}</div>'
                      f'{other}<div class="hh D">{hours}</div>'
                      + (f'<div class="ad" data-index="{index}" data-link-kind="indirizzo">{html.escape(street(entry["indirizzo"]))}</div>'
@@ -5847,9 +5868,11 @@ def pharmacy_html(data: dict[str, Any]) -> str:
                      f'<div class="tel D" data-index="0" data-link-kind="telefono">'
                      f'{html.escape(format_phone(first["telefono"]))}</div>')
         hero_name = names[0]
+        hero_link = ' data-index="0" data-link-kind="nome-indirizzo"'  # nome cliccabile -> Maps
     else:
         hero_info = '<div class="addr">Due farmacie diverse, una per giorno</div>'
         hero_name = "Farmacie di turno"
+        hero_link = ""
     logo = APP_LOGO.as_uri() if APP_LOGO.exists() else ""
     return f'''<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
@@ -5891,9 +5914,9 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em;white-spac
 <div class="hd"><img src="{logo}"><div><div class="kk">Farmacia di turno · {html.escape(month)}</div>
 <h1 class="D">{html.escape(title)}</h1></div></div>
 <div class="hero"><div class="big">{pharmacy_icon()}</div><div>
-<div class="cond D">{html.escape(hero_name)}</div>{hero_info}</div></div>
+<div class="cond D"{hero_link}>{html.escape(hero_name)}</div>{hero_info}</div></div>
 <div class="g">{"".join(cards)}</div>
-<div class="in"><div><div class="gt D">Continuità assistenziale</div><div class="gs">(ex Guardia medica)</div><div class="gh">Sabato 10:00–13:00 · 15:30–22:30<br>Domenica 8:00–13:00 · 15:30–22:30</div></div>
+<div class="in"><div data-index="-1" data-link-kind="guardia-indirizzo"><div class="gt D">Continuità assistenziale</div><div class="gs">(ex Guardia medica)</div><div class="gh">Sabato 10:00–13:00 · 15:30–22:30<br>Domenica 8:00–13:00 · 15:30–22:30</div></div>
 <div style="text-align:right"><span data-index="-1" data-link-kind="guardia-indirizzo">Via Cappuccini, 7</span>
 <b data-index="-1" data-link-kind="guardia-telefono">{format_phone(GUARDIA_MEDICA['telefono'])}</b></div></div>
 <div class="tip"><i>☎</i><span>Prima di andare, telefona</span></div>
