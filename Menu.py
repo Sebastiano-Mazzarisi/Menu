@@ -5755,7 +5755,7 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em;white-spac
 .addr{{font-size:30px;color:#6b5f52;font-weight:700;margin:10px 0 12px;line-height:1.2}}
 .tel{{font-size:84px;line-height:1;color:#15803d;letter-spacing:-.02em}}
 .lb{{font-size:28px;font-weight:700;color:#6b5f52;text-transform:uppercase;letter-spacing:.05em;display:block}}
-.g{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:{60 if len(names) == 1 else 40}px}}
+.g{{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:{60 if len(names) == 1 else 40}px}}
 .sl{{background:#fff;border-radius:24px;padding:24px 22px 26px;text-align:center;box-shadow:0 3px 10px rgba(60,40,10,.10)}}
 .sn{{font-size:30px;font-weight:700;color:#6b5f52;margin-bottom:8px}}
 .nm{{font-size:32px;line-height:1.05;margin-bottom:10px;color:#15803d}}
