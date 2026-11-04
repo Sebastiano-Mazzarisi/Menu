@@ -2200,3 +2200,16 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Copia precedente: backup\Menu_2026-11-03_prima-del-reel.py
 - 03/11/2026 (14:10): Reel, primo avvio con KeyError 'video': le pagine di all_shop_pages hanno solo "a4" (la
   pagina A4 di menu.pdf). make_reel ora usa page["a4"], messa al centro dello sfondo verticale.
+- 04/11/2026 (08:20): 1) POST DEL METEO SENZA DESCRIZIONE: weather_post pubblica la foto con testo vuoto
+  (publish_summary_facebook ora non manda "message" se il testo è vuoto). La didascalia resta solo nel
+  file dati\meteo\AAAA-MM-GG.txt. 2) FARMACIA DI TURNO con LO STESSO LOOK DEL METEO e pubblicata come
+  FOTO (non più post con link a farmacia.pdf), SENZA descrizione, terza nella Pagina (enforce_top_three:
+  Menu, Meteo, Farmacia). Nuova pharmacy_html: intestazione con logo "Farmacia di turno · <mese>" e
+  "Sabato 7 e domenica 8", sfondo sfumato verde chiaro, icona grande a sinistra con nome, indirizzo e
+  telefono grandi a destra (se sabato e domenica la farmacia è la stessa), due riquadri bianchi
+  Sabato/Domenica con gli orari (con nome, indirizzo e telefono dentro se le farmacie sono diverse),
+  riquadro Ex Guardia Medica, barra verde "Prima di andare, telefona", fonti in fondo. Indirizzi
+  accorciati (senza "70017 Putignano (BA)"). farmacia.pdf con i link resta creato come prima.
+  publish_pharmacy_link non si usa più (resta nel codice).
+  Copia precedente: backup\Menu_2026-11-04_prima-di-meteo-farmacia-senza-testo.py
+

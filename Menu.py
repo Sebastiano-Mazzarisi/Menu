@@ -4775,8 +4775,10 @@ def publish_summary_facebook(image: Path, text: str) -> str:
     link = read_json(FACEBOOK_CONFIG, {})
     if not link.get("token") or not link.get("pagina_id"):
         raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
-    answer = facebook_call(f"{link['pagina_id']}/photos", {"message": text, "published": "true",
-                                                           "access_token": link["token"]},
+    params = {"published": "true", "access_token": link["token"]}
+    if text:  # senza testo: la foto esce SENZA descrizione (meteo e farmacia)
+        params["message"] = text
+    answer = facebook_call(f"{link['pagina_id']}/photos", params,
                            files={"source": image}, version=link.get("versione", ""))
     return answer.get("post_id") or answer.get("id", "")
 
@@ -5509,7 +5511,8 @@ def weather_post(config: dict[str, Any], force: bool = False) -> None:
         image, text = make_weather(config)
         if not plan["facebook"]:
             return
-        state["pubblicato"] = publish_summary_facebook(image, text)  # stessa foto verticale del post del giorno
+        # SENZA descrizione (voluto da Nino il 04/11/2026): tutto è nell'immagine; il testo resta solo nel .txt
+        state["pubblicato"] = publish_summary_facebook(image, "")
         state["ora"] = datetime.now().strftime("%H:%M")
         state["pubblicato_alle"] = datetime.now().isoformat(timespec="seconds")
         state.pop("errore", None)
@@ -5708,60 +5711,81 @@ def pharmacy_icon() -> str:
 
 
 def pharmacy_html(data: dict[str, Any]) -> str:
-    """Pagina 1080x1350 nello stile del meteo, con una scheda e gli orari per ciascun giorno."""
+    """Pagina 1080x1350 con LO STESSO LOOK del meteo (weather_html: intestazione con il logo, sfondo
+    sfumato, icona grande a sinistra con il nome a destra, riquadri bianchi, barra verde, fonte in
+    fondo). Pensata per il cellulare: nessuna scritta sotto i 28 px. I riquadri dei giorni hanno
+    indirizzo e telefono marcati (data-link-kind) per i link del PDF farmacia.pdf."""
+    entries = data["farmacie"]
+    street = lambda text: re.sub(r",?\s*\d{5}\s+Putignano.*$", "", text or "", flags=re.I).strip()  # "Piazza Padre Pio"
+    names = list(dict.fromkeys(entry["nome"] for entry in entries))
+    first = entries[0]
+    saturday, sunday = data["sabato"], data["domenica"]
+    title = f"Sabato {saturday.day} e domenica {sunday.day}"
+    month = list(MONTHS)[sunday.month - 1]
     cards = []
-    for entry in data["farmacie"]:
+    for index, entry in enumerate(entries):
         day = entry["giorni"][0]
-        label = f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]}"
-        cards.append(f'''<div class="card"><div class="day">{html.escape(label)}</div>
-<div class="name D">{html.escape(entry["nome"].upper())}</div>
-<div class="hours"><span>APERTURA</span><b>{html.escape(entry["orari"])}</b></div>
-<div class="details"><div class="line address" data-index="{len(cards)}" data-link-kind="indirizzo"><span class="pin">●</span><span>{html.escape(entry["indirizzo"])}</span></div>
-<div class="line phone" data-index="{len(cards)}" data-link-kind="telefono"><span>☎</span><span>{html.escape(format_phone(entry["telefono"]))}</span></div></div></div>''')
+        hours = "".join(f"<b>{html.escape(part.strip())}</b>" for part in entry["orari"].split("·") if part.strip())
+        other = (f'<div class="nm D">{html.escape(entry["nome"])}</div>' if len(names) > 1 else "")
+        cards.append(f'<div class="sl"><div class="sn">{SUMMARY_WEEKDAYS[day.weekday()]} {day.day}</div>'
+                     f'{other}<span class="lb">apertura</span><div class="hh D">{hours}</div>'
+                     + (f'<div class="ad" data-index="{index}" data-link-kind="indirizzo">{html.escape(street(entry["indirizzo"]))}</div>'
+                        f'<div class="ph D" data-index="{index}" data-link-kind="telefono">☎ {html.escape(format_phone(entry["telefono"]))}</div>'
+                        if len(names) > 1 else "") + '</div>')
+    if len(names) == 1:  # stessa farmacia sabato e domenica: indirizzo e telefono una volta sola, grandi
+        hero_info = (f'<div class="addr" data-index="0" data-link-kind="indirizzo">{html.escape(street(first["indirizzo"]))}</div>'
+                     f'<span class="lb">telefono</span><div class="tel D" data-index="0" data-link-kind="telefono">'
+                     f'{html.escape(format_phone(first["telefono"]))}</div>')
+        hero_name = names[0]
+    else:
+        hero_info = '<div class="addr">Due farmacie diverse, una per giorno</div>'
+        hero_name = "Farmacie di turno"
     logo = APP_LOGO.as_uri() if APP_LOGO.exists() else ""
-    title = weekend_title(data)
     return f'''<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
 *{{box-sizing:border-box}}html,body{{margin:0}}
 .c{{width:1080px;height:1350px;position:relative;overflow:hidden;color:#1e1a16;padding:46px 44px;
- background:linear-gradient(180deg,#cfdfef 0,#f4efe6 720px);font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
+  background:linear-gradient(180deg,#d6efdf 0,#f4efe6 640px);font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
 .D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
-.hd{{display:flex;align-items:center;gap:24px}}.hd img{{width:120px;height:120px;border-radius:26px;background:#fff;
- box-shadow:0 4px 14px rgba(0,0,0,.1);object-fit:contain}}
+.hd{{display:flex;align-items:center;gap:24px}}
+.hd img{{width:120px;height:120px;border-radius:26px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.1);object-fit:contain}}
 .kk{{font-size:32px;letter-spacing:.06em;text-transform:uppercase;color:#8a5306;font-weight:700}}
-h1{{font-size:68px;line-height:1.03;margin:4px 0 0;letter-spacing:-.025em}}
-.hero{{width:170px;height:170px;margin:10px auto 4px;
- filter:drop-shadow(0 9px 15px rgba(30,70,40,.15))}}.hero svg{{width:100%;height:100%}}
-.cards{{display:grid;grid-template-columns:1fr;gap:24px}}
-.card{{background:#fff;border-radius:24px;padding:14px 26px 16px;box-shadow:0 4px 14px rgba(60,40,10,.12);
- display:grid;grid-template-columns:1fr 1.13fr;grid-template-areas:"day day" "name hours" "details hours";column-gap:25px}}
-.day{{grid-area:day;font-size:25px;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:.04em}}
-.name{{grid-area:name;font-size:40px;line-height:1.02;margin:3px 0 5px;letter-spacing:-.02em}}
-.hours{{grid-area:hours;border-left:3px solid #e6ded2;padding-left:24px;align-self:center}}
-.hours>span{{font-size:22px;color:#8a5306;font-weight:700;letter-spacing:.06em}}.hours b{{display:block;font-size:32px;line-height:1.1;margin-top:3px}}
-.details{{grid-area:details}}.line{{display:flex;align-items:center;gap:12px;color:#6b5f52;font-size:25px;line-height:1.1;margin-top:6px}}
-.line>span:first-child{{width:42px;height:42px;border-radius:12px;background:#e1f3e7;color:#15803d;display:grid;place-items:center;flex:none}}
-.pin{{font-size:20px}}.phone{{color:#1e1a16;font-weight:700;font-size:35px}}
-.guardia{{margin-top:16px;background:#eef6ff;border:3px solid #b8d7ee;border-radius:24px;padding:17px 24px;
- display:grid;grid-template-columns:1.14fr .86fr;gap:24px;align-items:center;box-shadow:0 3px 10px rgba(35,86,120,.10)}}
-.gm-title{{display:flex;align-items:center;gap:13px;font-size:31px;color:#17658e;margin-bottom:7px}}.gm-cross{{width:43px;height:43px;
- border-radius:13px;background:#17658e;color:#fff;display:grid;place-items:center;font-size:29px}}
-.gm-hours{{font-size:23px;line-height:1.25;color:#334e5d;font-weight:700}}.gm-contact{{border-left:3px solid #c7ddea;padding-left:22px}}
-.guardia .line{{font-size:23px;margin-top:7px}}.guardia .line>span:first-child{{background:#d8ebf7;color:#17658e}}
-.guardia .phone{{font-size:32px}}
-.tip{{position:absolute;left:44px;right:44px;bottom:83px;background:#1d7f46;color:#fff;border-radius:24px;padding:20px 26px;
- font-size:34px;font-weight:700;line-height:1.15;text-align:center}}
-.src{{position:absolute;left:44px;right:44px;bottom:32px;text-align:center;font-size:24px;color:#8f857a}}
+h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em;white-space:nowrap}}
+.hero{{display:flex;align-items:center;gap:40px;margin-top:{64 if len(names) == 1 else 36}px;padding-left:10px}}
+.big{{width:250px;height:250px;flex:none;filter:drop-shadow(0 8px 14px rgba(60,40,10,.15))}}
+.big svg{{width:100%;height:100%}}
+.cond{{font-size:62px;line-height:1.05;letter-spacing:-.01em}}
+.addr{{font-size:32px;color:#6b5f52;font-weight:700;margin:10px 0 14px;line-height:1.2}}
+.tel{{font-size:84px;line-height:1;color:#15803d;letter-spacing:-.02em}}
+.lb{{font-size:28px;font-weight:700;color:#6b5f52;text-transform:uppercase;letter-spacing:.05em;display:block}}
+.g{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:{60 if len(names) == 1 else 40}px}}
+.sl{{background:#fff;border-radius:24px;padding:24px 22px 26px;text-align:center;box-shadow:0 3px 10px rgba(60,40,10,.10)}}
+.sn{{font-size:40px;font-weight:700;color:#1e1a16;margin-bottom:10px}}
+.nm{{font-size:32px;line-height:1.05;margin-bottom:10px;color:#15803d}}
+.hh b{{display:block;font-size:52px;line-height:1.15;font-weight:800}}
+.ad{{font-size:28px;color:#6b5f52;margin-top:10px}}.ph{{font-size:40px;color:#15803d;margin-top:4px}}
+.in{{margin-top:22px;background:#fff;border-radius:22px;padding:18px 24px;box-shadow:0 3px 10px rgba(60,40,10,.10);
+  display:flex;align-items:center;justify-content:space-between;gap:20px}}
+.in span{{font-size:28px;color:#6b5f52;font-weight:700;display:block}}
+.in b{{display:block;font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-size:40px;line-height:1.1}}
+.in .gh{{font-size:28px;color:#1e1a16;font-weight:700;line-height:1.3;margin-top:4px}}
+.tip{{margin-top:34px;background:#1d7f46;color:#fff;border-radius:26px;padding:24px 30px;font-size:44px;
+  font-weight:700;line-height:1.15;display:flex;align-items:center;gap:20px}}
+.tip i{{font-style:normal;font-size:52px}}
+.ft{{position:absolute;left:44px;right:44px;bottom:34px;text-align:center}}
+.ft .src{{font-size:24px;color:#9a8f82}}
 </style></head><body><div class="c">
-<div class="hd"><img src="{logo}"><div><div class="kk">Farmacia di turno</div><h1 class="D">{html.escape(title)}</h1></div></div>
-<div class="hero">{pharmacy_icon()}</div><div class="cards">{''.join(cards)}</div>
-<div class="guardia"><div><div class="gm-title D"><span class="gm-cross">+</span> Ex Guardia Medica</div>
-<div class="gm-hours">Sabato 10:00–13:00 · 15:30–22:30<br>Domenica 8:00–13:00 · 15:30–22:30</div></div>
-<div class="gm-contact"><div class="line address" data-index="-1" data-link-kind="guardia-indirizzo"><span class="pin">●</span><span>Via Cappuccini, 7</span></div>
-<div class="line phone" data-index="-1" data-link-kind="guardia-telefono"><span>☎</span><span>{format_phone(GUARDIA_MEDICA['telefono'])}</span></div></div></div>
-<div class="tip">Tocca il post: nel PDF indirizzo e telefono sono cliccabili</div>
-<div class="src">Fonti: SapereComune.it · ASL Bari · verificato alle {data['verificato']:%H:%M}</div>
+<div class="hd"><img src="{logo}"><div><div class="kk">Farmacia di turno · {html.escape(month)}</div>
+<h1 class="D">{html.escape(title)}</h1></div></div>
+<div class="hero"><div class="big">{pharmacy_icon()}</div><div>
+<div class="cond D">{html.escape(hero_name)}</div>{hero_info}</div></div>
+<div class="g">{"".join(cards)}</div>
+<div class="in"><div><span>Ex Guardia Medica</span><div class="gh">Sabato 10:00–13:00 · 15:30–22:30<br>Domenica 8:00–13:00 · 15:30–22:30</div></div>
+<div style="text-align:right"><span data-index="-1" data-link-kind="guardia-indirizzo">Via Cappuccini, 7</span>
+<b data-index="-1" data-link-kind="guardia-telefono">{format_phone(GUARDIA_MEDICA['telefono'])}</b></div></div>
+<div class="tip"><i>☎</i><span>Prima di andare, telefona</span></div>
+<div class="ft"><div class="src">Fonti: SapereComune.it · ASL Bari · verificato alle {data['verificato']:%H:%M}</div></div>
 </div></body></html>'''
 
 
@@ -5903,7 +5927,8 @@ def pharmacy_post(config: dict[str, Any], force: bool = False) -> bool:
         image, text = make_pharmacy(config)
         if not plan["facebook"]:
             return False
-        state["pubblicato"] = publish_pharmacy_link(image, text)
+        # come il meteo: FOTO verticale, SENZA descrizione (dal 04/11/2026; prima era un post con link)
+        state["pubblicato"] = publish_summary_facebook(image, "")
         state["pdf"] = "farmacia.pdf"
         state["ora"] = datetime.now().strftime("%H:%M")
         state["pubblicato_alle"] = datetime.now().isoformat(timespec="seconds")
