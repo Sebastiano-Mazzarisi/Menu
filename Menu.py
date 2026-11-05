@@ -6187,7 +6187,8 @@ def pharmacy_post(config: dict[str, Any], force: bool = False) -> bool:
 # ------------------------------------------------------------------------------------------------
 # REEL DEL GIORNO SULLA PAGINA FACEBOOK (vedi LEGGIMI.txt > Reel del giorno)
 # Video VERTICALE 9:16 (1080x1920, sotto i 90 secondi come vuole Facebook): pagina riepilogativa e
-# poi SOLO i locali che hanno già il menu di oggi. Pubblicato una volta al giorno all'ora del
+# poi SOLO i locali che hanno già il menu di oggi, infine le schede di notizie, meteo e farmacia
+# (le stesse dei post e delle ultime pagine di menu.pdf). Senza didascalia. Pubblicato una volta al giorno all'ora del
 # riassunto (11:30) e al massimo una seconda volta (12:30) se nel frattempo sono arrivati altri
 # menu. Ogni Reel nuovo toglie dalla Pagina quelli vecchi (ne resta uno solo). Dopo il Reel il post
 # dei menu viene rifatto, così resta il primo della Pagina.
@@ -6200,6 +6201,7 @@ REEL_HISTORY = REELS / "pubblicati.json"  # id dei Reel ancora sulla Pagina
 REEL_W, REEL_H, REEL_FPS = 1080, 1920, 30
 REEL_FIRST_SECONDS = 5.0                  # pagina riepilogativa
 REEL_PAGE_SECONDS = (3.5, 6.0)            # ogni locale: minimo e massimo
+REEL_INFO_SECONDS = 5.0                   # ogni scheda finale: notizie, meteo, farmacia (05/11/2026)
 
 
 def reel_settings(settings: dict[str, Any]) -> dict[str, Any]:
@@ -6264,7 +6266,11 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
     target = target or REELS / f"{day.isoformat()}.mp4"
     data = summary_data(config)
     first = render_summary(data, REELS / f"{day.isoformat()}-copertina.jpg", height=REEL_H)
-    budget = float(plan["secondi_max"]) - REEL_FIRST_SECONDS
+    # dopo i menu: notizie, meteo e farmacia, nell'ordine (le schede 1080x1350 dei post: vedi info_cards)
+    labels = {NEWS: "Notizie", WEATHER: "Meteo", PHARMACY: "Farmacia di turno"}
+    when_short = f"{SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
+    infos = [(card, f"{labels.get(card.parent, 'Info')} · {when_short}") for card, _ in info_cards()]
+    budget = float(plan["secondi_max"]) - REEL_FIRST_SECONDS - REEL_INFO_SECONDS * len(infos)
     seconds = max(REEL_PAGE_SECONDS[0], min(REEL_PAGE_SECONDS[1], budget / len(pages))) if pages else 0
     pages = pages[:int(budget // seconds)] if pages else []  # mai oltre i 90 secondi di Facebook
     ffmpeg = video_ffmpeg()
@@ -6276,6 +6282,9 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
         with Image.open(first) as cover:
             frames = [(cover.convert("RGB").resize((REEL_W, REEL_H), Image.LANCZOS), REEL_FIRST_SECONDS)]
         frames += [(reel_frame(page["a4"], title), seconds) for page in pages]  # stessa pagina di menu.pdf
+        for card, label in infos:
+            with Image.open(card) as opened:
+                frames.append((reel_frame(opened, label), REEL_INFO_SECONDS))
         lines = []
         for index, (image, duration) in enumerate(frames):
             image.save(work / f"{index:03d}.png")
@@ -6294,7 +6303,8 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
                     "-t", f"{total:.2f}", "-vf", f"fps={REEL_FPS},format=yuv420p", "-c:v", "libx264",
                     "-preset", "medium", "-crf", "23", "-profile:v", "high", "-level", "4.1",
                     "-movflags", "+faststart", str(target)]
-        print(f"Creo il Reel: copertina + {len(pages)} locali, {total:.0f} secondi...")
+        extra = f" + {', '.join(label.split(' · ')[0].lower() for _, label in infos)}" if infos else ""
+        print(f"Creo il Reel: copertina + {len(pages)} locali{extra}, {total:.0f} secondi...")
         done = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace",
                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     finally:
@@ -6302,10 +6312,8 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
     if done.returncode != 0 or not target.is_file():
         print(f"Reel non creato: ffmpeg ha dato un errore. {(done.stderr or '').strip()[:300]}")
         return None
-    when = f"{SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
-    text = (f"I menu di oggi, {when}: {len(data['pronti'])} rosticcerie su {data['totale']} "
-            f"hanno già pubblicato il menu del giorno.\nTutti i menu: https://tinyurl.com/menurosticcerie")
-    target.with_suffix(".txt").write_text(text, encoding="utf-8")
+    text = ""  # 05/11/2026: il Reel si pubblica SENZA didascalia (richiesta di Nino)
+    target.with_suffix(".txt").unlink(missing_ok=True)
     print(f"Reel pronto: {target.name} ({target.stat().st_size // 1024} KB)")
     return target, text, len(pages)
 
@@ -6330,8 +6338,10 @@ def publish_reel_facebook(video: Path, text: str) -> str:
         uploaded = json.loads(answer.read().decode("utf-8"))
     if not uploaded.get("success", True):
         raise RuntimeError(f"caricamento del Reel non riuscito: {uploaded}")
-    facebook_call(f"{page}/video_reels", {"upload_phase": "finish", "video_id": video_id, "video_state": "PUBLISHED",
-                                          "description": text, "access_token": token}, version=version, method="POST")
+    finish = {"upload_phase": "finish", "video_id": video_id, "video_state": "PUBLISHED", "access_token": token}
+    if text:  # di norma vuoto: il Reel esce senza didascalia (05/11/2026)
+        finish["description"] = text
+    facebook_call(f"{page}/video_reels", finish, version=version, method="POST")
     return str(video_id)
 
 

@@ -1183,6 +1183,9 @@ Le schermate in "errori" più vecchie di 2 giorni vengono cancellate.
 Data del menu: quella scritta nel post o nella foto (es. "Lunedì 5/10"),
 se è tra 7 giorni fa e domani; altrimenti il giorno in cui la foto compare
 per la prima volta ("data": "novita").
+Menu valido per più giorni (dal 05/11/2026, menu_range): "MENU DA MARTEDÌ 3 A
+VENERDÌ 6 NOVEMBRE", "dal 3 al 6/11"... se oggi è nel periodo il menu vale
+per OGGI (es. Guagliò, menu dal martedì al venerdì).
 Fonte browser con queste opzioni:
 - "selettore": "[aria-posinset='1'] a[href*='/photo'] img" -> la foto del
   primo post della pagina
@@ -2298,3 +2301,15 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   cambiano solo i 3 menu Stella Blu (ora menu), il cefalo (ora non menu) e due menu della domenica
   (Guagliò ha comunque la parola esclusa "degustazione").
   Copia precedente: backup\Menu_2026-11-05_prima-della-stella-blu.py
+- 05/11/2026 (16:45): MENU VALIDO PIÙ GIORNI (Guagliò). Il post "ECCO A VOI IL MENU DA MARTEDI' 3 A
+  VENERDI' 6 NOVEMBRE" veniva datato 06/11 (si leggeva solo "6 novembre", il "3" non ha il mese): il menu
+  risultava di domani e oggi il Guagliò compariva senza menu; c'era anche in ingresso\guaglio un
+  2026-11-06_online.jpg, copia della foto del 03. Correzione generale: menu_range (regex MENU_RANGE)
+  riconosce i periodi "da/dal [giorno] N [mese] a/al [giorno] M [mese]" (mese con parola o /MM, anche
+  mancante: si sceglie il periodo più vicino a oggi; solo 1-14 giorni; serve un mese o un giorno della
+  settimana e non deve seguire euro/%/ore..., così "da 5 a 7 euro" non è un periodo). plausible_menu_date
+  usa il periodo per primo: oggi dentro il periodo -> OGGI; il periodo inizia domani -> domani; finito da
+  1-7 giorni -> il suo ultimo giorno; altrimenti nessuna data. Al primo giro la foto diventa
+  2026-11-05_online.jpg e drop_copies sposta in dati/scartati la copia sbagliata del 06.
+  Verifica sui 199 testi già letti: cambia solo il post del Guagliò (da 03/11 a oggi).
+  Copia precedente: backup\Menu_2026-11-05_prima-del-periodo-guaglio.py
