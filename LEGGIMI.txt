@@ -1121,7 +1121,9 @@ pubblicitaria o di un piatto non diventa il menu del giorno.
 Foto senza scritte (es. un piatto di tortellini): vale come menu solo se il
 testo del post è davvero un menu, cioè contiene una frase come "menù del
 giorno", "menù di oggi", "menù d'asporto", "menù di giovedì", almeno due
-sezioni (primi, secondi, contorni...), una data, oppure una frase scelta
+sezioni (primi, secondi, contorni...; dal 05/11/2026 anche al singolare:
+"PRIMO ... SECONDO ..." come La Stella Blu; "primo" e "primi" contano come
+una sola sezione, funzione sections_in), una data, oppure una frase scelta
 per quel locale in "parole_menu" (es. "oggi trovate"). Non basta la parola
 "menù" in frasi come "il menù è ricco e goloso, menu su Whatsapp".
 Elenco di piatti (dal 14/10/2026): vale come menu anche un testo senza la
@@ -1148,6 +1150,13 @@ Anche quando un post viene giudicato "non è un menu", se la stessa foto
 (identica o uguale a occhio) era stata salvata prima in ingresso come menu,
 viene spostata in dati/scartati: così Monitor e pagina smettono subito di
 mostrarla come menu del giorno.
+"Uguale a occhio" (dal 05/11/2026, funzioni picture_print e same_print, usate
+da same_picture e drop_copies): aspetto generale simile a 16x16 in grigi E, a
+128x128, meno dello 0,1% di punti davvero diversi (differenza > 40). Prima
+bastava il 16x16: i menu con lo stesso modello grafico ogni giorno (La Stella
+Blu: cambiano solo le righe dei piatti) risultavano "la stessa foto" e i menu
+dei giorni prima venivano tolti per errore. Misure reali: stessa foto
+ricompressa o rimpicciolita 0%, menu Stella Blu di giorni diversi 0,3-0,4%.
 Foto di servizio: la foto dell'ultimo post scaricata solo per cercare un
 avviso di chiusura va in dati/catture (mai in ingresso) e non conta mai come
 menu. Se un giro si interrompe a metà non può quindi far sembrare "di oggi"
@@ -2271,3 +2280,21 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   altro fine settimana). info_fingerprint ora conta anche le zone cliccabili: quando compare il
   -link.json menu.pdf viene rifatto (solo PDF) e l'ultimo foglio diventa cliccabile.
   Copia precedente: backup\Menu_2026-11-04_prima-della-farmacia-rifatta.py
+
+- 05/11/2026 (16:40): LA STELLA BLU NON VISTA. Il menu di oggi (foto "MENÙ / PRIMO Orecchiette con ragù
+  di polpo / SECONDO Persico gratinato", post "A ogni giornata il suo sapore speciale!...") era scartato
+  con "né il post né la foto sembrano un menu": l'OCR legge "MENÙ" ma non "DEL GIORNO", e le sezioni
+  cercate erano solo al plurale (primi, secondi). Correzioni (valgono per tutti i locali):
+  1) MENU_SECTIONS accetta anche il singolare (antipasto, primo, secondo, contorno, dolce); le sezioni
+     si contano con sections_in (primo/primi = una sola).
+  2) same_picture/drop_copies: confronto più fine (picture_print/same_print, vedi "Uguale a occhio"),
+     perché a 16x16 i menu Stella Blu del 3, 4 e 5/11 sembravano la stessa foto e il ricontrollo aveva
+     tolto per errore i menu del 3 e del 4 (rimessi in ingresso\stellablu).
+  3) looks_like_dishes: le parole di cottura e "pesce" (COOKING_WORDS: pesce, forno, griglia, piastra,
+     ferri, fritto/frittura, arrosto, sugo) da sole non fanno un elenco di piatti. Alle 11:00 la foto
+     pubblicitaria "Il cefalo: un pesce semplice... al forno, alla griglia o in padella" era stata presa
+     come menu proprio per queste parole.
+  Verifica: vecchia e nuova versione confrontate su 199 testi già letti (dati/ocr.json e registro):
+  cambiano solo i 3 menu Stella Blu (ora menu), il cefalo (ora non menu) e due menu della domenica
+  (Guagliò ha comunque la parola esclusa "degustazione").
+  Copia precedente: backup\Menu_2026-11-05_prima-della-stella-blu.py

@@ -1337,7 +1337,15 @@ MENU_PHRASES = re.compile(
     r"|\bpropone\s*(?:\.{2,}|…|:)|\bla\s+proposta\s+di\s+oggi"
     # "Menù del / giorno GIOVEDÌ" (Impasta): l'OCR spesso perde "Menù del" scritto grande
     r"|\bgiorno\s+(?:luned|marted|mercoled|gioved|venerd|sabato|domenica)", re.IGNORECASE)
-MENU_SECTIONS = re.compile(r"\b(?:antipasti|primi|secondi|contorni|dolci|frutta)\b", re.IGNORECASE)
+# anche al singolare: "PRIMO ... SECONDO ..." (La Stella Blu, 5/11: menu scartato perché c'erano
+# solo "primo" e "secondo", non "primi" e "secondi"). Le sezioni si contano con sections_in()
+MENU_SECTIONS = re.compile(r"\b(?:antipast[oi]|prim[oi]|second[oi]|contorn[oi]|dolc[ei]|frutta)\b", re.IGNORECASE)
+
+
+def sections_in(text: str) -> int:
+    """Quante sezioni diverse del menu (antipasti, primi, secondi, contorni, dolci, frutta) ci sono
+    nel testo: "primo" e "primi" contano come una sola."""
+    return len({found.lower()[:4] for found in MENU_SECTIONS.findall(text or "")})
 # nomi di piatti e ingredienti: un elenco di piatti è un menu anche senza la parola "menu"
 # (es. L'Eclettico: "oggi propone... CAVATELLI COZZE E VONGOLE, ORECCHIETTE CON POLPETTINE,
 # PESCE SPADA ALLA PIASTRA, PAILLARD AI FERRI, CAROTE VICHY")
@@ -1353,21 +1361,35 @@ DISH_WORDS = re.compile(
     r"rape|friarielli|caponata|frittat\w*|mozzarell\w*|burrata|focacc\w*|panzerott\w*|tiella)\b",
     re.IGNORECASE)
 
+# modi di cottura e parole generiche: non bastano da sole per dire che il testo elenca dei piatti
+COOKING_WORDS = re.compile(r"(?:pesce|forno|griglia|grigliat\w*|piastra|ferri|fritt\w*|frittur\w*|arrost\w*|sugo)",
+                           re.IGNORECASE)
+
 
 def looks_like_dishes(text: str) -> bool:
     """Il testo elenca dei piatti? Almeno quattro nomi di piatti/ingredienti diversi, oppure tre
     in un vero elenco (righe o voci brevi separate da a capo, virgole, punti elenco).
     Tre parole sparse in una frase pubblicitaria non bastano: "Da Impasta i panzerotti fritti li
     trovi di sera... Rosticceria - Focacceria" (post di Impasta dell'8/10) NON è un menu."""
-    if len({plain(word) for word in DISH_WORDS.findall(text or "")}) >= 4:
+    # le parole di cottura e "pesce" da sole non fanno un piatto: "Il cefalo: un pesce semplice...
+    # perfetto al forno, alla griglia o in padella" (La Stella Blu, 5/11) è una pubblicità, non un
+    # menu. Contano solo insieme a veri nomi di piatti/ingredienti (es. "pesce spada alla piastra")
+    def dishes(piece: str) -> set[str]:
+        return {plain(word) for word in DISH_WORDS.findall(piece)}
+
+    def real(found: set[str]) -> set[str]:
+        return {word for word in found if not COOKING_WORDS.fullmatch(word)}
+
+    found = dishes(text or "")
+    if len(found) >= 4 and len(real(found)) >= 3:
         return True
     items, words = 0, set()
     for piece in re.split(r"[\n,;•●·▪–]|\s-\s|\.\s", text or ""):
         size = len(re.findall(r"[A-Za-zÀ-ÿ']+", piece))
-        if 1 <= size <= 8 and DISH_WORDS.search(piece):
+        if 1 <= size <= 8 and real(dishes(piece)):
             items += 1
-            words.update(plain(word) for word in DISH_WORDS.findall(piece))
-    return items >= 3 and len(words) >= 3
+            words.update(dishes(piece))
+    return items >= 3 and len(words) >= 3 and len(real(words)) >= 2
 POST_MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
                "settembre", "ottobre", "novembre", "dicembre"]
 
@@ -1376,7 +1398,7 @@ def text_is_menu(text: str, source: dict[str, Any]) -> bool:
     """Il testo (del post o scritto nella foto) è un menu? Una frase tipo "menù del giorno",
     almeno due sezioni (primi, secondi, contorni...), una data, o una frase scelta per quel
     locale in "parole_menu" diversa dalle parole generiche (es. "oggi trovate")."""
-    if MENU_PHRASES.search(text) or len(set(m.lower() for m in MENU_SECTIONS.findall(text))) >= 2:
+    if MENU_PHRASES.search(text) or sections_in(text) >= 2:
         return True
     if looks_like_dishes(text):
         return True
@@ -1390,7 +1412,7 @@ def text_lists_menu(text: str, source: dict[str, Any]) -> bool:
     """Il testo del post contiene davvero un menu (non solo la parola o una frase di invito):
     almeno due sezioni (primi, secondi, contorni...), una data o un giorno della settimana
     del menu, o una frase scelta per quel locale in "parole_menu"."""
-    if len(set(m.lower() for m in MENU_SECTIONS.findall(text or ""))) >= 2 or plausible_menu_date(text or ""):
+    if sections_in(text) >= 2 or plausible_menu_date(text or ""):
         return True
     if looks_like_dishes(text):
         return True
@@ -1455,10 +1477,66 @@ def post_day(header: str) -> date | None:
     return None
 
 
+_RANGE_DAY = r"(?:(?:luned|marted|mercoled|gioved|venerd)[iì]|sabato|domenica)\W{0,3}"
+_RANGE_END = r"(?:\s*[/.]\s*(\d{1,2})\b|\s+(" + "|".join(MONTHS) + r"))?"
+MENU_RANGE = re.compile(
+    r"\bda(?:l|ll['’])?\s+(?:" + _RANGE_DAY + r")?(\d{1,2})" + _RANGE_END +
+    r"\s+(?:a|al|all['’]|fino\s+a(?:l)?)\s*(?:" + _RANGE_DAY + r")?(\d{1,2})" + _RANGE_END, re.IGNORECASE)
+
+
+def menu_range(text: str) -> tuple[date, date] | None:
+    """Periodo di validità scritto nel menu: "IL MENU DA MARTEDÌ 3 A VENERDÌ 6 NOVEMBRE", "dal 3 al
+    6/11", "dal 30 ottobre al 2 novembre". Il mese può mancare in una o in tutte e due le date: si
+    prende quello che rende il periodo più vicino a oggi. Solo periodi da 1 a 14 giorni.
+    Caso che l'ha reso necessario: Guagliò, 5/11/2026, menu valido dal martedì al venerdì: prima si
+    leggeva solo "6 novembre" e il menu risultava di domani invece che di oggi."""
+    today = date.today()
+    fixed = fix_ocr_dates(text or "")
+    for match in MENU_RANGE.finditer(fixed):
+        d1, m1n, m1w, d2, m2n, m2w = match.groups()
+        if not (m1n or m1w or m2n or m2w or re.search(_RANGE_DAY, match.group(0), re.IGNORECASE)):
+            continue  # "da 5 a 7" senza mese né giorno della settimana: può essere un prezzo o un orario
+        if re.match(r"\s*(?:€|euro|eur\b|%|pers|anni|ore\b|minut|cm\b|kg\b|pezz|[.,:]\d)", fixed[match.end():], re.IGNORECASE):
+            continue
+        def month_of(number: str | None, word: str | None) -> int | None:
+            if word:
+                return MONTHS[word.lower()]
+            return int(number) if number and 1 <= int(number) <= 12 else None
+        m1, m2 = month_of(m1n, m1w), month_of(m2n, m2w)
+        candidates = []
+        for end_month in ([m2] if m2 else [(today.month - 2) % 12 + 1, today.month, today.month % 12 + 1]):
+            for start_month in ([m1] if m1 else [end_month, (end_month - 2) % 12 + 1]):
+                try:
+                    end = menu_page_date(f"{int(d2)} {list(MONTHS)[end_month - 1]}")
+                    start = menu_page_date(f"{int(d1)} {list(MONTHS)[start_month - 1]}")
+                except (RuntimeError, ValueError):
+                    continue
+                if 1 <= (end - start).days <= 13:
+                    candidates.append((start, end))
+        if candidates:
+            return min(candidates, key=lambda pair: 0 if pair[0] <= today <= pair[1]
+                       else min(abs((pair[0] - today).days), abs((pair[1] - today).days)))
+    return None
+
+
 def plausible_menu_date(text: str) -> date | None:
     """Data del menu scritta nel post o nella foto (es. "Menu del giorno Sabato 3/10"),
-    accettata solo se è tra 7 giorni fa e domani (evita prezzi o date lontane)."""
+    accettata solo se è tra 7 giorni fa e domani (evita prezzi o date lontane).
+    Menu valido per più giorni ("dal martedì 3 al venerdì 6", vedi menu_range): se oggi è nel
+    periodo vale per OGGI; se il periodo inizia domani vale per domani; se è finito da poco vale
+    per il suo ultimo giorno."""
     if not text:
+        return None
+    period = menu_range(text)
+    if period:
+        start, end = period
+        today = date.today()
+        if start <= today <= end:
+            return today
+        if (start - today).days == 1:
+            return start
+        if 0 < (today - end).days <= 7:
+            return end
         return None
     for day in dates_in_text(fix_ocr_dates(text)):
         if -7 <= (day - date.today()).days <= 1:
@@ -1538,18 +1616,42 @@ def post_variants(source: dict[str, Any]) -> list[dict[str, Any]]:
             for number in range(1, count + 1)]
 
 
+def picture_print(path: Path) -> tuple[list[int], list[int]] | None:
+    """Impronta visiva di una foto: in grigi ridotta a 16x16 (l'aspetto generale) e a 128x128
+    (abbastanza fine da vedere le scritte). None se la foto non si apre."""
+    try:
+        from PIL import Image
+        with Image.open(path) as picture:
+            gray = picture.convert("L")
+            return (list(gray.resize((16, 16)).getdata()),
+                    list(gray.resize((128, 128), Image.LANCZOS).getdata()))
+    except Exception:
+        return None
+
+
+def same_print(first: tuple[list[int], list[int]] | None, second: tuple[list[int], list[int]] | None) -> bool:
+    """Due impronte sono della stessa foto (anche ricompressa o in un'altra misura)?
+    Non basta l'aspetto generale: molti locali usano ogni giorno lo stesso modello grafico e
+    cambiano solo le righe dei piatti (es. La Stella Blu: a 16x16 il menu del 3, del 4 e del 5/11
+    sembravano la stessa foto, e il 5/11 i menu dei giorni prima sono stati tolti per errore).
+    Quindi a 128x128 i punti davvero diversi devono essere quasi zero: la stessa foto ricompressa
+    ne ha 0, due menu con lo stesso modello e piatti diversi circa lo 0,3-0,4%."""
+    if not first or not second:
+        return False
+    (small_a, fine_a), (small_b, fine_b) = first, second
+    if sum(abs(x - y) for x, y in zip(small_a, small_b)) / len(small_a) >= 6:
+        return False
+    changed = sum(1 for x, y in zip(fine_a, fine_b) if abs(x - y) > 40)
+    return changed / len(fine_a) < 0.001
+
+
 def same_picture(first: Path, second: Path) -> bool:
     """Stessa foto? Identica byte per byte, oppure uguale a occhio (Facebook può dare la stessa
-    foto ricompressa o in un'altra misura): confronto le due immagini ridotte a 16x16 in grigi."""
+    foto ricompressa o in un'altra misura): vedi same_print."""
     try:
         if file_hash(first) == file_hash(second):
             return True
-        from PIL import Image
-        def tiny(path: Path) -> list[int]:
-            with Image.open(path) as picture:
-                return list(picture.convert("L").resize((16, 16)).getdata())
-        a, b = tiny(first), tiny(second)
-        return sum(abs(x - y) for x, y in zip(a, b)) / len(a) < 6
+        return same_print(picture_print(first), picture_print(second))
     except Exception:
         return False
 
@@ -1558,17 +1660,10 @@ def drop_copies(shop: dict[str, Any], folder: Path, keep: Path) -> None:
     """La stessa foto salvata in ingresso con un'altra data (es. letta come "16 ottobre" prima che
     la data sbagliata venisse corretta in 15): la copia con la data sbagliata va in dati/scartati,
     altrimenti il giorno dopo verrebbe presa per il menu di quel giorno."""
-    def look(path: Path) -> list[int] | None:
-        """Impronta visiva (16x16 grigio): due catture della stessa storia non sono sempre identiche byte per byte."""
-        try:
-            from PIL import Image
-            with Image.open(path) as picture:
-                return list(picture.convert("L").resize((16, 16)).getdata())
-        except Exception:
-            return None
-
+    # impronta visiva (vedi same_print): due catture della stessa storia non sono sempre
+    # identiche byte per byte, ma due menu con lo stesso modello grafico NON sono la stessa foto
     try:
-        mark, seen = file_hash(keep), look(keep)
+        mark, seen = file_hash(keep), picture_print(keep)
     except OSError:
         return
     kept_day = image_date(keep)
@@ -1577,8 +1672,7 @@ def drop_copies(shop: dict[str, Any], folder: Path, keep: Path) -> None:
             continue  # solo le copie con una data successiva (al massimo 3 giorni), quelle pericolose
         same = file_hash(other) == mark
         if not same and seen:
-            again = look(other)
-            same = bool(again) and sum(abs(a - b) for a, b in zip(seen, again)) / len(seen) < 6
+            same = same_print(seen, picture_print(other))
         if same:
             DISCARDED.mkdir(parents=True, exist_ok=True)
             other.replace(DISCARDED / f"{shop['id']}_copia_{other.name}")
