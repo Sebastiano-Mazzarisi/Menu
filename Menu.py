@@ -5741,6 +5741,7 @@ def weather_post(config: dict[str, Any], force: bool = False) -> None:
         state["ora"] = datetime.now().strftime("%H:%M")
         state["pubblicato_alle"] = datetime.now().isoformat(timespec="seconds")
         state.pop("errore", None)
+        state["tentativi"] = 0  # ora il meteo esce ogni ora: si contano solo gli errori di fila
         print(f"Meteo pubblicato su Facebook: https://www.facebook.com/{state['pubblicato']}")
         old = [post for post in read_json(WEATHER_HISTORY, []) if post != state["pubblicato"]]
         save_json(WEATHER_HISTORY, [state["pubblicato"]] + (delete_facebook_posts(old) if old else []))
@@ -6188,12 +6189,13 @@ def pharmacy_post(config: dict[str, Any], force: bool = False) -> bool:
 # REEL DEL GIORNO SULLA PAGINA FACEBOOK (vedi LEGGIMI.txt > Reel del giorno)
 # Video VERTICALE 9:16 (1080x1920, sotto i 90 secondi come vuole Facebook): pagina riepilogativa e
 # poi SOLO i locali che hanno già il menu di oggi, infine le schede di notizie, meteo e farmacia
-# (le stesse dei post e delle ultime pagine di menu.pdf). Senza didascalia. Pubblicato una volta al giorno all'ora del
-# riassunto (11:30) e al massimo una seconda volta (12:30) se nel frattempo sono arrivati altri
-# menu. Ogni Reel nuovo toglie dalla Pagina quelli vecchi (ne resta uno solo). Dopo il Reel il post
+# (le stesse dei post e delle ultime pagine di menu.pdf). Senza didascalia. UNA SOLA VOLTA AL GIORNO
+# (dal 05/11/2026): appena tutte le rosticcerie hanno il menu, oppure alle 13:00 con quelli che ci
+# sono; poi non si tocca più fino al giorno dopo. Il Reel nuovo toglie dalla Pagina quello del
+# giorno prima (ne resta uno solo). Dopo il Reel il post
 # dei menu viene rifatto, così resta il primo della Pagina.
 # Impostazioni facoltative in locali.json > impostazioni > "reel":
-#   {"attivo": true, "ora": "11:30", "seconda_ora": "12:30", "facebook": true, "secondi_max": 88}
+#   {"attivo": true, "ora": "13:00", "facebook": true, "secondi_max": 88}
 # ------------------------------------------------------------------------------------------------
 REELS = DATA / "reel"
 REEL_STATE = REELS / "stato.json"        # {"data", "pubblicati": [{"id", "ora", "pronti"}], "tentativi", "errore"?}
@@ -6205,15 +6207,16 @@ REEL_INFO_SECONDS = 5.0                   # ogni scheda finale: notizie, meteo, 
 
 
 def reel_settings(settings: dict[str, Any]) -> dict[str, Any]:
-    plan = {"attivo": True, "ora": summary_settings(settings).get("ora", "11:30"), "seconda_ora": "12:30",
-            "facebook": True, "secondi_max": 88}
+    plan = {"attivo": True, "ora": "13:00", "facebook": True, "secondi_max": 88}
     plan.update(settings.get("reel") or {})
     return plan
 
 
 def reel_due(config: dict[str, Any]) -> str:
-    """"" se non è ora; "primo" dall'ora del riassunto se oggi non c'è ancora un Reel; "secondo"
-    dalla seconda ora, una volta sola, se ora ci sono più menu di quando è uscito il primo."""
+    """UN SOLO Reel al giorno, poi non si tocca più fino al giorno dopo (05/11/2026: così chi lo
+    condivide nelle storie non se lo vede cancellare). Esce APPENA tutte le rosticcerie hanno il
+    menu di oggi ("completo"); se all'ora "ora" (13:00) non è ancora uscito, esce con i menu che ci
+    sono ("ore 13"). "" se non è il momento o se oggi è già uscito."""
     plan = reel_settings(config.get("impostazioni", {}))
     if not plan["attivo"]:
         return ""
@@ -6226,12 +6229,11 @@ def reel_due(config: dict[str, Any]) -> str:
     done = state.get("pubblicati", [])
     if int(state.get("tentativi", 0)) >= 3 and state.get("errore"):
         return ""  # tre errori oggi: si riprova domani (o a mano con Pubblica-reel.bat)
-    if not done:
-        return "primo" if now >= at(plan["ora"]) else ""
-    if len(done) == 1 and plan.get("seconda_ora") and now >= at(plan["seconda_ora"]):
-        ready = len(video_shops(config))
-        return "secondo" if ready > int(done[0].get("pronti", 0)) else ""
-    return ""
+    if done:
+        return ""  # oggi c'è già: non si ripubblica e non si cancella fino a domani
+    if all_menus_ready(config):
+        return "completo"
+    return f"ore {plan['ora']}" if now >= at(plan["ora"]) else ""
 
 
 def reel_frame(picture, title: str):
@@ -6267,9 +6269,9 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
     data = summary_data(config)
     first = render_summary(data, REELS / f"{day.isoformat()}-copertina.jpg", height=REEL_H)
     # dopo i menu: notizie, meteo e farmacia, nell'ordine (le schede 1080x1350 dei post: vedi info_cards)
-    labels = {NEWS: "Notizie", WEATHER: "Meteo", PHARMACY: "Farmacia di turno"}
-    when_short = f"{SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
-    infos = [(card, f"{labels.get(card.parent, 'Info')} · {when_short}") for card, _ in info_cards()]
+    labels = {NEWS: "Notizie", WEATHER: "Meteo", PHARMACY: "Farmacia di turno fine settimana"}
+    # in alto solo il nome: la data è già scritta nella scheda (e la farmacia può essere del fine settimana)
+    infos = [(card, labels.get(card.parent, "Info")) for card, _ in info_cards()]
     budget = float(plan["secondi_max"]) - REEL_FIRST_SECONDS - REEL_INFO_SECONDS * len(infos)
     seconds = max(REEL_PAGE_SECONDS[0], min(REEL_PAGE_SECONDS[1], budget / len(pages))) if pages else 0
     pages = pages[:int(budget // seconds)] if pages else []  # mai oltre i 90 secondi di Facebook
@@ -6303,7 +6305,7 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
                     "-t", f"{total:.2f}", "-vf", f"fps={REEL_FPS},format=yuv420p", "-c:v", "libx264",
                     "-preset", "medium", "-crf", "23", "-profile:v", "high", "-level", "4.1",
                     "-movflags", "+faststart", str(target)]
-        extra = f" + {', '.join(label.split(' · ')[0].lower() for _, label in infos)}" if infos else ""
+        extra = f" + {', '.join(label.lower() for _, label in infos)}" if infos else ""
         print(f"Creo il Reel: copertina + {len(pages)} locali{extra}, {total:.0f} secondi...")
         done = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace",
                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -6394,7 +6396,7 @@ def reel_post(config: dict[str, Any], force: bool = False) -> bool:
 
 # ================================================================================================
 # NOTIZIE LOCALI: nuova immagine ogni ora alle hh:15. Il post ha solo hashtag e sostituisce
-# quello dell'ora precedente. Subito dopo viene ripubblicato il Menu, così l'ordine della Pagina è:
+# quello dell'ora precedente. Dal 05/11/2026 alla stessa ora si rifà anche il Meteo (prima delle News). Subito dopo viene ripubblicato il Menu, così l'ordine della Pagina è:
 # 1) Menu rosticcerie, 2) News, 3) Meteo, 4) Farmacie.
 # ================================================================================================
 NEWS = DATA / "notizie"
@@ -6462,18 +6464,26 @@ def news_post(force: bool = False) -> bool:
 
 
 def news_hourly(config: dict[str, Any], force: bool = False) -> bool:
-    """Aggiorna le News e rimette il Menu sopra di esse, verificando i primi due post."""
+    """Ogni ora alle hh:15: aggiorna Meteo e News e rimette il Menu sopra, verificando i primi tre
+    post. Facebook ordina per data di pubblicazione, quindi si pubblica dal basso: prima il Meteo
+    (dal 05/11/2026 aggiornato ogni ora insieme alle News, prima solo al mattino), poi le News,
+    infine il Menu. La Farmacia, più vecchia, resta quarta."""
     if not force and not news_due():
         return False
+    weather_on = weather_settings(config.get("impostazioni", {}))["attivo"]
+    if weather_on:
+        weather_post(config, force=True)  # se non riesce le News escono lo stesso (ordine sistemato al giro dopo)
     if not news_post(force=force):
         return False
     daily_summary(config, force=True, refresh_pdf=False)
     wanted = [read_json(SUMMARY_STATE, {}).get("pubblicato", ""),
               read_json(NEWS_STATE, {}).get("pubblicato", "")]
-    current = facebook_top_posts(2)
-    if not all(wanted) or current[:2] != wanted:
-        raise RuntimeError(f"ordine Facebook inatteso dopo le notizie: {current[:2]}")
-    print("Ordine Facebook verificato: 1° Menu rosticcerie, 2° News")
+    if weather_on:
+        wanted.append(read_json(WEATHER_STATE, {}).get("pubblicato", ""))
+    current = facebook_top_posts(len(wanted))
+    if not all(wanted) or current[:len(wanted)] != wanted:
+        raise RuntimeError(f"ordine Facebook inatteso dopo notizie e meteo: {current[:len(wanted)]}")
+    print("Ordine Facebook verificato: 1° Menu rosticcerie, 2° News" + (", 3° Meteo" if weather_on else ""))
     return True
 
 
@@ -7138,7 +7148,7 @@ def main() -> None:
             last = read_json(SUMMARY_STATE, {})
             if last.get("da_ripubblicare") and int(last.get("tentativi", 0)) < 3:
                 daily_summary(fresh, force=True, refresh_pdf=False)
-            try:  # Reel del giorno (11:30, ed eventualmente 12:30 se ci sono altri menu)
+            try:  # Reel del giorno: una volta sola, appena tutti hanno il menu o alle 13:00
                 reel_post(fresh)
             except Exception as exc:
                 print(f"Reel non pubblicato: {exc!r}")

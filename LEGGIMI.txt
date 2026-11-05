@@ -2204,8 +2204,8 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   SOLO se ora ci sono più menu del primo Reel. Ogni Reel nuovo cancella i precedenti (dati\reel\
   pubblicati.json): sulla Pagina ne resta uno. Dopo il Reel si rifà il post dei menu (daily_summary
   force) così resta il primo della Pagina. Al massimo 3 tentativi al giorno, poi notifica sul cellulare.
-  File in dati\reel\: AAAA-MM-GG.mp4, .txt (didascalia), -copertina.jpg, stato.json.
-  Impostazioni facoltative: locali.json > impostazioni > "reel": {"attivo": true, "ora": "11:30",
+  File in dati\reel\: AAAA-MM-GG.mp4, -copertina.jpg, stato.json (dal 05/11/2026 niente .txt: Reel senza didascalia).
+  Impostazioni facoltative: locali.json > impostazioni > "reel": {"attivo": true, "ora": "13:00" (dal 05/11/2026; prima 11:30),
   "seconda_ora": "12:30", "facebook": true, "secondi_max": 88} ("attivo": false lo spegne).
   Nuovi comandi --reel-prova / --reel e file Prova-reel.bat / Pubblica-reel.bat.
   Limite di Facebook: 30 pubblicazioni via API in 24 ore (Reel, post e meteo insieme).
@@ -2313,3 +2313,29 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   2026-11-05_online.jpg e drop_copies sposta in dati/scartati la copia sbagliata del 06.
   Verifica sui 199 testi già letti: cambia solo il post del Guagliò (da 03/11 a oggi).
   Copia precedente: backup\Menu_2026-11-05_prima-del-periodo-guaglio.py
+- 05/11/2026 (17:00): REEL CON NOTIZIE, METEO E FARMACIA, SENZA DIDASCALIA. make_reel: dopo le pagine dei
+  locali aggiunge le schede 1080x1350 di notizie, meteo e farmacia (info_cards: le stesse dei post e delle
+  ultime pagine di menu.pdf; notizie e meteo solo se di oggi, farmacia fino a 6 giorni), REEL_INFO_SECONDS
+  = 5 s ciascuna, con reel_frame; in alto solo "Notizie" / "Meteo" / "Farmacia di turno fine settimana" (la data è già
+  nella scheda; la farmacia può essere del fine settimana). Il tempo delle schede è tolto dal budget dei
+  locali (secondi_max 88). Il Reel esce SENZA didascalia: make_reel restituisce testo "" (non crea più il
+  .txt) e publish_reel_facebook manda "description" solo se il testo non è vuoto.
+  Copia precedente: backup\Menu_2026-11-05_prima-del-reel-con-info.py
+- 05/11/2026 (17:15): METEO OGNI ORA INSIEME ALLE NEWS. news_hourly (attività "Menu Notizie", ogni ora alle hh:15,
+  anche di notte; e --notizie) ora pubblica prima il Meteo (weather_post force=True, toglie il post meteo
+  precedente), poi le News, poi ripubblica il Menu: ordine della Pagina 1° Menu, 2° News, 3° Meteo, 4° Farmacia
+  (la Farmacia resta una volta al giorno). Verifica dei primi tre post con facebook_top_posts. Se il meteo
+  non riesce le News escono lo stesso e l'ordine lo sistema enforce_top_three al giro dei menu. In
+  weather_post i "tentativi" tornano a 0 dopo ogni pubblicazione riuscita (l'avviso sul cellulare parte solo
+  dopo 3 errori di fila). Con il meteo nuovo cambia la scheda di menu.pdf: al giro dei menu successivo si
+  rifà solo il PDF. Prima il meteo si rifaceva solo quando si ripristinava l'ordine dei post.
+  Copia precedente: backup\Menu_2026-11-05_prima-del-meteo-orario.py
+- 05/11/2026 (17:15): Reel, titolo della pagina della farmacia: "Farmacia di turno fine settimana"
+  (dizionario labels in make_reel; reel_frame rimpicciolisce la scritta finché sta nella larghezza).
+- 05/11/2026 (17:25): REEL UNA SOLA VOLTA AL GIORNO, POI NON SI TOCCA. reel_due: se oggi c'è già un Reel -> niente
+  (né ripubblicato né cancellato fino al giorno dopo: chi lo condivide nelle storie non se lo vede sparire);
+  altrimenti esce APPENA all_menus_ready (tutte le rosticcerie con il menu di oggi) oppure, se non è ancora
+  uscito, dalle 13:00 ("ora" in impostazioni > reel) con i menu che ci sono. Tolta la "seconda_ora" delle
+  12:30. Il Reel nuovo cancella quello del giorno prima (come prima). Pubblica-reel.bat continua a
+  pubblicare subito, anche se oggi è già uscito.
+  Copia precedente: backup\Menu_2026-11-05_prima-del-reel-unico.py
