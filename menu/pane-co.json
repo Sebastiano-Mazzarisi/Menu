@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-04",
+  "data": "2026-11-05",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pasta e patate con provola alla napoletana",
+          "nome": "Strozzapreti alla boscaiola",
           "prezzo": "€6.50",
-          "descrizione": ""
+          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
         },
         {
-          "nome": "Risotto con zucca e gorgonzola",
+          "nome": "Risotto con spinaci e speck croccante",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Rigatoni con cavolfiore e salsiccia a punta di coltello",
+          "nome": "Rigatoni alla pastorella",
+          "prezzo": "€7.50",
+          "descrizione": "Con pomodoro fresco e ricotta"
+        },
+        {
+          "nome": "Cavatelli al grano arso con ragù di baccalà, olive e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Fusilli con tonno, pomodorini e capperi",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Zuppa di lenticchie",
+          "nome": "Minestrone di verdure",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Carote, zucchina, patate, piselli, melanzane, cicorie, cavolfiore, sedano e cipolla. Con o senza pasta"
         }
       ]
     },
@@ -91,14 +91,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di baccalà con olive, prezzemolo e pomodorino",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Bombette di capocollo con funghi misti",
+          "nome": "Involtini di capocollo con funghi misti",
           "prezzo": "€7.50",
           "descrizione": "5 pezzi"
+        },
+        {
+          "nome": "Filetto di cernia con vongole e zucchina",
+          "prezzo": "€8.50",
+          "descrizione": ""
         }
       ]
     }
