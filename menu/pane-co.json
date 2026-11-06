@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-05",
+  "data": "2026-11-06",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Strozzapreti alla boscaiola",
+          "nome": "Pennette all'arrabbiata",
           "prezzo": "€6.50",
-          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
+          "descrizione": "Salsa di pomodoro, olio e peperoncino"
         },
         {
-          "nome": "Risotto con spinaci e speck croccante",
-          "prezzo": "€7.50",
+          "nome": "Gnocchi con gorgonzola e pistacchi",
+          "prezzo": "€8.00",
           "descrizione": ""
         },
         {
-          "nome": "Rigatoni alla pastorella",
-          "prezzo": "€7.50",
-          "descrizione": "Con pomodoro fresco e ricotta"
-        },
-        {
-          "nome": "Cavatelli al grano arso con ragù di baccalà, olive e pomodorino",
+          "nome": "Orecchiette con vellutata di cavolfiore e capocollo croccante",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Minestrone di verdure",
+          "nome": "Risotto con gamberetti, zucchina e pesto di rucola",
+          "prezzo": "€8.50",
+          "descrizione": "Pesto di rucola: rucola, pistacchi, formaggio, olio, sale e pepe."
+        },
+        {
+          "nome": "Minestra di piselli",
           "prezzo": "€6.00",
-          "descrizione": "Carote, zucchina, patate, piselli, melanzane, cicorie, cavolfiore, sedano e cipolla. Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -91,12 +91,7 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Involtini di capocollo con funghi misti",
-          "prezzo": "€7.50",
-          "descrizione": "5 pezzi"
-        },
-        {
-          "nome": "Filetto di cernia con vongole e zucchina",
+          "nome": "Filetto di platessa gratinato con battuto di capperi, olive e pomodoro",
           "prezzo": "€8.50",
           "descrizione": ""
         }
