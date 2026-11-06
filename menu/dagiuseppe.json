@@ -1,0 +1,76 @@
+{
+  "data": "2026-11-06",
+  "testo": "PRANZO DI OGGI\nIL MENÙ DEL GIORNO\nPRIMI PIATTI\n* Riso, patate e cozze\n* Cavatelli allo scoglio\n* Linguine alle vongole\nSECONDI PIATTI\n* Baccalà fritto\n* Pesce fritto\n* Merluzzo impanato al forno\nCONTORNI\n* Contorni vari\nOggi il mare arriva in tavola!\nConcediti una pausa pranzo ricca di gusto, con tante specialità da provare. Ti aspettiamo!\nALIMENTARI DA GIUSEPPE DAL 2010\nVia Giuseppe Di Vittorio, 7 – Gioia del Colle\nPrenota al 375 749 2362",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "IL MENÙ DEL GIORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Riso, patate e cozze",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cavatelli allo scoglio",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Linguine alle vongole",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Baccalà fritto",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pesce fritto",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Merluzzo impanato al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "CONTORNI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Contorni vari",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Oggi il mare arriva in tavola!",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Concediti una pausa pranzo ricca di gusto, con tante specialità da provare. Ti aspettiamo!",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
