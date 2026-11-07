@@ -51,6 +51,9 @@ Nel post dei menù c'è il collegamento "Suggerisci rosticceria".
 Toccalo, scrivi il nome della rosticceria, il paese e, se vuoi, il link della sua pagina.
 La valuteremo e, se possibile, la aggiungeremo all'elenco.
 
+La musica di Menu.
+Sempre nel post dei menù c'è il collegamento "Ascolta la musica di Menu": toccalo e parte la musica dell'app, mentre sotto puoi scorrere tutti i menù del giorno.
+
 In breve.
 Menu rosticcerie ti dice ogni giorno cosa si mangia nelle rosticcerie della zona, ti mostra il menù con la foto originale, ti porta lì con un tocco e ti fa telefonare con un altro.
 E in più ti tiene aggiornato su notizie, meteo e farmacia di turno.

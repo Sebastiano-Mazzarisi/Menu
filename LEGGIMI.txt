@@ -2427,3 +2427,18 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   scelti restano nel codice). NON rimettere pulsanti /Widget sopra i link. In Chrome/Edge un link nel
   PDF non può mostrare un fumetto. Per rifare subito menu.pdf è stato cambiato "info" in
   dati\completo.json: il giro dopo rifà solo i PDF.
+- 07/11/2026 (18:00): RIPRESO IL LINK MP3 NEL POST DEI MENU (tolto il 04/11 con la didascalia semplificata).
+  summary_caption aggiunge in fondo un terzo blocco:
+       <link corto di ascolta.html>
+       Ascolta la musica di Menu
+       ==========
+  listen_link(): link corto TinyURL di ascolta.html, nomi provati LISTEN_ALIASES ("menurostmp3",
+  "menuascolta", "ascoltamenu", "menurosticceriemp3"); il blocco non c'è se mancano Menu.mp3 nella
+  cartella Menu o ascolta.html/menu.mp3 sul sito dei PDF. Il link porta ad ascolta.html (non al file
+  mp3, che aprirebbe il lettore scuro del browser): musica in sottofondo + pagine di menu.pdf.
+  MENU.MP3 SEMPRE AGGIORNATO: prima pdf-sito\menu.mp3 veniva copiato UNA sola volta; ora publish_complete
+  lo ricopia ogni volta che Menu.mp3 è diverso (file_hash), complete_fingerprint contiene l'impronta di
+  Menu.mp3 (sostituendo il file, al giro dopo si rifanno PDF, video e post) e ascolta.html chiama
+  menu.mp3?v=<impronta>, così il telefono non tiene la musica vecchia.
+  Il link compare dal prossimo rifacimento del post (nuovi menu, o Rifai-PDF-e-video.bat).
+  Copia precedente: backup\Menu_2026-11-07_prima-di-link-mp3.py

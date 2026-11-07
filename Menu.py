@@ -4299,7 +4299,7 @@ def photo_menu_picture(entry: dict[str, Any], width: int):
 # ------------------------------------------------------------------------------------------------
 COMPLETE_STATE = DATA / "completo.json"
 COMPLETE_PDF, COMPLETE_VIDEO = "menu.pdf", "video.mp4"
-SITE_SONG = "menu.mp3"   # copia di Menu.mp3 sul sito dei PDF (fisso, copiato una volta sola)
+SITE_SONG = "menu.mp3"   # copia di Menu.mp3 sul sito dei PDF (ricopiata ogni volta che Menu.mp3 cambia)
 LISTEN_PAGE = "ascolta.html"   # link MP3 della didascalia: audio in sottofondo + le pagine del PDF
 LISTEN_IMAGES = "pagine"       # cartella del sito con le pagine di menu.pdf in JPG (per ascolta.html)
 OLD_VIDEO_FILES = ("video.html",)  # pagina del vecchio video: tolta dal sito dei PDF
@@ -4425,7 +4425,10 @@ def write_listen_page(pages: list[dict[str, Any]]) -> None:
         image = f'<img src="{LISTEN_IMAGES}/{name}?v={version}" width="1240" height="1754" alt=""' + \
                 (' loading="lazy"' if index > 1 else "") + ">"
         items.append(f'<a href="{target}">{image}</a>')
-    html = LISTEN_PAGE_HTML.replace("@@SONG@@", SITE_SONG).replace("@@PAGES@@", "\n".join(items))
+    # impronta della musica nell'indirizzo: se Menu.mp3 cambia, il telefono scarica quella nuova
+    song = PDF_SITE_DIR / SITE_SONG
+    song_url = f"{SITE_SONG}?v={file_hash(song)[:10]}" if song.is_file() else SITE_SONG
+    html = LISTEN_PAGE_HTML.replace("@@SONG@@", song_url).replace("@@PAGES@@", "\n".join(items))
     (PDF_SITE_DIR / LISTEN_PAGE).write_text(html, encoding="utf-8")
 
 
@@ -4435,6 +4438,8 @@ def complete_fingerprint(config: dict[str, Any]) -> str:
     parts: list[Any] = [today, file_hash(Path(__file__))]
     # musica del video: se si sostituisce il file, PDF e video si rifanno al giro successivo
     parts.append([file_hash(path) if path.is_file() else "" for path in VIDEO_MUSIC])
+    # Menu.mp3 (link "Ascolta" del post): se cambia si ricopia sul sito e si rifà il post
+    parts.append(file_hash(ROOT / SONG) if (ROOT / SONG).is_file() else "")
     for shop in config.get("locali", []):
         parts.append([shop.get("id"), shop.get("nome"), shop.get("telefono"), shop.get("riposo")])
     for item in read_json(STATE, {}).get("results", []):
@@ -4582,8 +4587,8 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     except Exception as exc:
         print(f"Pagina suggerisci.html non scritta: {exc}")
     song, online = ROOT / SONG, PDF_SITE_DIR / SITE_SONG  # musica dell'app (Menu.mp3) sul sito dei PDF:
-    if song.is_file() and not online.is_file():           # file fisso, copiato UNA volta sola
-        shutil.copy2(song, online)
+    if song.is_file() and (not online.is_file() or file_hash(song) != file_hash(online)):
+        shutil.copy2(song, online)                        # ricopiata ogni volta che Menu.mp3 cambia
     if only_pdf:
         try:
             write_listen_page(pages)
@@ -5011,7 +5016,11 @@ def summary_caption(data: dict[str, Any]) -> str:
         https://tinyurl.com/suggrost
         Suggerisci rosticceria
         ==========
-    Primo link = menu.pdf, secondo = suggerisci.html, entrambi con link corti TinyURL (short_link).
+        https://tinyurl.com/menurostmp3
+        Ascolta la musica di Menu
+        ==========
+    Primo link = menu.pdf, secondo = suggerisci.html, terzo (dal 07/11/2026) = ascolta.html (Menu.mp3
+    in sottofondo mentre si scorrono le pagine), tutti con link corti TinyURL (short_link).
     Data e ora = ultima pubblicazione di PDF e video (dati/completo.json)."""
     try:
         when = datetime.fromisoformat(read_json(COMPLETE_STATE, {}).get("ora", ""))
@@ -5022,6 +5031,9 @@ def summary_caption(data: dict[str, Any]) -> str:
     suggest = suggest_link()
     if suggest:
         lines += [suggest, "Suggerisci rosticceria", CAPTION_LINE]
+    listen = listen_link()
+    if listen:
+        lines += [listen, "Ascolta la musica di Menu", CAPTION_LINE]
     towns = [entry["comune"] for entry in data["pronti"] + data["attesa"]]
     return with_hashtags("\n".join(lines), "menu del giorno", "rosticcerie", *towns)
 
@@ -6750,6 +6762,7 @@ SUGGEST_PAGE = "suggerisci.html"
 SHORT_LINKS = DATA / "link-corti.json"   # {"https://...lungo": "https://tinyurl.com/..."}: creati una volta
 SUGGEST_ALIASES = ("suggrost", "suggerisci-rost", "suggeriscimenu", "suggeriscirosticceria")  # dal più corto
 MENU_PDF_ALIASES = ("menurostpdf", "menuoggipdf", "menudioggi", "menurosticceriepdf")       # link corto di menu.pdf
+LISTEN_ALIASES = ("menurostmp3", "menuascolta", "ascoltamenu", "menurosticceriemp3")       # link corto di ascolta.html
 
 SUGGEST_PAGE_HTML = """<!doctype html><html lang="it"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Suggerisci una rosticceria</title>
@@ -6889,6 +6902,15 @@ def suggest_link() -> str:
     if not (PDF_SITE_DIR / SUGGEST_PAGE).is_file():
         return ""
     return short_link(pdf_site()[0] + SUGGEST_PAGE, SUGGEST_ALIASES)
+
+
+def listen_link() -> str:
+    """Link corto di ascolta.html (Menu.mp3 in sottofondo + le pagine di menu.pdf) per il post dei
+    menu; "" se sul sito dei PDF mancano la pagina o la musica (es. Menu.mp3 tolto dalla cartella)."""
+    if not (PDF_SITE_DIR / LISTEN_PAGE).is_file() or not (PDF_SITE_DIR / SITE_SONG).is_file() \
+            or not (ROOT / SONG).is_file():
+        return ""
+    return short_link(pdf_site()[0] + LISTEN_PAGE, LISTEN_ALIASES)
 
 
 PAGE_STATS = DATA / "statistiche.json"   # ultimi numeri della Pagina, letti anche dal Monitor
