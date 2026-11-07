@@ -2397,3 +2397,27 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
     - nel registro una riga in più: "invio vero e proprio a GitHub (rete + risposta di GitHub): N s",
       per distinguere il tempo della rete/GitHub da quello del PC.
   Copia precedente: backup\Menu_2026-11-07_prima-di-invio-veloce.py
+- 07/11/2026 (12:00): BOTTONE (Origini) E FUMETTI NEL PDF.
+  (Origini): sesto bottone verde nelle pagine dei locali di menu.pdf, dopo (Chiama); apre la pagina da
+  cui il programma prende il menu (entry["fonte_url"] = source_link: prima fonte online attiva di
+  locali.json, altrimenti il campo "url"); c'è solo se la fonte è un indirizzo web (non per "cartella").
+  FUMETTI: passando con il mouse su OGNI zona cliccabile dei PDF (bottoni verdi, logo, nome, indirizzo,
+  telefono, tinyurl, pulsanti della prima pagina, farmacia...) compare una spiegazione.
+    - add_link(image, box, uri, tip=""): il fumetto scelto si salva in image.info["tips"]
+      (chiave "<box>|<uri>"); senza fumetto scelto lo ricava pdf_link_tip(uri) dal link
+      (#pagina=1 -> "Torna alla prima pagina", tel: -> "Chiama il numero ...", mappa.html -> "Apri la
+      mappa con l'indirizzo", tinyurl -> "Apri l'app Menu...", Facebook/Instagram -> "Apri la pagina ...
+      da cui è preso il menu", .pdf -> "Apri il PDF", altri -> "Apri il sito <dominio>").
+    - pdf_buttons restituisce (scritta, link, fumetto); i fumetti dei bottoni dicono anche nome,
+      indirizzo e telefono del locale. Prima pagina: "Vai al menu di <nome>".
+    - save_pdf: i visualizzatori per computer (Acrobat, Edge, Firefox con pdf.js, Chrome) mostrano il
+      fumetto solo sui PULSANTI del modulo PDF, non sui link semplici. Per questo sopra ogni link c'è
+      un pulsante invisibile (/Subtype /Widget /FT /Btn /Ff 65536, fumetto in /TU, stessa azione: URI
+      oppure GoTo per i salti interni) e sotto resta il link normale (/Link, con il fumetto anche in
+      /Contents) per i visualizzatori che i pulsanti non li gestiscono. I pulsanti sono numerati DOPO
+      tutte le pagine (la pagina N resta l'oggetto 3*N+5) ed elencati in /AcroForm /Fields del catalogo.
+      Testi in UTF-16 (pdf_string), così gli accenti sono sempre giusti.
+    - Sui cellulari non esiste il passaggio del mouse: lì i fumetti non si vedono, i link funzionano
+      come prima.
+  Verificato con qpdf (nessun errore) e con pdf.js (fumetti e destinazioni corretti).
+  Copia precedente: backup\Menu_2026-11-07_prima-dei-fumetti.py

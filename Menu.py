@@ -3063,10 +3063,42 @@ def tel_link(phone: str) -> str:
     return f"tel:{digits}" if digits else ""
 
 
-def add_link(image, box, uri: str) -> None:
-    """Ricorda sull'immagine una zona cliccabile (x0, y0, x1, y1 in pixel) da mettere nel PDF."""
+def add_link(image, box, uri: str, tip: str = "") -> None:
+    """Ricorda sull'immagine una zona cliccabile (x0, y0, x1, y1 in pixel) da mettere nel PDF.
+    tip = fumetto mostrato passandoci sopra con il mouse (se manca lo sceglie pdf_link_tip)."""
     if uri and box:
-        image.info.setdefault("links", []).append((tuple(round(v) for v in box), uri))
+        box = tuple(round(v) for v in box)
+        image.info.setdefault("links", []).append((box, uri))
+        if tip:
+            image.info.setdefault("tips", {})[f"{box}|{uri}"] = tip
+
+
+def pdf_link_tip(uri: str) -> str:
+    """Fumetto PREDEFINITO di una zona cliccabile del PDF, ricavato dal link (07/11/2026): vale per
+    tutte le zone senza un fumetto scelto (logo, nome, indirizzo, telefono, farmacia...)."""
+    from urllib.parse import urlparse
+    page = re.fullmatch(r"#pagina=(\d+)", uri)
+    if page:
+        return "Torna alla prima pagina" if page.group(1) == "1" else f"Vai alla pagina {page.group(1)}"
+    if uri.startswith("tel:"):
+        return f"Chiama il numero {uri[4:]}"
+    if "mappa.html" in uri:
+        return "Apri la mappa con l'indirizzo"
+    if uri == SHORT_URL or "menurosticcerie" in uri.lower() and "tinyurl" in uri.lower():
+        return "Apri l'app Menu con tutti i menu di oggi"
+    host = urlparse(uri).netloc.lower()
+    if "facebook" in host:
+        return "Apri la pagina Facebook da cui è preso il menu"
+    if "instagram" in host:
+        return "Apri la pagina Instagram da cui è preso il menu"
+    if uri.lower().endswith(".pdf"):
+        return "Apri il PDF"
+    return f"Apri il sito {host.removeprefix('www.')}" if host else "Apri il collegamento"
+
+
+def pdf_string(text: str) -> str:
+    """Testo per il PDF in UTF-16 (accenti e simboli sempre giusti in ogni visualizzatore)."""
+    return "<FEFF" + text.encode("utf-16-be").hex().upper() + ">"
 
 
 def app_link(image, draw, xy, text: str, font, anchor: str) -> None:
@@ -3097,11 +3129,19 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
     (indirizzo -> mappa, telefono -> chiamata, tinyurl.com/menurosticcerie -> app). Un link
     "#pagina=N" è INTERNO: porta all'inizio della pagina N dello stesso PDF (pulsanti della prima
     pagina di menu.pdf). Scritto a mano, senza librerie in più: Pillow salva i PDF ma non sa
-    mettere i link."""
+    mettere i link.
+    FUMETTI (07/11/2026): sopra ogni link c'è anche un pulsante INVISIBILE del modulo PDF (campo
+    /Btn con /TU) con la stessa azione: i visualizzatori per computer (Acrobat, Edge, Firefox,
+    Chrome) mostrano il fumetto solo sui pulsanti, non sui link semplici. Sotto resta il link
+    normale, per i visualizzatori che i pulsanti non li gestiscono (molti cellulari).
+    Oggetti: 1 catalogo, 2 pagine, poi 3 per pagina (immagine, contenuto, pagina: la pagina N è
+    l'oggetto 3*N+5), infine i pulsanti, numerati dopo l'ultima pagina."""
     import io
     images = list(images)
     objects: list[bytes] = []
     kids = []
+    widgets: list[bytes] = []
+    first_widget = 3 + 3 * len(images)
     for image in images:
         buffer = io.BytesIO()
         image.convert("RGB").save(buffer, "JPEG", quality=PDF_JPEG_QUALITY, optimize=True)
@@ -3109,6 +3149,8 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
         w, h = image.width * 72 / dpi, image.height * 72 / dpi
         k = 72 / dpi
         annots = []
+        tips = image.info.get("tips", {})
+        this_page = len(objects) + 5  # numero dell'oggetto pagina che si sta scrivendo
         for (x0, y0, x1, y1), uri in image.info.get("links", []):
             safe = uri.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
             # zona da toccare alta almeno 28 punti: col dito sul cellulare una riga di testo piccola
@@ -3122,11 +3164,20 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
                 if not 0 <= number < len(images):
                     continue  # pagina che in questo PDF non c'è (es. PDF del singolo locale)
                 # gli oggetti di ogni pagina sono 3 (immagine, contenuto, pagina): la pagina N è l'oggetto 3*N+5
-                action = (f"/Dest [{3 * number + 5} 0 R /XYZ 0 {images[number].height * 72 / dpi:.2f} null]")
+                destination = f"[{3 * number + 5} 0 R /XYZ 0 {images[number].height * 72 / dpi:.2f} null]"
+                action = f"/Dest {destination}"
+                button_action = f"/A << /Type /Action /S /GoTo /D {destination} >>"
             else:
                 action = f"/A << /Type /Action /S /URI /URI ({safe}) >>"
-            annots.append(f"<< /Type /Annot /Subtype /Link /Border [0 0 0] /F 4 /Rect [{x0 * k - 4:.1f} {bottom:.1f} "
-                          f"{x1 * k + 4:.1f} {top:.1f}] {action} >>")
+                button_action = action
+            rect = f"[{x0 * k - 4:.1f} {bottom:.1f} {x1 * k + 4:.1f} {top:.1f}]"
+            tip = pdf_string(tips.get(f"{(x0, y0, x1, y1)}|{uri}") or pdf_link_tip(uri))
+            annots.append(f"<< /Type /Annot /Subtype /Link /Border [0 0 0] /F 4 /Rect {rect} {action} /Contents {tip} >>")
+            # sopra il link: pulsante invisibile (niente aspetto disegnato) con fumetto e stessa azione
+            widget_id = first_widget + len(widgets)
+            widgets.append(f"<< /Type /Annot /Subtype /Widget /FT /Btn /Ff 65536 /T (b{widget_id}) /TU {tip} "
+                           f"/F 4 /Rect {rect} /P {this_page} 0 R /MK << >> /H /N {button_action} >>".encode())
+            annots.append(f"{widget_id} 0 R")
         image_id, content_id, page_id = len(objects) + 3, len(objects) + 4, len(objects) + 5
         objects.append(f"<< /Type /XObject /Subtype /Image /Width {image.width} /Height {image.height} "
                        f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(jpeg)} >>\nstream\n"
@@ -3136,8 +3187,11 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
         objects.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w:.2f} {h:.2f}] /Contents {content_id} 0 R "
                        f"/Resources << /XObject << /Im0 {image_id} 0 R >> >> /Annots [{' '.join(annots)}] >>".encode())
         kids.append(f"{page_id} 0 R")
-    objects = [b"<< /Type /Catalog /Pages 2 0 R >>",
-               f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {len(kids)} >>".encode()] + objects
+    fields = " ".join(f"{first_widget + number} 0 R" for number in range(len(widgets)))
+    catalog = f"<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [{fields}] >> >>" if widgets \
+        else "<< /Type /Catalog /Pages 2 0 R >>"
+    objects = [catalog.encode(),
+               f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {len(kids)} >>".encode()] + objects + widgets
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
     offsets = []
     for number, body in enumerate(objects, 1):
@@ -3858,32 +3912,38 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
 PDF_BUTTON_GREEN = (46, 139, 87)
 
 
-def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str]]:
-    """I bottoni della pagina di un locale: (scritta, link). Mappa e Chiama solo se in locali.json
-    ci sono indirizzo e telefono. "#pagina=N" = salto interno a menu.pdf (vedi save_pdf)."""
-    buttons = [("Inizio", "#pagina=1"), ("Fine", f"#pagina={news_page}"),
-               ("PDF", f"{pdf_site()[0]}{entry['id']}.pdf")]
+def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str, str]]:
+    """I bottoni della pagina di un locale: (scritta, link, fumetto). Mappa e Chiama solo se in
+    locali.json ci sono indirizzo e telefono, Origini solo se la fonte ha un indirizzo web.
+    "#pagina=N" = salto interno a menu.pdf (vedi save_pdf)."""
+    name = entry.get("nome", "")
+    buttons = [("Inizio", "#pagina=1", "Torna alla prima pagina"),
+               ("Fine", f"#pagina={news_page}", "Vai alle notizie, al meteo e alla farmacia di turno"),
+               ("PDF", f"{pdf_site()[0]}{entry['id']}.pdf", f"Apri il PDF del solo menu di {name}, da stampare")]
     if entry.get("indirizzo"):
-        buttons.append(("Mappa", maps_link(entry.get("nome", ""), entry["indirizzo"])))
+        buttons.append(("Mappa", maps_link(name, entry["indirizzo"]), f"Apri la mappa: {entry['indirizzo']}"))
     if tel_link(entry.get("telefono", "")):
-        buttons.append(("Chiama", tel_link(entry["telefono"])))
+        buttons.append(("Chiama", tel_link(entry["telefono"]), f"Chiama {name}: {entry['telefono']}"))
+    source = (entry.get("fonte_url") or "").strip()
+    if source.startswith("http"):  # 07/11/2026: pagina da cui il programma prende il menu
+        buttons.append(("Origini", source, f"Apri la pagina da cui è preso il menu di {name}"))
     return buttons
 
 
-def draw_pdf_buttons(image, draw, center: float, y: float, buttons: list[tuple[str, str]], k: float = 1.0) -> int:
+def draw_pdf_buttons(image, draw, center: float, y: float, buttons: list[tuple[str, str, str]], k: float = 1.0) -> int:
     """Disegna in fila i bottoni verdi (pillole con scritta bianca), la fila CENTRATA su x=center
     (07/11/2026: centrati nel rigo), dall'alto in y, e li rende cliccabili nel PDF.
     Restituisce l'altezza della fila."""
     font = video_font(round(30 * k), bold=True)
     height, pad, gap = round(58 * k), round(30 * k), round(20 * k)
-    total = sum(draw.textlength(label, font=font) + 2 * pad for label, _ in buttons) + gap * (len(buttons) - 1)
+    total = sum(draw.textlength(label, font=font) + 2 * pad for label, _, _ in buttons) + gap * (len(buttons) - 1)
     x = center - total / 2
-    for label, uri in buttons:
+    for label, uri, tip in buttons:
         width = draw.textlength(label, font=font) + 2 * pad
         box = (x, y, x + width, y + height)
         draw.rounded_rectangle(box, radius=height // 2, fill=PDF_BUTTON_GREEN)
         draw.text((x + width / 2, y + height / 2), label, font=font, fill="white", anchor="mm")
-        add_link(image, box, uri)
+        add_link(image, box, uri, tip)
         x += width + gap
     return height
 
@@ -3898,6 +3958,7 @@ def pdf_buttons_page(page: dict[str, Any], news_page: int):
     from PIL import ImageDraw
     a4 = page["a4"].copy()
     a4.info["links"] = list(page["a4"].info.get("links", []))
+    a4.info["tips"] = dict(page["a4"].info.get("tips", {}))
     draw_pdf_buttons(a4, ImageDraw.Draw(a4), a4.width / 2, 80, buttons)
     return a4
 
@@ -4116,7 +4177,7 @@ def publish_pdf_site() -> bool:
 
 def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (1240, 1754),
                footer: str = "Tutti i menu di oggi: tinyurl.com/menurosticcerie",
-               buttons: list[tuple[str, str]] | None = None):
+               buttons: list[tuple[str, str, str]] | None = None):
     """Pagina bianca del menu (la stessa del PDF): in alto logo piccolo e, alla sua destra, nome,
     data e indirizzo completo (tre righe); sotto il
     menu intero, il più grande possibile, con i colori originali; in fondo una riga grigia.
@@ -5025,9 +5086,11 @@ def summary_a4_page(config: dict[str, Any], page_of: dict[str, int] | None = Non
     with Image.open(target) as image:
         fx, fy = 1240 / image.width, 1754 / image.height
         page = image.convert("RGB").resize((1240, 1754), Image.LANCZOS)
+    names = {shop.get("id"): shop.get("nome", "") for shop in config.get("locali", [])}
     for (kind, key), (x0, y0, x1, y1) in boxes:
         uri = SHORT_URL if kind == "app" else (f"#pagina={page_of[key]}" if page_of and key in page_of else "")
-        add_link(page, (x0 * fx, y0 * fy, x1 * fx, y1 * fy), uri)
+        tip = "" if kind == "app" else f"Vai al menu di {names.get(key, key)}"
+        add_link(page, (x0 * fx, y0 * fy, x1 * fx, y1 * fy), uri, tip)
     return page
 
 
