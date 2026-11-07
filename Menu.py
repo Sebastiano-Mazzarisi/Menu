@@ -6191,11 +6191,16 @@ def pharmacy_post(config: dict[str, Any], force: bool = False) -> bool:
 # poi SOLO i locali che hanno già il menu di oggi, infine le schede di notizie, meteo e farmacia
 # (le stesse dei post e delle ultime pagine di menu.pdf). Senza didascalia. UNA SOLA VOLTA AL GIORNO
 # (dal 05/11/2026): appena tutte le rosticcerie hanno il menu, oppure alle 13:00 con quelli che ci
-# sono; poi non si tocca più fino al giorno dopo. Il Reel nuovo toglie dalla Pagina quello del
-# giorno prima (ne resta uno solo). Dopo il Reel il post
+# sono; poi non si tocca più fino al giorno dopo. Dopo il Reel il post
 # dei menu viene rifatto, così resta il primo della Pagina.
+# DAL 07/11/2026 (richiesta di Nino): il Reel di ieri si CANCELLA appena inizia il nuovo giorno
+# (primo giro dopo le 00:00, cioè quello orario delle 00:15: vedi reel_cleanup). Il Reel di oggi:
+#   - esce SUBITO, a qualsiasi ora, appena tutte le rosticcerie hanno il menu di oggi (completo);
+#   - altrimenti esce alle 11:00 con i menu che ci sono (parziale);
+#   - se il parziale delle 11:00 c'è e più tardi si completano tutte, il parziale si cancella e
+#     si pubblica quello completo; dopo il completo non si tocca più fino a mezzanotte.
 # Impostazioni facoltative in locali.json > impostazioni > "reel":
-#   {"attivo": true, "ora": "13:00", "facebook": true, "secondi_max": 88}
+#   {"attivo": true, "ora": "11:00", "facebook": true, "secondi_max": 88}
 # ------------------------------------------------------------------------------------------------
 REELS = DATA / "reel"
 REEL_STATE = REELS / "stato.json"        # {"data", "pubblicati": [{"id", "ora", "pronti"}], "tentativi", "errore"?}
@@ -6207,16 +6212,37 @@ REEL_INFO_SECONDS = 5.0                   # ogni scheda finale: notizie, meteo, 
 
 
 def reel_settings(settings: dict[str, Any]) -> dict[str, Any]:
-    plan = {"attivo": True, "ora": "13:00", "facebook": True, "secondi_max": 88}
+    plan = {"attivo": True, "ora": "11:00", "facebook": True, "secondi_max": 88}
     plan.update(settings.get("reel") or {})
     return plan
 
 
+def reel_cleanup() -> list[str]:
+    """Dal 07/11/2026: appena cambia il giorno toglie dalla Pagina i Reel dei giorni precedenti
+    (quelli in pubblicati.json se oggi non è ancora uscito un Reel). Si chiama a ogni giro, anche
+    quello orario delle notizie (00:15, 01:15...), così il Reel di ieri sparisce subito dopo
+    mezzanotte o al primo giro utile se il PC era spento. Restituisce gli id tolti."""
+    history = read_json(REEL_HISTORY, [])
+    if not history:
+        return []
+    state = read_json(REEL_STATE, {})
+    today = date.today().isoformat()
+    keep = {item.get("id") for item in state.get("pubblicati", [])} if state.get("data") == today else set()
+    old = [item for item in history if item not in keep]
+    if not old:
+        return []
+    print(f"Reel di ieri da togliere dalla Pagina: {len(old)}")
+    left = delete_facebook_posts(old)  # se un Reel non si riesce a togliere si riprova al giro dopo
+    save_json(REEL_HISTORY, [item for item in history if item in keep] + left)
+    return [item for item in old if item not in left]
+
+
 def reel_due(config: dict[str, Any]) -> str:
-    """UN SOLO Reel al giorno, poi non si tocca più fino al giorno dopo (05/11/2026: così chi lo
-    condivide nelle storie non se lo vede cancellare). Esce APPENA tutte le rosticcerie hanno il
-    menu di oggi ("completo"); se all'ora "ora" (13:00) non è ancora uscito, esce con i menu che ci
-    sono ("ore 13"). "" se non è il momento o se oggi è già uscito."""
+    """Quando pubblicare il Reel di oggi (regole del 07/11/2026):
+    - "completo": tutte le rosticcerie hanno il menu di oggi e oggi non c'è ancora un Reel completo
+      (subito, a qualsiasi ora; se c'era il parziale delle 11:00, reel_post lo cancella);
+    - "ore 11:00": sono le 11:00 passate, oggi nessun Reel e non sono ancora tutte (parziale);
+    - "" in tutti gli altri casi (già uscito il completo, oppure parziale già uscito e si aspetta)."""
     plan = reel_settings(config.get("impostazioni", {}))
     if not plan["attivo"]:
         return ""
@@ -6229,10 +6255,12 @@ def reel_due(config: dict[str, Any]) -> str:
     done = state.get("pubblicati", [])
     if int(state.get("tentativi", 0)) >= 3 and state.get("errore"):
         return ""  # tre errori oggi: si riprova domani (o a mano con Pubblica-reel.bat)
-    if done:
-        return ""  # oggi c'è già: non si ripubblica e non si cancella fino a domani
+    if any(item.get("completo") for item in done):
+        return ""  # oggi c'è già il Reel completo: non si tocca più fino a domani
     if all_menus_ready(config):
-        return "completo"
+        return "completo"  # subito; se c'è il parziale delle 11:00 viene sostituito
+    if done:
+        return ""  # c'è il parziale: si aspetta che arrivino tutti i menu
     return f"ore {plan['ora']}" if now >= at(plan["ora"]) else ""
 
 
@@ -6348,8 +6376,8 @@ def publish_reel_facebook(video: Path, text: str) -> str:
 
 
 def reel_post(config: dict[str, Any], force: bool = False) -> bool:
-    """Reel del giorno (reel_due) oppure subito con force (--reel). Toglie i Reel precedenti e
-    rimette in cima il post dei menu. True se un Reel è stato pubblicato."""
+    """Reel del giorno (reel_due) oppure subito con force (--reel). Toglie i Reel precedenti (quello
+    di ieri o il parziale di oggi) e rimette in cima il post dei menu. True se un Reel è uscito."""
     plan = reel_settings(config.get("impostazioni", {}))
     kind = "manuale" if force else reel_due(config)
     if not kind:
@@ -6367,8 +6395,10 @@ def reel_post(config: dict[str, Any], force: bool = False) -> bool:
         if not ready:
             print("Reel non pubblicato: oggi nessun locale ha ancora il menu.")
             return False
+        complete = kind == "completo" or all_menus_ready(config)
         reel = publish_reel_facebook(video, text)
-        state["pubblicati"].append({"id": reel, "ora": datetime.now().strftime("%H:%M"), "pronti": ready})
+        state["pubblicati"].append({"id": reel, "ora": datetime.now().strftime("%H:%M"), "pronti": ready,
+                                    "completo": complete})
         state.pop("errore", None)
         state["tentativi"] = 0
         print(f"Reel pubblicato su Facebook ({kind}): https://www.facebook.com/reel/{reel}")
@@ -6993,6 +7023,10 @@ def main() -> None:
         if not take_lock():
             print("Un'altra esecuzione è in corso: le notizie verranno aggiornate al giro successivo.")
             return
+        try:  # 07/11/2026: alle 00:15 (primo giro del giorno) sparisce il Reel di ieri
+            reel_cleanup()
+        except Exception as exc:
+            print(f"Reel di ieri non tolto (si riprova al giro dopo): {exc!r}")
         try:
             news_hourly(config)
         except BaseException as exc:
@@ -7148,7 +7182,8 @@ def main() -> None:
             last = read_json(SUMMARY_STATE, {})
             if last.get("da_ripubblicare") and int(last.get("tentativi", 0)) < 3:
                 daily_summary(fresh, force=True, refresh_pdf=False)
-            try:  # Reel del giorno: una volta sola, appena tutti hanno il menu o alle 13:00
+            try:  # Reel di ieri via; Reel di oggi: subito se completo, se no alle 11:00 (poi sostituito dal completo)
+                reel_cleanup()
                 reel_post(fresh)
             except Exception as exc:
                 print(f"Reel non pubblicato: {exc!r}")

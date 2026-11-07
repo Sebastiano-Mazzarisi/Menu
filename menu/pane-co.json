@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla San Giovanni",
+          "nome": "Pennette all'arrabbiata",
           "prezzo": "€6.50",
-          "descrizione": "Con acciughe, capperi, pomodorino e aglio"
+          "descrizione": "Salsa di pomodoro, olio e peperoncino"
         },
         {
-          "nome": "Risotto con zucca e speck croccante",
-          "prezzo": "€7.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Orecchiette con funghi porcini e salsiccia",
+          "nome": "Risotto con funghi porcini e zucca",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli con ragù di baccalà, pomodorino e olive",
+          "nome": "Cavatelli al grano arso con pesce spada, capperi, origano e pomodoro",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di ceci",
+          "nome": "Orecchiette con sugo di pomodoro e bracioletta di vitello",
+          "prezzo": "€9.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Minestrone di verdure",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Carote, zucchina, patate, piselli, melanzane, cicorie, cavolfiore, sedano e cipolla. Con o senza pasta"
         }
       ]
     },
@@ -91,13 +91,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Trancio di pesce spada alla pizzaiola con pomodorino, capperi e origano",
-          "prezzo": "€8.50",
-          "descrizione": ""
+          "nome": "Spezzatino di vitello con verdurine miste",
+          "prezzo": "€7.50",
+          "descrizione": "Zucchina, carote, piselli e sedano"
         },
         {
-          "nome": "Bocconcini di vitello all'ortolana",
-          "prezzo": "€7.50",
+          "nome": "Filetto di merluzzo gratinato con zucchina",
+          "prezzo": "€8.50",
           "descrizione": ""
         }
       ]

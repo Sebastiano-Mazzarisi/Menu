@@ -2339,3 +2339,28 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   12:30. Il Reel nuovo cancella quello del giorno prima (come prima). Pubblica-reel.bat continua a
   pubblicare subito, anche se oggi è già uscito.
   Copia precedente: backup\Menu_2026-11-05_prima-del-reel-unico.py
+- 07/11/2026 (10:20): REEL DI IERI CANCELLATO A MEZZANOTTE, REEL NUOVO ALLE 11:00. Problema: sulla Pagina
+  restava il Reel di venerdì anche sabato mattina (veniva tolto solo quando usciva il Reel nuovo, cioè
+  a ora di pranzo). Nuova funzione reel_cleanup(): toglie dalla Pagina tutti i Reel di dati\reel\
+  pubblicati.json che NON sono di oggi (confronto con dati\reel\stato.json > "data"/"pubblicati"); se
+  Facebook non lo cancella, l'id resta in pubblicati.json e si riprova al giro successivo. Viene chiamata
+  a OGNI giro: nel giro orario delle notizie (--notizie-auto, 00:15, 01:15, ...: quindi alle 00:15 il
+  Reel di ieri sparisce; se il PC era spento, al primo giro utile) e nel giro dei menu (--automatico,
+  subito prima di reel_post). reel_due: il Reel esce ALLE 11:00 ("ora" in impostazioni > reel, nuovo
+  valore predefinito "11:00" al posto di "13:00"), MAI prima anche se tutte le rosticcerie hanno già il
+  menu (tolto il caso "completo"), con i menu che ci sono in quel momento; poi non si tocca fino a
+  mezzanotte. Pubblica-reel.bat continua a pubblicare subito, anche se oggi è già uscito.
+  Copia precedente: backup\Menu_2026-11-07_prima-del-reel-alle-11.py
+- 07/11/2026 (10:30): REEL SUBITO SE COMPLETO, PARZIALE ALLE 11:00 POI SOSTITUITO. Corregge la voce precedente
+  (che faceva uscire il Reel solo alle 11:00). Regole di reel_due:
+    1) se tutte le rosticcerie hanno il menu di oggi (all_menus_ready) e oggi non c'è ancora un Reel
+       completo -> "completo": il Reel esce SUBITO, a qualsiasi ora;
+    2) altrimenti, dalle 11:00 ("ora" in impostazioni > reel) e se oggi non c'è ancora nessun Reel ->
+       Reel parziale con i menu che ci sono;
+    3) se c'è il parziale e più tardi si completano tutte -> regola 1: esce il completo e reel_post
+       cancella il parziale (tutti gli id di dati\reel\pubblicati.json tranne il nuovo);
+    4) dopo il Reel completo non si tocca più nulla fino a mezzanotte (alle 00:15 reel_cleanup lo toglie).
+  In dati\reel\stato.json ogni voce di "pubblicati" ha ora anche "completo": true/false.
+  Il giro orario delle notizie fa solo la pulizia (reel_cleanup): il Reel nuovo esce solo nel giro dei
+  menu (ogni 30 minuti dalle 08:00 alle 20:00), cioè quando i menu vengono ricontrollati.
+  Copia precedente: backup\Menu_2026-11-07_prima-del-reel-completo.py
