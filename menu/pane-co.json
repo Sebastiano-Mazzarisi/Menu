@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-06",
+  "data": "2026-11-07",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -31,14 +31,14 @@
           "descrizione": "Melanzane, cetrioli, zucchina e peperoni."
         },
         {
-          "nome": "Funghi pleurotus con bresaola, rucola e grana",
-          "prezzo": "€6.50",
+          "nome": "Cous cous con melanzane, zucchine, carote, sedano, peperoni e pollo",
+          "prezzo": "€5.50",
           "descrizione": ""
         },
         {
-          "nome": "Cous cous con bresaola e verdurine",
-          "prezzo": "€5.50",
-          "descrizione": "Zucchine, melanzane, carote e peperoni."
+          "nome": "Funghi pleurotus con bresaola, rucola e grana",
+          "prezzo": "€6.50",
+          "descrizione": ""
         },
         {
           "nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto",
@@ -61,27 +61,27 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pennette all'arrabbiata",
+          "nome": "Spaghetti alla San Giovanni",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+          "descrizione": "Con acciughe, capperi, pomodorino e aglio"
         },
         {
-          "nome": "Gnocchi con gorgonzola e pistacchi",
-          "prezzo": "€8.00",
+          "nome": "Risotto con zucca e speck croccante",
+          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con vellutata di cavolfiore e capocollo croccante",
+          "nome": "Orecchiette con funghi porcini e salsiccia",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con gamberetti, zucchina e pesto di rucola",
+          "nome": "Cavatelli con ragù di baccalà, pomodorino e olive",
           "prezzo": "€8.50",
-          "descrizione": "Pesto di rucola: rucola, pistacchi, formaggio, olio, sale e pepe."
+          "descrizione": ""
         },
         {
-          "nome": "Minestra di piselli",
+          "nome": "Zuppa di ceci",
           "prezzo": "€6.00",
           "descrizione": "Con o senza pasta"
         }
@@ -91,8 +91,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di platessa gratinato con battuto di capperi, olive e pomodoro",
+          "nome": "Trancio di pesce spada alla pizzaiola con pomodorino, capperi e origano",
           "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Bocconcini di vitello all'ortolana",
+          "prezzo": "€7.50",
           "descrizione": ""
         }
       ]
