@@ -3844,8 +3844,59 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
             a4.info["links"] = move_links(links, scale * VIDEO_W / 1080, dx, dy)  # cartelli disegnati a 1080x1350
             pages.append({"entry": entry, "tipo": kind, "a4": a4})
             continue
-        pages.append({"entry": entry, "tipo": kind, "a4": photo_page(entry, photo_menu(entry), when)})
+        menu = photo_menu(entry)
+        # "menu" e "quando" servono a pdf_buttons_page per rifare la pagina con i bottoni di menu.pdf
+        pages.append({"entry": entry, "tipo": kind, "a4": photo_page(entry, menu, when), "menu": menu, "quando": when})
     return pages
+
+
+# BOTTONI VERDI DELLE PAGINE DEI LOCALI IN menu.pdf (07/11/2026, richiesta di Nino)
+# Sotto la linea della testata, rientrati nel rigo: (Inizio) primo foglio, (Fine) foglio delle
+# notizie, (PDF) PDF del solo locale da stampare, (Mappa) Google Maps / Apple Maps sull'indirizzo,
+# (Chiama) telefono del locale. SOLO in menu.pdf: il PDF del singolo locale (quello da stampare),
+# il video, il Reel e ascolta.html restano senza bottoni (lì non si possono toccare).
+PDF_BUTTON_GREEN = (46, 139, 87)
+
+
+def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str]]:
+    """I bottoni della pagina di un locale: (scritta, link). Mappa e Chiama solo se in locali.json
+    ci sono indirizzo e telefono. "#pagina=N" = salto interno a menu.pdf (vedi save_pdf)."""
+    buttons = [("Inizio", "#pagina=1"), ("Fine", f"#pagina={news_page}"),
+               ("PDF", f"{pdf_site()[0]}{entry['id']}.pdf")]
+    if entry.get("indirizzo"):
+        buttons.append(("Mappa", maps_link(entry.get("nome", ""), entry["indirizzo"])))
+    if tel_link(entry.get("telefono", "")):
+        buttons.append(("Chiama", tel_link(entry["telefono"])))
+    return buttons
+
+
+def draw_pdf_buttons(image, draw, x: float, y: float, buttons: list[tuple[str, str]], k: float = 1.0) -> int:
+    """Disegna in fila i bottoni verdi (pillole con scritta bianca) a partire da (x, y) in alto a
+    sinistra e li rende cliccabili nel PDF. Restituisce l'altezza della fila."""
+    font = video_font(round(30 * k), bold=True)
+    height, pad, gap = round(58 * k), round(30 * k), round(20 * k)
+    for label, uri in buttons:
+        width = draw.textlength(label, font=font) + 2 * pad
+        box = (x, y, x + width, y + height)
+        draw.rounded_rectangle(box, radius=height // 2, fill=PDF_BUTTON_GREEN)
+        draw.text((x + width / 2, y + height / 2), label, font=font, fill="white", anchor="mm")
+        add_link(image, box, uri)
+        x += width + gap
+    return height
+
+
+def pdf_buttons_page(page: dict[str, Any], news_page: int):
+    """Pagina A4 del locale PER menu.pdf, con i bottoni verdi. Pagina del menu: rifatta con
+    photo_page(buttons=...), che lascia sotto la linea della testata lo spazio per la fila
+    (il menu scende un poco). Cartelli CHIUSO / IN ATTESA: fila nel margine bianco in alto."""
+    buttons = pdf_buttons(page["entry"], news_page)
+    if page.get("menu") is not None:
+        return photo_page(page["entry"], page["menu"], page["quando"], buttons=buttons)
+    from PIL import ImageDraw
+    a4 = page["a4"].copy()
+    a4.info["links"] = list(page["a4"].info.get("links", []))
+    draw_pdf_buttons(a4, ImageDraw.Draw(a4), 90, 80, buttons)
+    return a4
 
 
 # ------------------------------------------------------------------------------------------------
@@ -4035,11 +4086,13 @@ def publish_pdf_site() -> bool:
 
 
 def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (1240, 1754),
-               footer: str = "Tutti i menu di oggi: tinyurl.com/menurosticcerie"):
+               footer: str = "Tutti i menu di oggi: tinyurl.com/menurosticcerie",
+               buttons: list[tuple[str, str]] | None = None):
     """Pagina bianca del menu (la stessa del PDF): in alto logo piccolo e, alla sua destra, nome,
     data e indirizzo completo (tre righe); sotto il
     menu intero, il più grande possibile, con i colori originali; in fondo una riga grigia.
-    size=(1240, 1754) = A4 a 150 dpi per il PDF."""
+    size=(1240, 1754) = A4 a 150 dpi per il PDF. buttons = bottoni verdi sotto la linea della
+    testata (solo per menu.pdf, vedi pdf_buttons_page)."""
     from PIL import Image, ImageDraw
     page_w, page_h = size
     k = page_w / 1240                       # tutto in proporzione alla larghezza dell'A4
@@ -4076,6 +4129,8 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
         add_link(page, address_box, uri)  # l'indirizzo intero, anche se più lungo
     top = margin + logo_side + round(30 * k)
     draw.line((margin, top - round(14 * k), page_w - margin, top - round(14 * k)), fill=(200, 200, 200), width=2)
+    if buttons:  # fila di bottoni verdi sotto la linea, rientrata nel rigo; il menu scende sotto
+        top += draw_pdf_buttons(page, draw, margin + round(20 * k), top + round(4 * k), buttons, k) + round(24 * k)
     bottom = page_h - margin - round(30 * k)
     flat = Image.new("RGB", menu.size, "white")
     flat.paste(menu, (0, 0), menu)
@@ -4417,7 +4472,21 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     except Exception as exc:
         extra = []
         print(f"Pagine notizie/meteo/farmacia non create: {exc}")
-    save_pdf([page["a4"] for page in pages] + extra, PDF_SITE_DIR / COMPLETE_PDF)
+    # pagine dei locali con i bottoni verdi (Inizio, Fine, PDF, Mappa, Chiama): SOLO in menu.pdf.
+    # Fine = primo foglio dopo i locali (le notizie; se mancano, meteo o farmacia; se non c'è
+    # nessuna scheda, l'ultima pagina)
+    news_page = len(pages) + 1 if extra else len(pages)
+    pdf_pages = []
+    for page in pages:
+        if page["tipo"] == "riepilogo":
+            pdf_pages.append(page["a4"])
+            continue
+        try:
+            pdf_pages.append(pdf_buttons_page(page, news_page))
+        except Exception as exc:
+            print(f"Bottoni non messi nella pagina di {page['entry'].get('nome', '')}: {exc}")
+            pdf_pages.append(page["a4"])
+    save_pdf(pdf_pages + extra, PDF_SITE_DIR / COMPLETE_PDF)
     tick("PDF unico menu.pdf")
     (PDF_SITE_DIR / "mappa.html").write_text(MAP_PAGE_HTML, encoding="utf-8")  # link degli indirizzi
     try:  # modulo "Suggerisci rosticceria" (link nella didascalia del post dei menu)

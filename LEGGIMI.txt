@@ -2364,3 +2364,18 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Il giro orario delle notizie fa solo la pulizia (reel_cleanup): il Reel nuovo esce solo nel giro dei
   menu (ogni 30 minuti dalle 08:00 alle 20:00), cioè quando i menu vengono ricontrollati.
   Copia precedente: backup\Menu_2026-11-07_prima-del-reel-completo.py
+- 07/11/2026 (11:00): BOTTONI VERDI NELLE PAGINE DEI LOCALI DI menu.pdf. Sotto la linea della testata, rientrati
+  nel rigo, una fila di bottoni verdi (PDF_BUTTON_GREEN, pillole con scritta bianca, cliccabili):
+    (Inizio) -> primo foglio di menu.pdf (#pagina=1)
+    (Fine)   -> foglio delle notizie (primo foglio dopo i locali; se non ci sono schede, l'ultima pagina)
+    (PDF)    -> PDF del solo locale, da stampare (https://menurosticcerie.github.io/<id>.pdf)
+    (Mappa)  -> mappa.html (Apple Maps su iPhone/iPad/Mac, Google Maps sugli altri); solo se c'è "indirizzo"
+    (Chiama) -> tel:<numero>; solo se c'è "telefono" in locali.json
+  Nuove funzioni: pdf_buttons (elenco scritta/link), draw_pdf_buttons (disegna e rende cliccabili),
+  pdf_buttons_page (pagina per menu.pdf). photo_page ha il nuovo parametro buttons: se c'è, sotto la
+  linea lascia lo spazio per la fila e il menu scende un poco. Pagine CHIUSO / IN ATTESA: fila nel
+  margine bianco in alto. all_shop_pages conserva in ogni pagina "menu" (immagine) e "quando" per
+  poterla rifare con i bottoni. I bottoni ci sono SOLO in menu.pdf: il PDF del singolo locale, il
+  video, il Reel e ascolta.html usano page["a4"] senza bottoni (lì non si possono toccare).
+  In publish_complete la pagina con i bottoni si fa dopo info_pages (serve sapere dove sono le notizie).
+  Copia precedente: backup\Menu_2026-11-07_prima-dei-bottoni-pdf.py
