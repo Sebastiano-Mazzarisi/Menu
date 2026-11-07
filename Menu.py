@@ -189,12 +189,27 @@ def expand_more(page: Any, selector: str) -> None:
         page.wait_for_timeout(900)
 
 
+# descrizioni automatiche delle foto che Facebook mette nel testo del post ("Potrebbe essere
+# un'immagine raffigurante matrice di biglietti e testo"): non sono del locale, si tolgono
+PHOTO_DESCRIPTION = re.compile(
+    r"\s*(?:potrebbe essere (?:un['’]immagine|una foto|un['’]illustrazione|un grafico|un meme|un primo piano|"
+    r"un['’]opera d['’]arte|una schermata)|may be (?:an image|a photo|a graphic|an illustration|a meme|a closeup|"
+    r"art|a screenshot))\b[^\n]*|\s*(?:nessuna descrizione della foto disponibile|no photo description available)\.?",
+    re.IGNORECASE)
+
+
+def strip_photo_descriptions(text: str) -> str:
+    """Toglie le descrizioni automatiche delle foto di Facebook (vedi PHOTO_DESCRIPTION)."""
+    return PHOTO_DESCRIPTION.sub("", text or "").strip()
+
+
 def clean_post_text(text: str) -> str:
     """Toglie i comandi di Facebook rimasti in fondo al testo: "… Altro...", "Vedi meno", "See less".
     Le lettere "decorative" che molti locali usano nei post (𝐌𝐄𝐍𝐔, 𝟑 𝐍𝐎𝐕𝐄𝐌𝐁𝐑𝐄, 𝑨𝑵𝑪𝑯𝑬) diventano
     lettere e numeri normali (NFKC), altrimenti i controlli "è un menu?" non le riconoscono."""
     import unicodedata
     text = "".join(unicodedata.normalize("NFKC", c) if 0x1D400 <= ord(c) <= 0x1D7FF else c for c in (text or ""))
+    text = strip_photo_descriptions(text)
     return re.sub(r"\s*(…|\.\.\.)?\s*(altro|mostra altro|see more|vedi meno|mostra meno|see less)\s*(\.\.\.|…)?\s*$",
                   "", text or "", flags=re.IGNORECASE).strip()
 
@@ -1034,7 +1049,7 @@ def save_closure(folder: Path, closed: tuple[date, date], image: Path | None = N
         return dated
     dated = folder / f"{stem}{TEXT_EXTENSION}"
     save_json(dated, {"data": date.today().isoformat(), "fonte": "avviso", "sezioni": [
-        {"titolo": "Avviso di chiusura", "piatti": [{"nome": " ".join(text.split())[:600], "prezzo": "", "descrizione": ""}]}]})
+        {"titolo": "Avviso di chiusura", "piatti": [{"nome": " ".join(strip_photo_descriptions(text).split())[:600], "prezzo": "", "descrizione": ""}]}]})
     return dated
 
 
@@ -1725,6 +1740,48 @@ def discard_wrong_menu(shop: dict[str, Any], folder: Path, image: Path) -> None:
         remove_file(image)
 
 
+POSTS_SEEN = DATA / "post-visti.json"  # quando è comparso ogni post in cima alla pagina (per locale)
+
+
+def post_first_seen_day(shop: dict[str, Any], source: dict[str, Any], text: str, image: Path | None) -> date | None:
+    """Giorno di pubblicazione ricavato da quando il post è COMPARSO in cima alla pagina, senza
+    leggere la data su Facebook (che non sempre si legge). Il programma ricorda in
+    dati/post-visti.json il post in cima a ogni giro: se un post nuovo prende il posto di un altro
+    visto LO STESSO GIORNO (es. A Braciami: alle 9:00 il post di ieri, alle 9:30 uno nuovo), è stato
+    pubblicato quel giorno. Se il post di prima era stato visto un giorno precedente (es. primo giro
+    del mattino) non si può sapere: None. Solo per il primo post della pagina (posinset 1)."""
+    selector = source.get("selettore", "") or ""
+    if "posinset" in selector and "posinset='1'" not in selector:
+        return None
+    words = re.sub(r"[^a-z0-9]+", "", (text or "").lower())[:120]  # inizio del testo (stabile tra un giro e l'altro)
+    if len(words) >= 20:
+        sign = hashlib.sha1(words.encode("utf-8")).hexdigest()[:16]
+    elif image is not None and image.is_file():
+        sign = "foto-" + file_hash(image)[:16]
+    else:
+        return None
+    seen = read_json(POSTS_SEEN, {})
+    entry = seen.setdefault(shop["id"], {})
+    posts = entry.setdefault("post", {})
+    now = datetime.now()
+    last = entry.get("ultimo") or {}
+    if sign not in posts:
+        before = last.get("visto") if last.get("firma") and last.get("firma") != sign else ""
+        posts[sign] = {"visto": now.isoformat(timespec="seconds"), "dopo": before}
+        while len(posts) > 30:  # si tengono solo gli ultimi post
+            posts.pop(next(iter(posts)))
+    entry["ultimo"] = {"firma": sign, "visto": now.isoformat(timespec="seconds")}
+    save_json(POSTS_SEEN, seen)
+    info = posts[sign]
+    try:
+        first, before = datetime.fromisoformat(info["visto"]).date(), info.get("dopo") or ""
+        if before and datetime.fromisoformat(before).date() == first:
+            return first
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
 def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, browser: "BrowserCollector",
                    checked: str) -> Result:
     """Un post Facebook/Instagram (fonte "browser"): menu, avviso o NotAMenu se non è un menu.
@@ -1733,6 +1790,12 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
     if browser is None:
         raise RuntimeError("browser non disponibile")
     image = browser.capture(shop, source)
+    # giorno di pubblicazione: quello letto su Facebook, altrimenti quello in cui il post è comparso
+    try:
+        appeared = post_first_seen_day(shop, source, browser.last_text, image)
+    except Exception:
+        appeared = None
+    published = browser.last_posted or appeared
     excluded = [word for word in source.get("parole_escluse", []) if word and word.lower() in (browser.last_text or "").lower()]
     if excluded:
         # post del locale che non è il menu del giorno (es. Guagliò: "degustazione" della domenica)
@@ -1745,11 +1808,11 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
                 print(f"  {shop['nome']} - tolto {wrong.name} (non era il menu): ora in dati/scartati")
         raise NotAMenu(f"post escluso (contiene \"{excluded[0]}\")")
     if image is None:  # post solo testo
-        return text_post_result(shop, source, folder, browser.last_text, checked, browser.last_posted)
+        return text_post_result(shop, source, folder, browser.last_text, checked, published)
     if source.get("menu_nel_testo") and (browser.last_text or "").strip():
         # il locale scrive il menu nel testo del post e le foto sono solo piatti (es. Da Giuseppe,
         # "PRANZO DI OGGI DA GIUSEPPE!" + elenco): vale il testo, la foto resta in dati/catture
-        return text_post_result(shop, source, folder, browser.last_text, checked, browser.last_posted)
+        return text_post_result(shop, source, folder, browser.last_text, checked, published)
     photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
     seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
     if seen:
@@ -1812,7 +1875,7 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         discard_wrong_menu(shop, folder, image)
         raise NotAMenu("né il post né la foto sembrano un menu")
     text_day = plausible_menu_date(browser.last_text) or plausible_menu_date(photo_text)
-    text_day = fix_stale_written_date(shop, text_day, browser.last_posted)  # data vecchia in un post nuovo
+    text_day = fix_stale_written_date(shop, text_day, published)  # data vecchia in un post nuovo
     if text_day:
         # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
         dated = folder / f"{text_day.isoformat()}_online{image.suffix}"

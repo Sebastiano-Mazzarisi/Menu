@@ -2458,3 +2458,19 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
      prima). La chiusura vale come menu del giorno per tutto il periodo (testo del post se la foto non si
      legge bene).
   Copia precedente: backup\Menu_2026-11-07_prima-di-data-sbagliata-e-chiusure.py
+- 07/11/2026 (18:45): A Braciami continuava a dare il 6: la data di pubblicazione del post non si legge
+  su Facebook (browser.last_posted = None), quindi fix_stale_written_date non scattava. Nuova
+  post_first_seen_day(shop, source, testo, foto): ricorda in dati\post-visti.json il post in cima alla
+  pagina a ogni giro (firma = inizio del testo senza spazi/punteggiatura, 120 caratteri; senza testo
+  l'impronta della foto). Un post NUOVO che prende il posto di un altro visto LO STESSO GIORNO è stato
+  pubblicato quel giorno; se il post di prima era di un giro di un giorno precedente non si sa (None).
+  In browser_result: published = browser.last_posted or post_first_seen_day(...), usato da
+  fix_stale_written_date e passato a text_post_result. Solo per il primo post (posinset 1), ultimi 30 post
+  per locale. post-visti.json è stato creato a mano con "abraciami": post precedente visto alle 9:00 del
+  7/11 (il registro mostra il cambio di post tra le 9:00 e le 9:30), così il post di oggi vale il 7/11.
+- 07/11/2026 (18:45): AVVISI E MENU SCRITTI SENZA LE DESCRIZIONI AUTOMATICHE DI FACEBOOK. Nell'avviso di
+  chiusura di Cibarìa compariva "Potrebbe essere un'immagine raffigurante matrice di biglietti e testo"
+  (descrizione automatica della foto che Facebook mette nel testo). PHOTO_DESCRIPTION /
+  strip_photo_descriptions tolgono "Potrebbe essere un'immagine/una foto/...", "May be an image of ...",
+  "Nessuna descrizione della foto disponibile" fino a fine riga; chiamata da clean_post_text (quindi per
+  tutti i post letti) e da save_closure.
