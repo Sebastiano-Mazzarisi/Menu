@@ -580,7 +580,7 @@ let loaded=Date.now();document.addEventListener('visibilitychange',()=>{if(docum
 
 /* ---------- musica: tocco sul logo (se Menu.mp3 c'è). Il riquadro si può trascinare;
    tocco sul tempo = barra per spostarsi nel brano ---------- */
-const SONG='Menu.mp3?v=59aae88920';let audio=null;const PLAY='<svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>',PAUSE='<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+const SONG='Menu.mp3?v=06aaa170cf';let audio=null;const PLAY='<svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>',PAUSE='<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
 function player(){let p=document.getElementById('player');if(p)return p;p=document.createElement('div');p.id='player';p.hidden=true;
   p.innerHTML='<button type="button" class="pp" aria-label="Pausa"></button><span class="grip" title="Trascina per spostare"><b>Menu</b><span class="tm">0:00 / 0:00</span></span><button type="button" class="px" aria-label="Chiudi">✕</button><div class="seek"><input type="range" min="0" max="0" step="0.1" value="0" aria-label="Posizione"></div>';
   document.body.append(p);const pp=p.querySelector('.pp');const show=()=>{const on=audio&&!audio.paused;pp.innerHTML=on?PAUSE:PLAY;pp.setAttribute('aria-label',on?'Pausa':'Riproduci')};
