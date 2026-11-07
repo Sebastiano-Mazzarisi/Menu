@@ -3870,11 +3870,14 @@ def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str]]:
     return buttons
 
 
-def draw_pdf_buttons(image, draw, x: float, y: float, buttons: list[tuple[str, str]], k: float = 1.0) -> int:
-    """Disegna in fila i bottoni verdi (pillole con scritta bianca) a partire da (x, y) in alto a
-    sinistra e li rende cliccabili nel PDF. Restituisce l'altezza della fila."""
+def draw_pdf_buttons(image, draw, center: float, y: float, buttons: list[tuple[str, str]], k: float = 1.0) -> int:
+    """Disegna in fila i bottoni verdi (pillole con scritta bianca), la fila CENTRATA su x=center
+    (07/11/2026: centrati nel rigo), dall'alto in y, e li rende cliccabili nel PDF.
+    Restituisce l'altezza della fila."""
     font = video_font(round(30 * k), bold=True)
     height, pad, gap = round(58 * k), round(30 * k), round(20 * k)
+    total = sum(draw.textlength(label, font=font) + 2 * pad for label, _ in buttons) + gap * (len(buttons) - 1)
+    x = center - total / 2
     for label, uri in buttons:
         width = draw.textlength(label, font=font) + 2 * pad
         box = (x, y, x + width, y + height)
@@ -3895,7 +3898,7 @@ def pdf_buttons_page(page: dict[str, Any], news_page: int):
     from PIL import ImageDraw
     a4 = page["a4"].copy()
     a4.info["links"] = list(page["a4"].info.get("links", []))
-    draw_pdf_buttons(a4, ImageDraw.Draw(a4), 90, 80, buttons)
+    draw_pdf_buttons(a4, ImageDraw.Draw(a4), a4.width / 2, 80, buttons)
     return a4
 
 
@@ -3941,6 +3944,10 @@ def bytes_to_send(branch: str) -> int:
     return sum(int(n) for n in sizes.split() if n.isdigit())
 
 
+# file già compressi: git non cerca le differenze dentro (-delta), così prepara l'invio molto prima
+GIT_BINARY_ATTRIBUTES = "*.pdf -delta\n*.mp4 -delta\n*.mp3 -delta\n*.jpg -delta\n*.jpeg -delta\n*.png -delta\n"
+
+
 def push_with_progress(git, branch: str) -> subprocess.CompletedProcess:
     """git push --force con i MB inviati su quelli da inviare che avanzano sulla stessa riga
     ("Invio a GitHub: 1,2 MB di circa 3,1 MB"): l'invio di PDF e video può durare qualche minuto.
@@ -3952,8 +3959,8 @@ def push_with_progress(git, branch: str) -> subprocess.CompletedProcess:
     if total:
         progress(f"Da inviare a GitHub: circa {megabytes(total)}")
     units = {"B": 1, "KiB": 1024, "MiB": 1048576, "GiB": 1073741824, "KB": 1000, "MB": 1000000, "GB": 1000000000}
-    command = ["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost", "push", "--progress",
-               "--force", "origin", branch]
+    command = ["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost", "-c", "core.compression=1",
+               "-c", "pack.compression=1", "push", "--progress", "--force", "origin", branch]
     process = subprocess.Popen(command, cwd=PDF_SITE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     error, piece, shown = [], b"", ""
@@ -4004,7 +4011,9 @@ def publish_pdf_site() -> bool:
 
     def git(*args: str, cwd: Path = PDF_SITE_DIR) -> subprocess.CompletedProcess:
         # nome e email fissi per i commit: non dipendono dalla configurazione di git sul PC
-        return subprocess.run(["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost", *args], cwd=cwd,
+        # core.compression=1: PDF, video e immagini sono già compressi, ricomprimerli forte è tempo perso
+        return subprocess.run(["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost",
+                               "-c", "core.compression=1", *args], cwd=cwd,
                               text=True, capture_output=True, encoding="utf-8", errors="replace",
                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
@@ -4035,6 +4044,13 @@ def publish_pdf_site() -> bool:
     if lock.exists() and time.time() - lock.stat().st_mtime > 300:
         remove_file(lock)  # blocco rimasto da un giro interrotto
     git("symbolic-ref", "HEAD", f"refs/heads/{branch}")
+    try:  # 07/11/2026: niente ricerca delle differenze dentro i file già compressi (solo sul PC, non va su GitHub)
+        attributes = PDF_SITE_DIR / ".git" / "info" / "attributes"
+        attributes.parent.mkdir(parents=True, exist_ok=True)
+        if (attributes.read_text(encoding="utf-8") if attributes.is_file() else "") != GIT_BINARY_ATTRIBUTES:
+            attributes.write_text(GIT_BINARY_ATTRIBUTES, encoding="utf-8")
+    except OSError:
+        pass
     progress("Preparo i file per GitHub...")
     added = git("add", "-A")
     tree = git("write-tree").stdout.strip()
@@ -4063,17 +4079,30 @@ def publish_pdf_site() -> bool:
         for other in git("for-each-ref", "--format=%(refname:short)", "refs/heads").stdout.split():
             if other != branch:
                 git("branch", "-D", other)  # es. "nuova-versione" rimasto dalla versione precedente
-        git("reflog", "expire", "--expire=now", "--all")
-        progress("Tolgo dal PC le versioni che non servono più...")
-        git("gc", "--prune=now", "--quiet")
+        # pulizia delle versioni vecchie UNA VOLTA AL GIORNO (07/11/2026; prima a ogni giro, lenta):
+        # alla prima pubblicazione del giorno (commit senza genitore) quelle dei giorni prima non
+        # servono più; le versioni di oggi restano fino a domani (al massimo circa 200 MB in pdf-sito\.git)
+        cleaned = PDF_SITE_DIR / ".git" / "menu-pulizia.txt"
+        last_clean = cleaned.read_text(encoding="utf-8").strip() if cleaned.is_file() else ""
+        if not base or last_clean != date.today().isoformat():
+            git("reflog", "expire", "--expire=now", "--all")
+            progress("Tolgo dal PC le versioni che non servono più...")
+            git("gc", "--prune=now", "--quiet")
+            try:
+                cleaned.write_text(date.today().isoformat(), encoding="utf-8")
+            except OSError:
+                pass
     # se nello stesso momento un altro invio aggiorna il sito (es. Rifai-PDF.bat mentre gira il
     # controllo automatico) GitHub rifiuta con "cannot lock ref": si aspetta un attimo e si riprova
+    started = time.time()
     for attempt in range(4):
         pushed = push_with_progress(git, branch)
         if pushed.returncode == 0 or attempt == 3:
             break
         print(f"Invio dei PDF rifiutato da GitHub, riprovo tra {10 * (attempt + 1)} secondi...")
         time.sleep(10 * (attempt + 1))
+    # nel registro: quanto è durato l'invio vero e proprio (rete + GitHub), il resto è il lavoro sul PC
+    print(f"  invio vero e proprio a GitHub (rete + risposta di GitHub): {time.time() - started:.0f} s")
     if pushed.returncode != 0:
         print(f"PDF NON pubblicati su {site}: {(pushed.stderr or pushed.stdout).strip()[:200]}")
         return False
@@ -4129,8 +4158,8 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
         add_link(page, address_box, uri)  # l'indirizzo intero, anche se più lungo
     top = margin + logo_side + round(30 * k)
     draw.line((margin, top - round(14 * k), page_w - margin, top - round(14 * k)), fill=(200, 200, 200), width=2)
-    if buttons:  # fila di bottoni verdi sotto la linea, rientrata nel rigo; il menu scende sotto
-        top += draw_pdf_buttons(page, draw, margin + round(20 * k), top + round(4 * k), buttons, k) + round(24 * k)
+    if buttons:  # fila di bottoni verdi sotto la linea, centrata nel rigo; il menu scende sotto
+        top += draw_pdf_buttons(page, draw, page_w / 2, top + round(4 * k), buttons, k) + round(24 * k)
     bottom = page_h - margin - round(30 * k)
     flat = Image.new("RGB", menu.size, "white")
     flat.paste(menu, (0, 0), menu)

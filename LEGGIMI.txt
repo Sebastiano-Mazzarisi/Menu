@@ -2379,3 +2379,21 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   video, il Reel e ascolta.html usano page["a4"] senza bottoni (lì non si possono toccare).
   In publish_complete la pagina con i bottoni si fa dopo info_pages (serve sapere dove sono le notizie).
   Copia precedente: backup\Menu_2026-11-07_prima-dei-bottoni-pdf.py
+- 07/11/2026 (11:00): bottoni verdi di menu.pdf CENTRATI nel rigo (prima partivano da sinistra).
+  draw_pdf_buttons ora riceve il centro della fila (center) invece della x di partenza: calcola la
+  larghezza totale e parte da center - totale/2. Pagina del menu e cartelli: centro = metà pagina.
+  Copia precedente: backup\Menu_2026-11-07_prima-dei-bottoni-centrati.py
+- 07/11/2026 (11:30): INVIO A GITHUB DEL SITO DEI PDF PIÙ VELOCE (publish_pdf_site / push_with_progress).
+  I tempi di oggi (7-34 s per 6-7 MB sempre uguali) mostravano che il limite non è la linea ma il lavoro
+  sul PC e la risposta di GitHub. Modifiche:
+    - git gc --prune=now (pulizia delle versioni vecchie) UNA VOLTA AL GIORNO, alla prima pubblicazione
+      del giorno (commit senza genitore) o se non è ancora stata fatta oggi (data in pdf-sito\.git\
+      menu-pulizia.txt); prima a ogni giro. Durante il giorno pdf-sito\.git cresce fino a circa 200 MB,
+      ripulito la mattina dopo.
+    - pdf-sito\.git\info\attributes (solo sul PC, non va su GitHub) con "-delta" per pdf, mp4, mp3, jpg,
+      jpeg, png: git non cerca le differenze dentro i file già compressi (costante GIT_BINARY_ATTRIBUTES).
+    - core.compression=1 e pack.compression=1 nei comandi git: niente ricompressione forte di file già
+      compressi.
+    - nel registro una riga in più: "invio vero e proprio a GitHub (rete + risposta di GitHub): N s",
+      per distinguere il tempo della rete/GitHub da quello del PC.
+  Copia precedente: backup\Menu_2026-11-07_prima-di-invio-veloce.py
