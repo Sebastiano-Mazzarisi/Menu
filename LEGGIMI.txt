@@ -2430,7 +2430,7 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
 - 07/11/2026 (18:00): RIPRESO IL LINK MP3 NEL POST DEI MENU (tolto il 04/11 con la didascalia semplificata).
   summary_caption aggiunge in fondo un terzo blocco:
        <link corto di ascolta.html>
-       Ascolta la musica di Menu
+       Ascolta la descrizione di Menu
        ==========
   listen_link(): link corto TinyURL di ascolta.html, nomi provati LISTEN_ALIASES ("menurostmp3",
   "menuascolta", "ascoltamenu", "menurosticceriemp3"); il blocco non c'è se mancano Menu.mp3 nella
@@ -2441,4 +2441,20 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Menu.mp3 (sostituendo il file, al giro dopo si rifanno PDF, video e post) e ascolta.html chiama
   menu.mp3?v=<impronta>, così il telefono non tiene la musica vecchia.
   Il link compare dal prossimo rifacimento del post (nuovi menu, o Rifai-PDF-e-video.bat).
+  Menu.mp3 ora è la DESCRIZIONE A VOCE di Menu (non più una musica): scritta nel post "Ascolta la
+  descrizione di Menu" (voluta da Nino, 07/11/2026 18:01).
   Copia precedente: backup\Menu_2026-11-07_prima-di-link-mp3.py
+- 07/11/2026 (18:30): DUE ERRORI DI LETTURA CORRETTI.
+  1) DATA VECCHIA IN UN POST NUOVO (A Braciami): post pubblicato sabato 7/11 con scritto "per il giorno di
+     Bacco 06/11/2026" -> il menu finiva al 6/11 e oggi risultava senza menu. Nuova fix_stale_written_date
+     (shop, data scritta, giorno di pubblicazione): se la data scritta è PRIMA del giorno di pubblicazione
+     del post (browser.last_posted, letto da post_day) vale il giorno di pubblicazione (un menu non si
+     pubblica dopo il suo giorno). Usata in acquire (text_day, post con foto) e in text_post_result
+     (written_day, post solo testo). Nel registro: "data scritta 06/11 ma post pubblicato il 07/11: uso 07/11".
+     Se il giorno di pubblicazione non si legge, resta la data scritta (come prima).
+  2) CHIUSURA "DAL 6 AL 16 NOVEMBRE" (Cibarìa): closure_in_segment non capiva un periodo con il mese scritto
+     solo dopo il secondo giorno (trovava una sola data) e il post veniva scartato ("non sembra un menu").
+     Nuova regola: "dal 6 al 16 novembre", "dall'8 al 12/11", "dal 28 al 3 novembre" (primo giorno nel mese
+     prima). La chiusura vale come menu del giorno per tutto il periodo (testo del post se la foto non si
+     legge bene).
+  Copia precedente: backup\Menu_2026-11-07_prima-di-data-sbagliata-e-chiusure.py

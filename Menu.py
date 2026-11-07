@@ -974,6 +974,24 @@ def closure_in_segment(text: str) -> tuple[date, date] | None:
     day_word = r"(lun|mar|mer|gio|ven|sab|dom)[a-zàèéìòù]*"
     date_part = r"\s*(\d{1,2}/\d{1,2}|\d{1,2}\s+[a-z]+)?"
     match = re.search(rf"\bdal?\s+{day_word}{date_part}\s+(?:a|al|fino\s+a[l]?)\s+{day_word}{date_part}", lowered)
+    # "dal 6 al 16 novembre", "dall'8 al 12/11": il mese è scritto solo dopo il secondo giorno
+    numbers = re.search(r"\bdal(?:l['’]|\s)\s*(\d{1,2})\s+(?:al|a|fino\s+al?)\s+(\d{1,2})(\s+[a-zà]+|/\d{1,2})", lowered)
+    if numbers and not match:
+        last_dates = dates_in_text(numbers.group(2) + numbers.group(3))
+        if last_dates:
+            last = last_dates[0]
+            try:
+                first = last.replace(day=int(numbers.group(1)))
+            except ValueError:
+                first = None
+            if first and first > last:  # "dal 28 al 3 novembre": il primo giorno è del mese prima
+                previous = last.replace(day=1) - timedelta(days=1)
+                try:
+                    first = previous.replace(day=int(numbers.group(1)))
+                except ValueError:
+                    first = None
+            if first and first <= last:
+                return first, last
     if match:
         first_name, first_text, last_name, last_text = match.groups()
         first_dates = dates_in_text(first_text or "")
@@ -1268,6 +1286,18 @@ def closure_note(path: Path | None) -> str:
     return f"Chiuso fino al {match.group(3)}/{match.group(2)}" if match else ""
 
 
+def fix_stale_written_date(shop: dict[str, Any], written: date | None, posted: date | None) -> date | None:
+    """Data scritta nel menu PRIMA del giorno in cui il post è stato pubblicato (es. A Braciami,
+    post di sabato 7/11 con scritto "06/11/2026"): un menu non si pubblica dopo il suo giorno,
+    quindi la data è un errore del locale (copiata dal post del giorno prima) e vale il giorno di
+    pubblicazione. Se il giorno di pubblicazione non si conosce, resta la data scritta."""
+    if written and posted and written < posted:
+        print(f"  {shop['nome']} - data scritta {written:%d/%m} ma post pubblicato il {posted:%d/%m}: "
+              f"uso {posted:%d/%m} (data sbagliata nel post)")
+        return posted
+    return written
+
+
 def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, text: str, checked: str,
                      posted: date | None = None) -> Result:
     """Post senza foto: avviso di chiusura oppure menu scritto nel testo del post.
@@ -1290,6 +1320,7 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
                 print(f"  {shop['nome']} - tolto {wrong.name} (non era un menu): ora in dati/scartati")
         raise NotAMenu("il post (solo testo) non sembra un menu")
     written_day = plausible_menu_date(clean)  # data o giorno scritto nel post ("MENÙ DI SABATO")
+    written_day = fix_stale_written_date(shop, written_day, posted)  # data vecchia in un post nuovo
     for earlier in sorted(folder.glob("*_testo.json")):  # stesso testo già visto: resta la sua data
         if read_json(earlier, {}).get("testo") == clean:
             if written_day and written_day != image_date(earlier):
@@ -1781,6 +1812,7 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         discard_wrong_menu(shop, folder, image)
         raise NotAMenu("né il post né la foto sembrano un menu")
     text_day = plausible_menu_date(browser.last_text) or plausible_menu_date(photo_text)
+    text_day = fix_stale_written_date(shop, text_day, browser.last_posted)  # data vecchia in un post nuovo
     if text_day:
         # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
         dated = folder / f"{text_day.isoformat()}_online{image.suffix}"
@@ -5017,7 +5049,7 @@ def summary_caption(data: dict[str, Any]) -> str:
         Suggerisci rosticceria
         ==========
         https://tinyurl.com/menurostmp3
-        Ascolta la musica di Menu
+        Ascolta la descrizione di Menu
         ==========
     Primo link = menu.pdf, secondo = suggerisci.html, terzo (dal 07/11/2026) = ascolta.html (Menu.mp3
     in sottofondo mentre si scorrono le pagine), tutti con link corti TinyURL (short_link).
@@ -5033,7 +5065,7 @@ def summary_caption(data: dict[str, Any]) -> str:
         lines += [suggest, "Suggerisci rosticceria", CAPTION_LINE]
     listen = listen_link()
     if listen:
-        lines += [listen, "Ascolta la musica di Menu", CAPTION_LINE]
+        lines += [listen, "Ascolta la descrizione di Menu", CAPTION_LINE]
     towns = [entry["comune"] for entry in data["pronti"] + data["attesa"]]
     return with_hashtags("\n".join(lines), "menu del giorno", "rosticcerie", *towns)
 
