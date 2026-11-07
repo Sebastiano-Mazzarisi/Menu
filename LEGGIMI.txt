@@ -2421,3 +2421,9 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
       come prima.
   Verificato con qpdf (nessun errore) e con pdf.js (fumetti e destinazioni corretti).
   Copia precedente: backup\Menu_2026-11-07_prima-dei-fumetti.py
+- 07/11/2026 (12:15): REGRESSIONE CORRETTA: i pulsanti invisibili con fumetto (/Widget sopra ogni link, voce
+  delle 12:00) in Chrome/Edge rendevano i bottoni verdi NON cliccabili e il fumetto non compariva.
+  save_pdf torna a mettere SOLO i link (/Link), con il fumetto in /Contents (pdf_link_tip e i fumetti
+  scelti restano nel codice). NON rimettere pulsanti /Widget sopra i link. In Chrome/Edge un link nel
+  PDF non può mostrare un fumetto. Per rifare subito menu.pdf è stato cambiato "info" in
+  dati\completo.json: il giro dopo rifà solo i PDF.

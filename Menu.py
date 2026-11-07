@@ -3172,12 +3172,10 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
                 button_action = action
             rect = f"[{x0 * k - 4:.1f} {bottom:.1f} {x1 * k + 4:.1f} {top:.1f}]"
             tip = pdf_string(tips.get(f"{(x0, y0, x1, y1)}|{uri}") or pdf_link_tip(uri))
+            # SOLO il link (07/11/2026, 12:15): i pulsanti invisibili con fumetto messi sopra
+            # bloccavano il clic in Chrome/Edge (regressione), quindi tolti. Il fumetto resta nel
+            # link come /Contents (lo mostrano solo alcuni visualizzatori)
             annots.append(f"<< /Type /Annot /Subtype /Link /Border [0 0 0] /F 4 /Rect {rect} {action} /Contents {tip} >>")
-            # sopra il link: pulsante invisibile (niente aspetto disegnato) con fumetto e stessa azione
-            widget_id = first_widget + len(widgets)
-            widgets.append(f"<< /Type /Annot /Subtype /Widget /FT /Btn /Ff 65536 /T (b{widget_id}) /TU {tip} "
-                           f"/F 4 /Rect {rect} /P {this_page} 0 R /MK << >> /H /N {button_action} >>".encode())
-            annots.append(f"{widget_id} 0 R")
         image_id, content_id, page_id = len(objects) + 3, len(objects) + 4, len(objects) + 5
         objects.append(f"<< /Type /XObject /Subtype /Image /Width {image.width} /Height {image.height} "
                        f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(jpeg)} >>\nstream\n"
