@@ -72,7 +72,8 @@ FILE .BAT (per Nino: doppio clic)
                             --reel (pubblica SUBITO il Reel di oggi, sostituendo quello sulla Pagina)
   Prova-storia.bat / Pubblica-storia.bat   --storia-prova (crea e apre il video della Storia, max 58 s,
                             non pubblica) / --storia (pubblica SUBITO la Storia della Pagina; di norma esce
-                            da sola alle 11:00, una volta al giorno)
+                            da sola alle 11:00, una volta al giorno; anche su Instagram se collegato)
+  Prova-instagram.bat       --instagram-prova: dice se Instagram è collegato (account e permessi), non pubblica
   Collega_GitHub.bat        collega la cartella al repository GitHub "Menu" (una volta sola)
 
 CARTELLE (in .gitignore = restano solo sul PC: profilo, errori, ingresso, archivio, dati, backup,
@@ -2547,3 +2548,36 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Corretto anche un errore di arrotondamento in make_reel (valeva anche per il Reel): con 13 locali,
   42 // (42 / 13) dava 12 e l'ultimo locale non entrava nel video; ora int(budget / seconds + 1e-6).
   Copia precedente: backup\Menu_2026-11-08_prima-della-storia.py
+- 08/11/2026 (16:30): INSTAGRAM "MENU ROSTICCERIE". Lo stesso materiale video della Pagina esce anche su
+  Instagram (Instagram API con accesso Facebook, stesso codice di dati\facebook.json):
+    - Reel del giorno: in reel_post, subito dopo il Reel di Facebook riuscito, instagram_reel pubblica lo
+      stesso video (media_type=REELS, share_to_feed=true, senza didascalia) e toglie i Reel Instagram
+      precedenti (anche il parziale delle 11:00 quando esce il completo). reel_cleanup chiama
+      instagram_cleanup: dopo mezzanotte spariscono anche da Instagram quelli di ieri.
+      Elenco in dati\reel\instagram.json: [{"id", "data"}]. Cancellazione: DELETE /{id-contenuto}
+      (IG Media Deleting API, dicembre 2025); se Instagram risponde "does not exist"/"unsupported"
+      l'id viene lasciato perdere, altrimenti si riprova al giro dopo.
+    - Storia delle 11:00: page_story_post pubblica ora su "facebook" e "instagram" in modo indipendente
+      (page_story_targets): in dati\reel\storia.json ci sono "id"/"tentativi"/"errore" per Facebook e
+      "instagram_id"/"tentativi_instagram"/"errore_instagram" per Instagram (3 tentativi al giorno
+      ciascuno, poi notifica sul cellulare). Se Instagram viene collegato più tardi, la Storia di oggi
+      esce su Instagram al primo giro utile. --storia (Pubblica-storia.bat) ripubblica su entrambi.
+  Instagram vuole un INDIRIZZO INTERNET, non un file del PC: instagram_public_url copia il video in
+  pdf-sito\ig\AAAAMMGG-hhmmss-reel|storia.mp4 (nome sempre nuovo, niente cache), lo invia con
+  publish_pdf_site e aspetta fino a 5 minuti che https://menurosticcerie.github.io/ig/<nome> risponda
+  con la dimensione giusta. In pdf-sito\ig\ restano solo i file di oggi.
+  Pubblicazione: POST {ig}/media (video_url) -> ogni 15 s GET {contenitore}?fields=status_code fino a
+  FINISHED (massimo 10 minuti; ERROR/EXPIRED = errore) -> POST {ig}/media_publish creation_id.
+  Account: instagram_account legge dati\facebook.json > "instagram_id"; se manca lo chiede alla Pagina
+  (campo instagram_business_account) e lo salva con "instagram_nome". Se Instagram non è collegato o il
+  codice non ha i permessi instagram_basic e instagram_content_publish, instagram_ready() è False e il
+  programma NON prova a pubblicarci (nessun errore, nessuna notifica). Il 08/11/2026 il codice salvato
+  il 22/10 NON aveva questi permessi e la Pagina non risultava collegata a un account Instagram:
+  istruzioni in Facebook\Collegamento-Facebook.txt > INSTAGRAM. facebook_connect alla fine chiama
+  instagram_check.
+  Nuovi: comando --instagram-prova e Prova-instagram.bat (account, follower, pubblicazioni via
+  programma nelle ultime 24 ore; limite di Instagram 100). Spegnere tutto: locali.json > impostazioni >
+  "instagram": false.
+  Da fare più avanti se serve: su Instagram per ora NON escono il post dei menu, notizie, meteo e
+  farmacia (servirebbero immagini JPEG su indirizzo internet; meglio come storie, che spariscono da sole).
+  Copia precedente: backup\Menu_2026-11-08_prima-di-instagram.py

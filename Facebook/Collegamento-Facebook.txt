@@ -73,3 +73,28 @@ PROVE E PROBLEMI
   2) Parte 2: genera un nuovo codice provvisorio con i 4 permessi (punto 10).
   3) Parte 3: Collega-Facebook.bat.
   4) Doppio clic su Post-link-Facebook.bat: aggiunge i commenti ai due post già pubblicati.
+
+------------------------------------------------------------------
+INSTAGRAM "MENU ROSTICCERIE" (08/11/2026)
+------------------------------------------------------------------
+Con questo collegamento Menu.py pubblica anche su Instagram: il Reel del giorno
+(stesse regole di Facebook) e la Storia delle 11:00. Si fa una volta sola:
+  1) L'account Instagram "Menu rosticcerie" deve essere PROFESSIONALE
+     (app Instagram > Impostazioni > Tipo di account e strumenti >
+     Passa a un account professionale > Azienda).
+  2) Collegalo alla Pagina: Pagina Facebook "Menu rosticcerie" > Impostazioni >
+     Account collegati > Instagram > Collega account.
+  3) Parte 1, punto 5: nel caso d'uso dell'app aggiungi anche
+     instagram_basic  e  instagram_content_publish
+     (se non compaiono lì: "Casi d'uso" > "Aggiungi caso d'uso" >
+     "Gestisci messaggi e contenuti su Instagram").
+  4) Parte 2: genera un nuovo codice con TUTTI questi permessi:
+     pages_show_list, pages_manage_posts, pages_read_engagement,
+     pages_manage_engagement, read_insights, instagram_basic,
+     instagram_content_publish  (nella finestra di Facebook scegli la Pagina
+     "Menu rosticcerie" E l'account Instagram "Menu rosticcerie").
+  5) Parte 3: Collega-Facebook.bat. Alla fine deve comparire anche:
+       Instagram collegato: @<nome dell'account> ...
+  Controllo in qualsiasi momento: doppio clic su Prova-instagram.bat.
+Finché Instagram non è collegato il programma non prova a pubblicarci e non dà errori.
+Per spegnere Instagram: locali.json > impostazioni > "instagram": false

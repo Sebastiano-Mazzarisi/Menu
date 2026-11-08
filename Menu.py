@@ -6679,7 +6679,12 @@ def reel_cleanup() -> list[str]:
     """Dal 07/11/2026: appena cambia il giorno toglie dalla Pagina i Reel dei giorni precedenti
     (quelli in pubblicati.json se oggi non è ancora uscito un Reel). Si chiama a ogni giro, anche
     quello orario delle notizie (00:15, 01:15...), così il Reel di ieri sparisce subito dopo
-    mezzanotte o al primo giro utile se il PC era spento. Restituisce gli id tolti."""
+    mezzanotte o al primo giro utile se il PC era spento. Restituisce gli id tolti.
+    Dal 08/11/2026 fa lo stesso su Instagram (instagram_cleanup)."""
+    try:
+        instagram_cleanup()
+    except Exception as exc:
+        print(f"Reel di ieri non tolto da Instagram (si riprova al giro dopo): {exc}")
     history = read_json(REEL_HISTORY, [])
     if not history:
         return []
@@ -6867,6 +6872,7 @@ def reel_post(config: dict[str, Any], force: bool = False) -> bool:
         print(f"Reel pubblicato su Facebook ({kind}): https://www.facebook.com/reel/{reel}")
         old = [item for item in read_json(REEL_HISTORY, []) if item != reel]
         save_json(REEL_HISTORY, [reel] + (delete_facebook_posts(old) if old else []))
+        instagram_reel(video, keep_today=False)  # 08/11/2026: stesso Reel su Instagram (se collegato)
         tick("Reel del giorno")
         try:  # il Reel è il più recente: il post dei menu torna primo
             daily_summary(config, force=True, refresh_pdf=False)
@@ -6909,7 +6915,8 @@ def page_story_settings(settings: dict[str, Any]) -> dict[str, Any]:
 
 
 def page_story_due(config: dict[str, Any]) -> bool:
-    """True dalle 11:00 ("ora") finché oggi la Storia non è uscita (massimo 3 tentativi al giorno)."""
+    """True dalle 11:00 ("ora") finché oggi la Storia non è uscita su Facebook e (se collegato) su
+    Instagram (massimo 3 tentativi al giorno per ciascuno)."""
     plan = page_story_settings(config.get("impostazioni", {}))
     if not plan["attivo"]:
         return False
@@ -6920,7 +6927,17 @@ def page_story_due(config: dict[str, Any]) -> bool:
     state = read_json(PAGE_STORY_STATE, {})
     if state.get("data") != date.today().isoformat():
         return True
-    return not state.get("id") and int(state.get("tentativi", 0)) < 3
+    return bool(page_story_targets(state))
+
+
+def page_story_targets(state: dict[str, Any]) -> list[str]:
+    """Dove la Storia di oggi deve ancora uscire: "facebook" e/o "instagram" (solo se collegato)."""
+    targets = []
+    if not state.get("id") and int(state.get("tentativi", 0)) < 3:
+        targets.append("facebook")
+    if instagram_ready() and not state.get("instagram_id") and int(state.get("tentativi_instagram", 0)) < 3:
+        targets.append("instagram")
+    return targets
 
 
 def publish_story_facebook(video: Path) -> str:
@@ -6965,10 +6982,13 @@ def page_story_post(config: dict[str, Any], force: bool = False) -> bool:
     if not force and not page_story_due(config):
         return False
     state = read_json(PAGE_STORY_STATE, {})
-    if state.get("data") != date.today().isoformat():
-        state = {"data": date.today().isoformat(), "tentativi": 0}
+    if state.get("data") != date.today().isoformat() or force:
+        state = {"data": date.today().isoformat(), "tentativi": 0, "tentativi_instagram": 0}
+    targets = page_story_targets(state)
+    if not targets:
+        return False
     TIMER["fase"] = time.time()
-    state["tentativi"] = int(state.get("tentativi", 0)) + 1
+    published = False
     try:
         made = make_page_story(config)
         if not made:
@@ -6976,27 +6996,226 @@ def page_story_post(config: dict[str, Any], force: bool = False) -> bool:
             return False
         video, _text, ready = made
         if not ready:  # nessun menu: si riprova al giro dopo (non conta come tentativo)
-            state["tentativi"] -= 1
             print("Storia non pubblicata: oggi nessun locale ha ancora il menu.")
             return False
-        story = publish_story_facebook(video)
-        state.update({"id": story, "ora": datetime.now().strftime("%H:%M"), "pronti": ready, "tentativi": 0})
-        state.pop("errore", None)
-        print(f"Storia pubblicata sulla Pagina Facebook ({ready} locali con il menu).")
-        tick("Storia del giorno")
-        return True
-    except LookupError as exc:
-        state.update({"errore": str(exc), "tentativi": 3})
-        print(f"Storia NON pubblicata: {exc}")
+        state["pronti"] = ready
+        for target in targets:  # Facebook e Instagram indipendenti: l'errore di uno non ferma l'altro
+            tries, key, error = (("tentativi", "id", "errore") if target == "facebook" else
+                                 ("tentativi_instagram", "instagram_id", "errore_instagram"))
+            name = "Pagina Facebook" if target == "facebook" else "Instagram"
+            state[tries] = int(state.get(tries, 0)) + 1
+            try:
+                story = publish_story_facebook(video) if target == "facebook" else instagram_publish_video(video, "STORIES")
+                state.update({key: story, tries: 0, f"ora_{target}": datetime.now().strftime("%H:%M")})
+                state.pop(error, None)
+                print(f"Storia pubblicata su {name} ({ready} locali con il menu).")
+                published = True
+            except LookupError as exc:
+                state.update({error: str(exc), tries: 3})
+                print(f"Storia NON pubblicata su {name}: {exc}")
+            except Exception as exc:
+                state[error] = str(exc)
+                print(f"Storia NON pubblicata su {name}: {exc}")
+                if int(state.get(tries, 0)) >= 3:
+                    notify_phone(f"Storia non pubblicata su {name}: {str(exc)[:110]}")
+        if published:
+            tick("Storia del giorno")
+        return published
     except Exception as exc:
         state["errore"] = str(exc)
         print(f"Storia NON pubblicata: {exc}")
-        if int(state.get("tentativi", 0)) >= 3:
-            notify_phone(f"Storia non pubblicata: {str(exc)[:120]}")
     finally:
         REELS.mkdir(parents=True, exist_ok=True)
         save_json(PAGE_STORY_STATE, state)
     return False
+
+
+# ------------------------------------------------------------------------------------------------
+# INSTAGRAM "Menu rosticcerie" (08/11/2026): stesso materiale della Pagina Facebook.
+#   - Reel del giorno: lo stesso video e le stesse regole del Reel di Facebook (reel_post): subito se
+#     completo, parziale alle 11:00 poi sostituito; quelli di ieri tolti dopo mezzanotte (reel_cleanup).
+#   - Storia delle 11:00: lo stesso video della Storia di Facebook (page_story_post).
+# Funziona solo quando l'account Instagram (professionale) è collegato alla Pagina e il codice in
+# dati/facebook.json ha anche i permessi instagram_basic e instagram_content_publish (rifare
+# Collega-Facebook.bat): fino ad allora tutto resta fermo senza errori (instagram_ready).
+# Instagram non accetta file dal PC: vuole un indirizzo internet. Il video si mette quindi nel sito
+# dei PDF (pdf-sito\ig\, https://menurosticcerie.github.io/ig/<nome>.mp4), si aspetta che GitHub
+# Pages lo serva e poi lo si passa a Instagram. In ig\ restano solo i file di oggi.
+# Impostazione facoltativa: locali.json > impostazioni > "instagram": false per spegnere tutto.
+# ------------------------------------------------------------------------------------------------
+INSTAGRAM_HISTORY = REELS / "instagram.json"   # Reel di Instagram ancora pubblicati: [{"id", "data"}]
+_INSTAGRAM: dict[str, Any] = {}                 # id dell'account, letto una volta per esecuzione
+
+
+def instagram_account() -> str:
+    """Id dell'account Instagram collegato alla Pagina (salvato in dati/facebook.json > instagram_id
+    al primo uso). LookupError se Instagram non è collegato o mancano i permessi."""
+    if "id" in _INSTAGRAM:
+        if not _INSTAGRAM["id"]:
+            raise LookupError(_INSTAGRAM.get("motivo", "Instagram non collegato"))
+        return _INSTAGRAM["id"]
+    link = read_json(FACEBOOK_CONFIG, {})
+    if read_json(CONFIG, {}).get("impostazioni", {}).get("instagram") is False:
+        _INSTAGRAM.update({"id": "", "motivo": "Instagram spento in locali.json (impostazioni > instagram)"})
+    elif not link.get("token"):
+        _INSTAGRAM.update({"id": "", "motivo": "collegamento Facebook non ancora fatto (Collega-Facebook.bat)"})
+    elif link.get("instagram_id"):
+        _INSTAGRAM["id"] = link["instagram_id"]
+    else:
+        try:
+            page = facebook_call(link["pagina_id"], {"fields": "instagram_business_account{id,username}",
+                                                     "access_token": link["token"]}, version=link.get("versione", ""))
+            account = page.get("instagram_business_account") or {}
+        except RuntimeError as exc:
+            account = {}
+            _INSTAGRAM["motivo"] = f"Instagram non raggiungibile: {exc}"
+        if account.get("id"):
+            link.update({"instagram_id": account["id"], "instagram_nome": account.get("username", "")})
+            save_json(FACEBOOK_CONFIG, link)
+            _INSTAGRAM["id"] = account["id"]
+        else:
+            _INSTAGRAM["id"] = ""
+            _INSTAGRAM.setdefault("motivo", "nessun account Instagram collegato alla Pagina, oppure mancano i "
+                                            "permessi instagram_basic e instagram_content_publish (Collega-Facebook.bat)")
+    return instagram_account()
+
+
+def instagram_ready() -> bool:
+    """True se si può pubblicare su Instagram (account collegato e permessi presenti)."""
+    try:
+        instagram_account()
+        return True
+    except LookupError:
+        return False
+
+
+def instagram_public_url(video: Path, name: str) -> str:
+    """Copia il video nel sito dei PDF (pdf-sito\\ig\\<name>.mp4), lo invia a GitHub e aspetta (al
+    massimo 5 minuti) che GitHub Pages lo serva tutto. Restituisce l'indirizzo pubblico."""
+    folder = PDF_SITE_DIR / "ig"
+    folder.mkdir(parents=True, exist_ok=True)
+    today = date.today().strftime("%Y%m%d")
+    for old in folder.glob("*"):
+        if not old.name.startswith(today):  # solo i file di oggi: il sito non deve crescere
+            remove_file(old)
+    target = folder / f"{today}-{datetime.now():%H%M%S}-{name}.mp4"  # nome nuovo: niente copie vecchie in cache
+    shutil.copyfile(video, target)
+    if not publish_pdf_site():
+        raise RuntimeError("video non inviato al sito (GitHub): Instagram non lo può scaricare")
+    site, _repo = pdf_site()
+    url = f"{site}ig/{target.name}"
+    size = target.stat().st_size
+    deadline = time.time() + 300
+    while True:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=30) as answer:
+                if answer.status == 200 and int(answer.headers.get("Content-Length") or size) == size:
+                    return url
+        except Exception:
+            pass
+        if time.time() > deadline:
+            raise RuntimeError(f"GitHub Pages non serve ancora {url} dopo 5 minuti")
+        time.sleep(15)
+
+
+def instagram_publish_video(video: Path, kind: str) -> str:
+    """Pubblica un video su Instagram: kind "REELS" (Reel, anche nel profilo) o "STORIES" (Storia).
+    Contenitore POST {ig}/media -> attesa di status_code FINISHED -> POST {ig}/media_publish.
+    Senza didascalia, come su Facebook. Restituisce l'id del contenuto pubblicato."""
+    account = instagram_account()
+    link = read_json(FACEBOOK_CONFIG, {})
+    token, version = link["token"], link.get("versione", "")
+    url = instagram_public_url(video, "reel" if kind == "REELS" else "storia")
+    params = {"media_type": kind, "video_url": url, "access_token": token}
+    if kind == "REELS":
+        params["share_to_feed"] = "true"  # il Reel compare anche nella griglia del profilo
+    container = facebook_call(f"{account}/media", params, version=version, method="POST").get("id")
+    if not container:
+        raise RuntimeError("Instagram non ha creato il contenitore del video")
+    deadline = time.time() + 600  # Instagram elabora il video: di solito meno di un minuto
+    while True:
+        time.sleep(15)
+        status = facebook_call(container, {"fields": "status_code,status", "access_token": token},
+                               version=version)
+        code = status.get("status_code")
+        if code == "FINISHED":
+            break
+        if code in ("ERROR", "EXPIRED"):
+            raise RuntimeError(f"Instagram non ha accettato il video: {status.get('status') or code}")
+        if time.time() > deadline:
+            raise RuntimeError("Instagram non ha finito di elaborare il video in 10 minuti")
+    done = facebook_call(f"{account}/media_publish", {"creation_id": container, "access_token": token},
+                         version=version, method="POST")
+    if not done.get("id"):
+        raise RuntimeError(f"Instagram non ha pubblicato il video: {done}")
+    return str(done["id"])
+
+
+def instagram_delete(ids: list[str]) -> list[str]:
+    """Toglie da Instagram i contenuti indicati. Restituisce quelli che non si sono potuti togliere."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    left = []
+    for item in ids:
+        try:
+            facebook_call(item, {"access_token": link.get("token", "")}, version=link.get("versione", ""),
+                          method="DELETE")
+        except RuntimeError as exc:
+            if "does not exist" in str(exc).lower() or "unsupported" in str(exc).lower():
+                continue  # già tolto a mano: niente da fare
+            print(f"Reel di Instagram {item} non tolto (si riprova al giro dopo): {exc}")
+            left.append(item)
+    return left
+
+
+def instagram_reel(video: Path, keep_today: bool) -> None:
+    """Pubblica il Reel su Instagram e toglie i precedenti (keep_today=False: anche quelli di oggi,
+    cioè il parziale delle 11:00 sostituito dal completo). Gli errori non fermano Facebook."""
+    if not instagram_ready():
+        return
+    try:
+        reel = instagram_publish_video(video, "REELS")
+    except Exception as exc:
+        print(f"Reel NON pubblicato su Instagram: {exc}")
+        return
+    print("Reel pubblicato anche su Instagram.")
+    history = [item for item in read_json(INSTAGRAM_HISTORY, []) if isinstance(item, dict)]
+    today = date.today().isoformat()
+    old = [item for item in history if not (keep_today and item.get("data") == today)]
+    left = set(instagram_delete([item["id"] for item in old])) if old else set()
+    kept = [item for item in history if item not in old or item["id"] in left]
+    save_json(INSTAGRAM_HISTORY, [{"id": reel, "data": today}] + kept)
+
+
+def instagram_cleanup() -> None:
+    """Dopo mezzanotte toglie da Instagram i Reel dei giorni precedenti (come reel_cleanup)."""
+    history = [item for item in read_json(INSTAGRAM_HISTORY, []) if isinstance(item, dict)]
+    today = date.today().isoformat()
+    old = [item for item in history if item.get("data") != today]
+    if not old or not instagram_ready():
+        return
+    print(f"Reel di ieri da togliere da Instagram: {len(old)}")
+    left = set(instagram_delete([item["id"] for item in old]))
+    save_json(INSTAGRAM_HISTORY, [item for item in history if item not in old or item["id"] in left])
+
+
+def instagram_check() -> None:
+    """Dice se Instagram è collegato (Prova-instagram.bat), senza pubblicare nulla."""
+    try:
+        account = instagram_account()
+        link = read_json(FACEBOOK_CONFIG, {})
+        info = facebook_call(account, {"fields": "username,name,followers_count",
+                                       "access_token": link["token"]}, version=link.get("versione", ""))
+        print(f"Instagram collegato: @{info.get('username')} ({info.get('name', '')}), "
+              f"follower: {info.get('followers_count', '?')}")
+        limit = facebook_call(f"{account}/content_publishing_limit", {"access_token": link["token"]},
+                              version=link.get("versione", ""))
+        usage = (limit.get("data") or [{}])[0].get("quota_usage")
+        if usage is not None:
+            print(f"Pubblicazioni via programma nelle ultime 24 ore: {usage}")
+    except LookupError as exc:
+        print(f"Instagram NON collegato: {exc}")
+    except Exception as exc:
+        print(f"Instagram NON funzionante: {exc}")
 
 
 # ================================================================================================
@@ -7447,7 +7666,7 @@ def facebook_connect() -> None:
     if not pages:
         raise SystemExit("Nessuna Pagina trovata: nello Strumento di esplorazione scegli la Pagina "
                          "\"Menu rosticcerie\" e i permessi pages_show_list, pages_manage_posts, pages_read_engagement, "
-                         "pages_manage_engagement.")
+                         "pages_manage_engagement, read_insights, instagram_basic, instagram_content_publish.")
     wanted = [page for page in pages if FACEBOOK_PAGE.lower() in (str(page.get("username", "")).lower(), page.get("id"))
               or page.get("name", "").lower() == "menu rosticcerie"]
     page = wanted[0] if wanted else pages[0]
@@ -7459,6 +7678,7 @@ def facebook_connect() -> None:
                                 "salvato_il": datetime.now().isoformat(timespec="seconds")})
     print(f"\nCollegata la Pagina \"{page.get('name')}\" (id {page['id']}). Codice salvato in {FACEBOOK_CONFIG}")
     facebook_check()
+    instagram_check()  # 08/11/2026: l'account Instagram collegato alla Pagina viene trovato e salvato da solo
 
 
 def facebook_check() -> None:
@@ -7545,6 +7765,8 @@ def main() -> None:
                         help="Crea il Reel di oggi (video verticale) e lo apre, senza pubblicare.")
     parser.add_argument("--reel", action="store_true",
                         help="Pubblica SUBITO il Reel di oggi sulla Pagina (toglie quello precedente).")
+    parser.add_argument("--instagram-prova", action="store_true",
+                        help="Controlla che Instagram sia collegato (account e permessi), senza pubblicare nulla.")
     parser.add_argument("--storia-prova", action="store_true",
                         help="Crea il video della Storia di oggi (max 58 secondi) e lo apre, senza pubblicare.")
     parser.add_argument("--storia", action="store_true",
@@ -7576,6 +7798,9 @@ def main() -> None:
         return
     if args.statistiche:
         page_stats()
+        return
+    if args.instagram_prova:
+        instagram_check()
         return
     if args.completo:  # PDF e video subito, anche se nulla è cambiato
         take_lock()  # se gira il controllo automatico aspetta che finisca (stesso invio a GitHub)
