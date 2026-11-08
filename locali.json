@@ -201,6 +201,7 @@
           "utente": "lecletticobistrot_noci",
           "apri_storia": true,
           "menu_su_piu_parti": true,
+          "parti_storia": 9,
           "richiede_recente": true,
           "profilo": "%LOCALAPPDATA%\\AuferInstagram\\chrome",
           "canale": "chrome",
