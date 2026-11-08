@@ -5158,7 +5158,7 @@ def summary_html(data: dict[str, Any], height: int = 1350) -> str:
         logo = ICONS / f"logo-{entry['id']}.jpg"
         picture = f'<img src="{logo.as_uri()}">' if logo.exists() else '<span class="nologo"></span>'
         mark = '<div class="ck">✓</div>' if ready else ""
-        state = html.escape(entry["comune"]) if ready else "in arrivo"
+        state = html.escape(entry["comune"])  # sotto il nome il Comune, per tutti (dal 08/11/2026)
         cards.append(f'<div class="cd{"" if ready else " no"}" data-id="{html.escape(str(entry["id"]))}">{picture}'
                      f'<div class="tx"><div class="n">'
                      f'{html.escape(entry["nome"])}</div><div class="p">{state}</div></div>{mark}</div>')
@@ -5189,7 +5189,7 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
 .cd.no .n{{color:#1e1a16}}
 .p{{font-size:calc(28px*var(--k));color:#6b5f52;margin-top:4px}}
-.cd.no .p{{color:#b4501a;font-weight:700}}
+.cd.no .p{{color:#b4501a;font-weight:400}}  /* senza menu: Comune in arancione, non grassetto */
 .ck{{flex:none;width:58px;height:58px;border-radius:50%;background:#1d7f46;color:#fff;font-size:36px;display:grid;place-items:center;font-weight:700}}
 .ft{{position:absolute;left:44px;right:44px;bottom:36px;text-align:center;border-top:3px solid #e3d9c9;padding-top:20px;background:#f4efe6}}
 .ft .u{{font-size:52px}}
@@ -5217,7 +5217,7 @@ def summary_wide_html(data: dict[str, Any]) -> str:
         logo = ICONS / f"logo-{entry['id']}.jpg"
         picture = f'<img src="{logo.as_uri()}">' if logo.exists() else '<span class="nologo"></span>'
         mark = '<div class="ck">✓</div>' if ready else ""
-        state = html.escape(entry["comune"]) if ready else "in arrivo"
+        state = html.escape(entry["comune"])  # sotto il nome il Comune, per tutti (dal 08/11/2026)
         cards.append(f'<div class="cd{"" if ready else " no"}">{picture}<div class="tx"><div class="n">'
                      f'{html.escape(entry["nome"])}</div><div class="p">{state}</div></div>{mark}</div>')
     ready, total = len(data["pronti"]), data["totale"]
@@ -5248,7 +5248,7 @@ def summary_wide_html(data: dict[str, Any]) -> str:
 .n{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800;font-size:calc(24px*var(--k));line-height:1.05;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
 .p{{font-size:calc(18px*var(--k));color:#6b5f52;margin-top:1px}}
-.cd.no .p{{color:#b4501a;font-weight:700}}
+.cd.no .p{{color:#b4501a;font-weight:400}}  /* senza menu: Comune in arancione, non grassetto */
 .ck{{flex:none;width:32px;height:32px;border-radius:50%;background:#1d7f46;color:#fff;font-size:20px;display:grid;place-items:center;font-weight:700}}
 </style></head><body><div class="c">
 <div class="sx"><img src="{logo}"><div class="kk">Menu di oggi</div><div class="dd D">{html.escape(weekday)}<br>{html.escape(rest)}</div>

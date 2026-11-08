@@ -2518,3 +2518,7 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   l'invio a GitHub sia finito (il pulsante "PDF" apre invece quello online). Se il file non c'è, lo dice
   nella riga dei messaggi. Il Monitor si riavvia da solo quando Monitor.py cambia.
   Copia precedente: backup\Monitor_2026-11-08_prima-di-pdf-pc.py
+- 08/11/2026 (09:15): PAGINA RIEPILOGATIVA (prima pagina di menu.pdf e immagine del post, summary_html e
+  summary_wide_html): nei riquadri arancioni dei locali senza menu sotto il nome c'è il COMUNE (come nei
+  riquadri verdi) al posto di "in arrivo", in arancione (#b4501a) e NON in grassetto (font-weight 400).
+  Copia precedente: backup\Menu_2026-11-08_prima-di-comune-nei-riquadri-arancioni.py
