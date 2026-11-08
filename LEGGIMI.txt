@@ -2494,3 +2494,27 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
     seguito del menu, mi fermo".
   - locali.json: L'Eclettico ha "menu_su_piu_parti": true (nel caso l'OCR non legga il piccolo "1/5").
   Copia precedente: backup\Menu_2026-11-08_prima-di-menu-su-piu-immagini.py
+- 08/11/2026 (09:00): STORIE INSTAGRAM, DUE CORREZIONI (L'Eclettico restava al menu del 7/11).
+  1) Le storie vanno dalla più VECCHIA alla più nuova (i post al contrario). Prima una parte di ieri
+     (es. "oggi propone..." del 7/11) chiudeva la ricerca; ora in acquire, per "parte della storia", un
+     risultato di un giorno precedente viene tenuto da parte (older) e si guardano le parti dopo: vale
+     la prima di oggi; se non ce n'è, l'ultima di un giorno precedente.
+  2) Instagram riapre la storia dalla prima parte NON ANCORA VISTA: i numeri delle parti cambiano da
+     un'apertura all'altra. Le parti successive del menu ("2/5"...) si leggono quindi NELLA STESSA
+     apertura: BrowserCollector.story_sequence, chiamata da capture dopo aver salvato la parte, se la
+     parte dice "1/N" oppure la fonte ha "menu_su_piu_parti" e la parte ha la data di oggi/domani:
+     freccia destra, foto più grande (_largest_media), salvata in dati\catture\<id>_seguito_K.jpg, finché
+     si resta nella storia del locale (max N-1 o MAX_MENU_PARTS-1). Le parti stanno in
+     browser.last_sequence e add_menu_parts le usa (per le storie non riapre più la pagina).
+     add_menu_parts: parte valida se dice "K/N" (stesso N) o ha la stessa data; parti uguali (stessa
+     impronta, la storia non era andata avanti) saltate; se tutte numerate, unite nell'ordine 1/N, 2/N...
+  locali.json, L'Eclettico: "parti_storia": 9 (la storia ha fino a 8 parti).
+  ATTENZIONE: il clic sul NOME di un locale nel Monitor SEGNALA il menu come sbagliato (dati\segnalati.json,
+  quella foto non verrà più usata). Per rileggere tutto usare "Ricontrolla". Il 08/11 tolte le
+  segnalazioni involontarie di L'Eclettico e Cibarìa.
+  Copia precedente: backup\Menu_2026-11-08_prima-di-storie-in-ordine.py
+- 08/11/2026 (09:05): MONITOR, PULSANTE "PDF-PC" (riga 4, accanto a "PDF"): open_local_pdf apre con il
+  programma predefinito pdf-sito\menu.pdf sul PC, cioè l'ultimo PDF creato da Menu.py, anche prima che
+  l'invio a GitHub sia finito (il pulsante "PDF" apre invece quello online). Se il file non c'è, lo dice
+  nella riga dei messaggi. Il Monitor si riavvia da solo quando Monitor.py cambia.
+  Copia precedente: backup\Monitor_2026-11-08_prima-di-pdf-pc.py

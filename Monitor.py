@@ -468,13 +468,13 @@ class Monitor(tk.Tk):
         buttons = tk.Frame(self, bg=BG)
         buttons.pack(padx=10, pady=(2, 10), anchor="w")
         self.buttons_frame = buttons  # la sua larghezza decide dove va a capo la scritta dell'esito
-        # pulsanti su quattro righe (3 + 3 + 3 + 2), tutti larghi uguale: la finestra resta stretta
+        # pulsanti su quattro righe (3 + 3 + 3 + 3), tutti larghi uguale: la finestra resta stretta
         layout = (("Controlla", self.check, 0, 0), ("Ricontrolla", self.recheck, 0, 1),
                   ("Registro", self.open_log, 0, 2), ("Sito", self.open_site, 1, 0),
                   ("Accessi", self.open_accesses, 1, 1), ("Pianifica", self.toggle_task, 1, 2),
                   ("Panorama", self.overview, 2, 0), ("Pubblica", self.publish, 2, 1),
                   ("FB", self.open_facebook, 2, 2), ("Pubblica FB", self.publish_facebook, 3, 0),
-                  ("PDF", self.open_pdf, 3, 1))
+                  ("PDF", self.open_pdf, 3, 1), ("PDF-PC", self.open_local_pdf, 3, 2))
         # pulsanti che avviano un giro di Menu.py: spenti (grigi, non cliccabili) mentre un controllo
         # è in corso, perché un secondo giro dovrebbe solo aspettare che finisca il primo
         self.run_buttons: list[tk.Button] = []
@@ -804,6 +804,8 @@ class Monitor(tk.Tk):
             self.toggle_task: schedule_help,
             self.overview: "Crea e apre un PDF con, per ogni locale, la scheda del sito e la fonte "
                            "(post o storia) come appare adesso. Richiede qualche minuto.",
+            self.open_local_pdf: "Apre la copia di menu.pdf che c'è sul PC (cartella pdf-sito): è quella appena "
+                                 "creata dal programma, anche se l'invio a GitHub non è ancora finito o non è riuscito.",
             self.open_pdf: "Apre il PDF con i menu di tutti i locali (lo stesso del pulsante \"Scopri di più\" "
                            "della Pagina Facebook), come è online adesso.",
             self.publish_facebook: "Pubblica SUBITO sulla Pagina Facebook l'immagine riassuntiva dei menu di questo momento con il "
@@ -982,6 +984,18 @@ class Monitor(tk.Tk):
     def open_pdf(self) -> None:
         """PDF: apre nel browser il PDF con i menu di tutti i locali (sito dei PDF, menu.pdf)."""
         webbrowser.open(PDF_URL)
+
+    def open_local_pdf(self) -> None:
+        """PDF-PC: apre menu.pdf della cartella pdf-sito sul PC (l'ultimo creato da Menu.py, prima
+        ancora che arrivi su GitHub) con il programma predefinito per i PDF."""
+        path = ROOT / "pdf-sito" / "menu.pdf"
+        if not path.is_file():
+            self.say("menu.pdf non c'è ancora sul PC (cartella pdf-sito)")
+            return
+        try:
+            os.startfile(str(path))
+        except Exception as exc:
+            self.say(f"menu.pdf non aperto: {exc}")
 
     def open_facebook(self) -> None:
         """FB: apre la pagina Facebook "Menu rosticcerie" nel browser predefinito."""

@@ -297,6 +297,7 @@ class BrowserCollector:
         self.last_text = ""
         self.last_alt = ""
         self.last_posted: date | None = None  # giorno di pubblicazione del post letto (se si capisce)
+        self.last_sequence: list[Path] = []  # parti della storia dopo quella letta (menu su più parti)
 
     def start(self, source: dict[str, Any] | None = None) -> None:
         source = source or {}
@@ -529,6 +530,12 @@ class BrowserCollector:
             CAPTURES.mkdir(parents=True, exist_ok=True)
             destination = CAPTURES / f"{shop['id']}.jpg"  # va in ingresso solo se è un menu
             save_media(self.context, page, target, destination)
+            self.last_sequence = []
+            if source.get("apri_storia") and not selector:
+                try:  # menu su più parti della storia ("1/5", "2/5"...): vedi story_sequence
+                    self.last_sequence = self.story_sequence(page, shop, source, destination)
+                except Exception as exc:
+                    print(f"  {shop['nome']} - parti successive della storia non lette: {exc}")
             return destination
         except Exception:
             debug = ERRORS / f"{shop['id']}_{datetime.now():%Y%m%d_%H%M%S}.png"
@@ -539,6 +546,37 @@ class BrowserCollector:
             raise
         finally:
             page.close()
+
+    def story_sequence(self, page: Any, shop: dict[str, Any], source: dict[str, Any], first: Path) -> list[Path]:
+        """Parti della storia che seguono quella appena salvata, lette NELLA STESSA apertura (riaprendo
+        la storia Instagram riparte dalla prima parte non ancora vista, quindi i numeri delle parti
+        cambiano). Solo se la parte salvata dice "1/N", oppure se la fonte ha "menu_su_piu_parti" e
+        la parte ha la data di oggi o di domani. Restituisce i file dati/catture/<id>_seguito_K.jpg."""
+        text = ocr_image(first)
+        counter = page_counter(text)
+        if counter and counter[0] == 1:
+            total = counter[1]
+        elif source.get("menu_su_piu_parti") and (plausible_menu_date(f"{self.last_text}\n{text}") or date.min) >= date.today():
+            total = MAX_MENU_PARTS
+        else:
+            return []
+        user = source.get("utente", "")
+        frames: list[Path] = []
+        for step in range(1, total):
+            page.keyboard.press("ArrowRight")
+            page.wait_for_timeout(1800)
+            if "/stories/" not in page.url or (user and f"/stories/{user}/" not in page.url):
+                break  # finita la storia del locale
+            target = self._largest_media(page)
+            if target is None:
+                break
+            path = CAPTURES / f"{shop['id']}_seguito_{step}.jpg"
+            try:
+                save_media(self.context, page, target, path)
+            except Exception:
+                break
+            frames.append(path)
+        return frames
 
     def first_post(self, shop: dict[str, Any], url: str) -> tuple[str, Path | None]:
         """Testo e foto dell'ultimo post (Facebook) o dell'ultimo post (Instagram)."""
@@ -1716,7 +1754,10 @@ def add_menu_parts(shop: dict[str, Any], source: dict[str, Any], browser: "Brows
     if not (counter and counter[0] == 1) and not source.get("menu_su_piu_parti"):
         return result
     total = counter[1] if counter and counter[0] == 1 else MAX_MENU_PARTS
-    story = bool(source.get("apri_storia") and not source.get("selector") and not source.get("selettore"))
+    story = bool(source.get("apri_storia") and not source.get("selettore"))
+    sequence = list(getattr(browser, "last_sequence", []) or []) if story else []
+    if story and not sequence:
+        return result  # nessuna parte successiva letta insieme alla prima (vedi story_sequence)
     sign = file_hash(first)
     memo = read_json(MENU_PARTS, {})
     done = memo.get(shop["id"], {})
@@ -1731,26 +1772,38 @@ def add_menu_parts(shop: dict[str, Any], source: dict[str, Any], browser: "Brows
     keep_first = parts_dir / f"01{first.suffix}"
     shutil.copy2(first, keep_first)
     images = [keep_first]
+    numbers = {1: keep_first} if counter and counter[0] == 1 else {}
+    seen = {sign}
     for step in range(1, total):
-        variant = {**source, "parte_storia": int(source.get("parte_storia", 0)) + step} if story \
-            else {**source, "_foto": step}
-        try:
-            image = browser.capture(shop, variant)
-        except Exception as exc:
-            print(f"  {shop['nome']} - parte {step + 1} del menu non letta ({str(exc).splitlines()[0][:80]})")
+        if story:  # già lette nella stessa apertura della storia
+            if step > len(sequence):
+                break
+            image = sequence[step - 1]
+        else:
+            try:
+                image = browser.capture(shop, {**source, "_foto": step})
+            except Exception as exc:
+                print(f"  {shop['nome']} - parte {step + 1} del menu non letta ({str(exc).splitlines()[0][:80]})")
+                break
+        if image is None or not image.is_file():
             break
-        if image is None:
-            break
+        digest = file_hash(image)
+        if digest in seen:  # la stessa parte letta due volte (la storia non era ancora andata avanti)
+            continue
         text = ocr_image(image)
         found = page_counter(text)
-        same_day = bool(menu_day and plausible_menu_date(f"{browser.last_text}\n{text}") == menu_day)
-        if not ((found and found[0] == step + 1) or same_day):
+        same_day = bool(menu_day and plausible_menu_date(text) == menu_day)
+        if not ((found and (not counter or found[1] == counter[1])) or same_day):
             print(f"  {shop['nome']} - parte {step + 1}: non è il seguito del menu, mi fermo")
-            remove_file(image)
             break
-        kept = parts_dir / f"{step + 1:02d}{image.suffix}"
-        image.replace(kept)
+        seen.add(digest)
+        kept = parts_dir / f"{len(images) + 1:02d}{image.suffix}"
+        shutil.copy2(image, kept)
+        if found and found[0] not in numbers:
+            numbers[found[0]] = kept
         images.append(kept)
+    if numbers and len(numbers) == len(images):  # tutte numerate: nell'ordine 1/N, 2/N...
+        images = [numbers[key] for key in sorted(numbers)]
     if len(images) < 2:
         return result
     try:
@@ -2254,6 +2307,7 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                 # controllo approfondito: se nessun post/parte supera i controlli normali, secondo
                 # passaggio "tollerante" (si presume che lo scarto sia un errore del programma)
                 passes = [False, True] if shop["id"] in SUSPECT else [False]
+                older: Result | None = None  # storia: ultima parte valida di un giorno precedente
                 for lenient in passes:
                     if lenient:
                         print(f"  {shop['nome']} - CONTROLLO APPROFONDITO: nessun menu riconosciuto, "
@@ -2263,6 +2317,14 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                             variant = {**variant, "_tollerante": lenient}
                             try:
                                 found = browser_result(shop, variant, folder, browser, checked)
+                                if what == "parte della storia" and found.menu_day and found.menu_day < date.today() \
+                                        and number < len(tries):
+                                    # le storie vanno dalla più VECCHIA alla più nuova (al contrario dei
+                                    # post): una parte di ieri non vuol dire che oggi non ci sia il menu,
+                                    # si guardano le parti dopo; se nessuna è di oggi vale questa
+                                    older = found
+                                    print(f"  {shop['nome']} - {what} {number}: è del {found.menu_day:%d/%m}, guardo le parti dopo")
+                                    continue
                                 try:  # menu su più immagini ("1/5", "2/5"...): si uniscono
                                     return add_menu_parts(shop, variant, browser, found)
                                 except Exception as exc:
@@ -2271,11 +2333,15 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                             except NotAMenu as exc:
                                 print(f"  {shop['nome']} - {what} {number}: scartato ({exc})")
                                 if number == len(tries):
+                                    if older:
+                                        return older
                                     raise
                             except Exception as exc:
                                 stop = number >= 2 and ("nessun elemento" in str(exc) or "nessun'altra parte" in str(exc))
                                 print(f"  {shop['nome']} - {what} {number} non leggibile ({str(exc).splitlines()[0][:90]})")
                                 if number == len(tries) or stop:
+                                    if older:  # finita la storia: vale l'ultima parte di un giorno precedente
+                                        return older
                                     raise  # finiti i post (o la pagina non ne carica altri)
                     except Exception:
                         if lenient or len(passes) == 1:
