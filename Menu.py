@@ -512,7 +512,12 @@ class BrowserCollector:
                         pass
                 raise RuntimeError(f"nessun elemento trovato con il selettore {selector}"
                                    + (f" (nel post: {seen_box})" if seen_box else " (post non caricato)"))
-            target = page.locator(selector).first if selector else self._largest_media(page)
+            if selector and source.get("_foto"):  # 2ª, 3ª... foto dello stesso post (menu su più foto)
+                if page.locator(selector).count() <= int(source["_foto"]):
+                    raise RuntimeError(f"nel post non c'è la foto {int(source['_foto']) + 1}")
+                target = page.locator(selector).nth(int(source["_foto"]))
+            else:
+                target = page.locator(selector).first if selector else self._largest_media(page)
             if target is None:
                 raise RuntimeError("nessuna immagine grande visibile")
             # Facebook scrive nel testo alternativo dell'immagine le parole che legge nella foto
@@ -1647,6 +1652,122 @@ def place_capture(folder: Path, image: Path) -> Path:
     return final
 
 
+# ------------------------------------------------------------------------------------------------
+# MENU SU PIÙ IMMAGINI (dall'08/11/2026, es. L'Eclettico Bistrot: storia Instagram in 5 parti con
+# "1/5", "2/5"... in alto a destra). Se l'immagine accettata come menu dice "1/N" (oppure il locale
+# ha "menu_su_piu_parti": true nella fonte di locali.json), si leggono anche le parti successive
+# della storia (o le foto successive dello stesso post) e si uniscono in UNA immagine a griglia
+# (join_menu_parts), che diventa il menu del giorno. Una parte vale come seguito se dice "K/N"
+# oppure ha la stessa data del menu. Il risultato è ricordato in dati/parti-menu.json: se la prima
+# immagine non cambia, ai giri successivi non si rilegge tutto.
+# ------------------------------------------------------------------------------------------------
+MENU_PARTS = DATA / "parti-menu.json"
+MAX_MENU_PARTS = 8
+
+
+def page_counter(text: str) -> tuple[int, int] | None:
+    """Numero di pagina scritto nell'immagine: "1/5", "2 / 5", "1 di 5" -> (1, 5). Non le date
+    ("8/11", "1/12/2026"): numero <= totale, totale tra 2 e MAX_MENU_PARTS, niente "/" dopo."""
+    for match in re.finditer(r"(?<![\d/.,])([1-9])\s*(?:/|di)\s*([2-9])(?![\d/.,])", text or ""):
+        number, total = int(match.group(1)), int(match.group(2))
+        if number <= total <= MAX_MENU_PARTS:
+            return number, total
+    return None
+
+
+def join_menu_parts(images: list[Path], target: Path, frame_width: int = 720) -> None:
+    """Unisce le parti del menu in una griglia: si sceglie il numero di colonne che le rende più
+    grandi possibile dentro lo spazio del menu nella pagina A4 (circa 1100 x 1400), nell'ordine
+    da sinistra a destra e dall'alto in basso, con un piccolo spazio bianco tra una e l'altra."""
+    from PIL import Image
+    frames = []
+    for path in images:
+        with Image.open(path) as picture:
+            frame = picture.convert("RGB")
+        frames.append(frame.resize((frame_width, max(1, round(frame.height * frame_width / frame.width))), Image.LANCZOS))
+    cell_h, gap = max(frame.height for frame in frames), 16
+    area_w, area_h = 1100, 1400
+    best = 1
+    best_scale = 0.0
+    for columns in range(1, len(frames) + 1):
+        rows = -(-len(frames) // columns)
+        width, height = columns * frame_width + (columns - 1) * gap, rows * cell_h + (rows - 1) * gap
+        scale = min(area_w / width, area_h / height)
+        if scale > best_scale:
+            best, best_scale = columns, scale
+    rows = -(-len(frames) // best)
+    sheet = Image.new("RGB", (best * frame_width + (best - 1) * gap, rows * cell_h + (rows - 1) * gap), "white")
+    for index, frame in enumerate(frames):
+        x, y = (index % best) * (frame_width + gap), (index // best) * (cell_h + gap)
+        sheet.paste(frame, (x, y))
+    sheet.save(target, "JPEG" if target.suffix.lower() in (".jpg", ".jpeg") else None, quality=90)
+
+
+def add_menu_parts(shop: dict[str, Any], source: dict[str, Any], browser: "BrowserCollector",
+                   result: Result) -> Result:
+    """Menu su più immagini: aggiunge le parti successive alla prima (vedi sopra). Se qualcosa non
+    va resta il menu di una sola immagine, come prima."""
+    first = result.image
+    if not first or not first.is_file() or first.suffix.lower() not in IMAGE_EXTENSIONS \
+            or not result.menu_day or result.menu_day < date.today() or "_chiusura_" in first.name:
+        return result
+    first_text = f"{browser.last_text}\n{ocr_image(first)}"
+    counter = page_counter(ocr_image(first)) or page_counter(browser.last_text)
+    if not (counter and counter[0] == 1) and not source.get("menu_su_piu_parti"):
+        return result
+    total = counter[1] if counter and counter[0] == 1 else MAX_MENU_PARTS
+    story = bool(source.get("apri_storia") and not source.get("selector") and not source.get("selettore"))
+    sign = file_hash(first)
+    memo = read_json(MENU_PARTS, {})
+    done = memo.get(shop["id"], {})
+    saved = Path(done.get("file", ""))
+    if done.get("prima") == sign and done.get("data") == date.today().isoformat() and saved.is_file():
+        shutil.copy2(saved, first)  # stessa prima parte di un giro fa: si riusa l'unione già fatta
+        return result
+    menu_day = plausible_menu_date(first_text)
+    parts_dir = CAPTURES / f"{shop['id']}_parti"
+    shutil.rmtree(parts_dir, ignore_errors=True)
+    parts_dir.mkdir(parents=True, exist_ok=True)
+    keep_first = parts_dir / f"01{first.suffix}"
+    shutil.copy2(first, keep_first)
+    images = [keep_first]
+    for step in range(1, total):
+        variant = {**source, "parte_storia": int(source.get("parte_storia", 0)) + step} if story \
+            else {**source, "_foto": step}
+        try:
+            image = browser.capture(shop, variant)
+        except Exception as exc:
+            print(f"  {shop['nome']} - parte {step + 1} del menu non letta ({str(exc).splitlines()[0][:80]})")
+            break
+        if image is None:
+            break
+        text = ocr_image(image)
+        found = page_counter(text)
+        same_day = bool(menu_day and plausible_menu_date(f"{browser.last_text}\n{text}") == menu_day)
+        if not ((found and found[0] == step + 1) or same_day):
+            print(f"  {shop['nome']} - parte {step + 1}: non è il seguito del menu, mi fermo")
+            remove_file(image)
+            break
+        kept = parts_dir / f"{step + 1:02d}{image.suffix}"
+        image.replace(kept)
+        images.append(kept)
+    if len(images) < 2:
+        return result
+    try:
+        join_menu_parts(images, first)
+    except Exception as exc:
+        print(f"  {shop['nome']} - parti del menu non unite: {exc}")
+        shutil.copy2(keep_first, first)
+        return result
+    stored = parts_dir.parent / f"{shop['id']}_menu_unito{first.suffix}"
+    shutil.copy2(first, stored)
+    memo[shop["id"]] = {"prima": sign, "data": date.today().isoformat(), "file": str(stored), "parti": len(images)}
+    save_json(MENU_PARTS, memo)
+    print(f"  {shop['nome']} - menu su {len(images)} immagini" + (f" (scritto {counter[0]}/{counter[1]})" if counter else "")
+          + ": unite in una sola")
+    return result
+
+
 def post_variants(source: dict[str, Any]) -> list[dict[str, Any]]:
     """La fonte per il 1°, 2°, 3°... post della pagina ("post_da_controllare", 5 se non indicato):
     nei selettori [aria-posinset='1'] diventa '2', '3'...
@@ -2141,7 +2262,12 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                         for number, variant in enumerate(tries, 1):
                             variant = {**variant, "_tollerante": lenient}
                             try:
-                                return browser_result(shop, variant, folder, browser, checked)
+                                found = browser_result(shop, variant, folder, browser, checked)
+                                try:  # menu su più immagini ("1/5", "2/5"...): si uniscono
+                                    return add_menu_parts(shop, variant, browser, found)
+                                except Exception as exc:
+                                    print(f"  {shop['nome']} - parti successive del menu non lette: {exc}")
+                                    return found
                             except NotAMenu as exc:
                                 print(f"  {shop['nome']} - {what} {number}: scartato ({exc})")
                                 if number == len(tries):

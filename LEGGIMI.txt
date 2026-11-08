@@ -2474,3 +2474,23 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   strip_photo_descriptions tolgono "Potrebbe essere un'immagine/una foto/...", "May be an image of ...",
   "Nessuna descrizione della foto disponibile" fino a fine riga; chiamata da clean_post_text (quindi per
   tutti i post letti) e da save_closure.
+- 08/11/2026 (08:30): MENU SU PIÙ IMMAGINI (L'Eclettico Bistrot: storia Instagram "Il menu di Bacco" in 5 parti
+  con "1/5", "2/5"... in alto a destra; prima si prendeva solo la prima, l'antipasto).
+  - page_counter(testo): "1/5", "2 / 5", "1 di 5" -> (numero, totale); esclude le date (8/11, 1/12/2026)
+    e i decimali; totale tra 2 e MAX_MENU_PARTS (8).
+  - add_menu_parts(shop, fonte, browser, result), chiamata in acquire subito dopo browser_result: se
+    l'immagine accettata (menu di oggi o domani, non una chiusura) dice "1/N", oppure la fonte ha
+    "menu_su_piu_parti": true (locali.json), legge le parti successive: storia Instagram -> parte_storia +1,
+    +2...; post Facebook/Instagram -> 2ª, 3ª... foto dello stesso post (chiave interna "_foto", capture usa
+    locator.nth). Una parte vale come seguito se dice "K/N" con K giusto oppure ha la stessa data del menu
+    (plausible_menu_date); alla prima che non lo è ci si ferma.
+  - join_menu_parts: unisce le parti in UNA griglia (colonne scelte per renderle più grandi possibile
+    nello spazio del menu della pagina A4, ~1100x1400; 5 parti = 3 colonne x 2 righe), larghezza 720 px
+    per parte, spazio bianco 16 px; l'unione sostituisce la foto del menu in ingresso.
+  - dati\parti-menu.json ricorda per locale l'impronta della prima parte e il file unito
+    (dati\catture\<id>_menu_unito.jpg): se la prima parte non cambia, ai giri dopo si riusa l'unione
+    senza rileggere tutte le parti. Le parti scaricate sono in dati\catture\<id>_parti\.
+  - Nel registro: "menu su 5 immagini (scritto 1/5): unite in una sola", oppure "parte K: non è il
+    seguito del menu, mi fermo".
+  - locali.json: L'Eclettico ha "menu_su_piu_parti": true (nel caso l'OCR non legga il piccolo "1/5").
+  Copia precedente: backup\Menu_2026-11-08_prima-di-menu-su-piu-immagini.py

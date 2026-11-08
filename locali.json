@@ -200,6 +200,7 @@
           "url": "https://www.instagram.com/lecletticobistrot_noci/",
           "utente": "lecletticobistrot_noci",
           "apri_storia": true,
+          "menu_su_piu_parti": true,
           "richiede_recente": true,
           "profilo": "%LOCALAPPDATA%\\AuferInstagram\\chrome",
           "canale": "chrome",
