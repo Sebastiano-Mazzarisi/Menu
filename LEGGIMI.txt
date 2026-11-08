@@ -70,6 +70,9 @@ FILE .BAT (per Nino: doppio clic)
                             --meteo (pubblica SUBITO il meteo di oggi, sostituendo quello sulla Pagina)
   Prova-reel.bat / Pubblica-reel.bat   --reel-prova (crea e apre il Reel, non pubblica) /
                             --reel (pubblica SUBITO il Reel di oggi, sostituendo quello sulla Pagina)
+  Prova-storia.bat / Pubblica-storia.bat   --storia-prova (crea e apre il video della Storia, max 58 s,
+                            non pubblica) / --storia (pubblica SUBITO la Storia della Pagina; di norma esce
+                            da sola alle 11:00, una volta al giorno)
   Collega_GitHub.bat        collega la cartella al repository GitHub "Menu" (una volta sola)
 
 CARTELLE (in .gitignore = restano solo sul PC: profilo, errori, ingresso, archivio, dati, backup,
@@ -2522,3 +2525,25 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   summary_wide_html): nei riquadri arancioni dei locali senza menu sotto il nome c'è il COMUNE (come nei
   riquadri verdi) al posto di "in arrivo", in arancione (#b4501a) e NON in grassetto (font-weight 400).
   Copia precedente: backup\Menu_2026-11-08_prima-di-comune-nei-riquadri-arancioni.py
+- 08/11/2026 (16:00): STORIA DELLA PAGINA FACEBOOK ALLE 11:00. Prima il video usciva solo come Reel.
+  Ora, UNA volta al giorno, alle 11:00 (al primo giro --automatico dopo le 11:00 se il PC era spento),
+  lo stesso video dei menu esce anche come Storia della Pagina, con i menu che ci sono in quel momento.
+  Non si sostituisce e non si cancella (Facebook toglie le storie da solo dopo 24 ore); le storie non
+  sono post, quindi l'ordine Menu/News/Meteo/Farmacia della Pagina non cambia.
+  Funzioni nuove (subito dopo reel_post): page_story_settings, page_story_due, publish_story_facebook
+  (Page Stories API: POST {pagina}/video_stories upload_phase=start -> caricamento del file su
+  rupload.facebook.com con intestazioni offset/file_size -> upload_phase=finish, risposta post_id),
+  make_page_story, page_story_post. Chiamata nel giro --automatico subito dopo reel_post.
+  Limiti di Facebook per le storie: video 9:16 da 3 a 60 secondi, mai già usato in un altro post. Per
+  questo il video è un file a parte, dati\reel\AAAA-MM-GG-storia.mp4, fatto da make_reel con i nuovi
+  parametri seconds_max (58) e timings = PAGE_STORY_TIMINGS (copertina 4 s, ogni locale 2,5-5 s, ogni
+  scheda finale 4 s) invece dei 5 / 3,5-6 / 5 s del Reel.
+  Stato in dati\reel\storia.json: {"data", "id", "ora", "pronti", "tentativi", "errore"?}. Se nessun
+  locale ha ancora il menu si riprova al giro dopo; dopo 3 errori nello stesso giorno ci si ferma e
+  arriva la notifica sul cellulare.
+  Impostazioni facoltative: locali.json > impostazioni > "storia": {"attivo": true, "ora": "11:00",
+  "secondi_max": 58} (secondi_max mai oltre 59).
+  Nuovi comandi --storia-prova / --storia e file Prova-storia.bat / Pubblica-storia.bat.
+  Corretto anche un errore di arrotondamento in make_reel (valeva anche per il Reel): con 13 locali,
+  42 // (42 / 13) dava 12 e l'ultimo locale non entrava nel video; ora int(budget / seconds + 1e-6).
+  Copia precedente: backup\Menu_2026-11-08_prima-della-storia.py

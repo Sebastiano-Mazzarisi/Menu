@@ -6742,11 +6742,15 @@ def reel_frame(picture, title: str):
     return frame
 
 
-def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path, str, int] | None:
+def make_reel(config: dict[str, Any], target: Path | None = None, seconds_max: float | None = None,
+              timings: tuple[float, tuple[float, float], float] | None = None) -> tuple[Path, str, int] | None:
     """Crea dati/reel/AAAA-MM-GG.mp4 (9:16, 30 fotogrammi al secondo, audio AAC 48 kHz: i requisiti
-    dei Reel di Facebook) e il testo. Restituisce (video, testo, quanti locali hanno il menu)."""
+    dei Reel di Facebook) e il testo. Restituisce (video, testo, quanti locali hanno il menu).
+    seconds_max e timings (copertina, (minimo, massimo) per locale, scheda finale) servono alla
+    Storia della Pagina (08/11/2026), che non può superare i 60 secondi: vedi page_story_post."""
     from PIL import Image
     plan = reel_settings(config.get("impostazioni", {}))
+    first_seconds, page_seconds, info_seconds = timings or (REEL_FIRST_SECONDS, REEL_PAGE_SECONDS, REEL_INFO_SECONDS)
     day = date.today()
     title = f"Menu di oggi · {SUMMARY_WEEKDAYS[day.weekday()].lower()} {day.day} {list(MONTHS)[day.month - 1]}"
     pages = [page for page in all_shop_pages(config) if page["tipo"] == "menu"]
@@ -6758,9 +6762,10 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
     labels = {NEWS: "Notizie", WEATHER: "Meteo", PHARMACY: "Farmacia di turno fine settimana"}
     # in alto solo il nome: la data è già scritta nella scheda (e la farmacia può essere del fine settimana)
     infos = [(card, labels.get(card.parent, "Info")) for card, _ in info_cards()]
-    budget = float(plan["secondi_max"]) - REEL_FIRST_SECONDS - REEL_INFO_SECONDS * len(infos)
-    seconds = max(REEL_PAGE_SECONDS[0], min(REEL_PAGE_SECONDS[1], budget / len(pages))) if pages else 0
-    pages = pages[:int(budget // seconds)] if pages else []  # mai oltre i 90 secondi di Facebook
+    budget = float(seconds_max or plan["secondi_max"]) - first_seconds - info_seconds * len(infos)
+    seconds = max(page_seconds[0], min(page_seconds[1], budget / len(pages))) if pages else 0
+    # mai oltre i 90 secondi di Facebook. + 1e-6: senza, 42 // (42 / 13) dà 12 e l'ultimo locale spariva (08/11/2026)
+    pages = pages[:int(budget / seconds + 1e-6)] if pages else []
     ffmpeg = video_ffmpeg()
     if not ffmpeg:
         print("Reel non creato: manca ffmpeg (pip install imageio-ffmpeg).")
@@ -6768,11 +6773,11 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
     work = Path(tempfile.mkdtemp(prefix="menu-reel-"))
     try:
         with Image.open(first) as cover:
-            frames = [(cover.convert("RGB").resize((REEL_W, REEL_H), Image.LANCZOS), REEL_FIRST_SECONDS)]
+            frames = [(cover.convert("RGB").resize((REEL_W, REEL_H), Image.LANCZOS), first_seconds)]
         frames += [(reel_frame(page["a4"], title), seconds) for page in pages]  # stessa pagina di menu.pdf
         for card, label in infos:
             with Image.open(card) as opened:
-                frames.append((reel_frame(opened, label), REEL_INFO_SECONDS))
+                frames.append((reel_frame(opened, label), info_seconds))
         lines = []
         for index, (image, duration) in enumerate(frames):
             image.save(work / f"{index:03d}.png")
@@ -6792,7 +6797,7 @@ def make_reel(config: dict[str, Any], target: Path | None = None) -> tuple[Path,
                     "-preset", "medium", "-crf", "23", "-profile:v", "high", "-level", "4.1",
                     "-movflags", "+faststart", str(target)]
         extra = f" + {', '.join(label.lower() for _, label in infos)}" if infos else ""
-        print(f"Creo il Reel: copertina + {len(pages)} locali{extra}, {total:.0f} secondi...")
+        print(f"Creo il video {target.stem}: copertina + {len(pages)} locali{extra}, {total:.0f} secondi...")
         done = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace",
                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     finally:
@@ -6879,6 +6884,118 @@ def reel_post(config: dict[str, Any], force: bool = False) -> bool:
     finally:
         REELS.mkdir(parents=True, exist_ok=True)
         save_json(REEL_STATE, state)
+    return False
+
+
+# ------------------------------------------------------------------------------------------------
+# STORIA DELLA PAGINA (08/11/2026): UNA volta al giorno, alle 11:00 (al primo giro dopo le 11:00 se
+# il PC era spento), esce come Storia della Pagina Facebook lo stesso video del Reel, con i menu che
+# ci sono in quel momento. Non si sostituisce e non si cancella: Facebook la toglie da solo dopo 24
+# ore. Le storie non compaiono tra i post, quindi l'ordine della Pagina non cambia.
+# Facebook: video 9:16 da 3 a 60 secondi (il Reel arriva a 88) e mai già usato in un altro post,
+# quindi si crea un file a parte, più corto: dati/reel/AAAA-MM-GG-storia.mp4.
+# Impostazioni facoltative in locali.json > impostazioni > "storia":
+#   {"attivo": true, "ora": "11:00", "secondi_max": 58}
+# ------------------------------------------------------------------------------------------------
+PAGE_STORY_STATE = REELS / "storia.json"      # {"data", "id"?, "ora"?, "pronti"?, "tentativi", "errore"?}
+PAGE_STORY_TIMINGS = (4.0, (2.5, 5.0), 4.0)   # copertina, ogni locale (minimo, massimo), ogni scheda finale
+
+
+def page_story_settings(settings: dict[str, Any]) -> dict[str, Any]:
+    plan = {"attivo": True, "ora": "11:00", "secondi_max": 58}
+    plan.update(settings.get("storia") or {})
+    plan["secondi_max"] = min(float(plan["secondi_max"]), 59.0)  # limite di Facebook: 60 secondi
+    return plan
+
+
+def page_story_due(config: dict[str, Any]) -> bool:
+    """True dalle 11:00 ("ora") finché oggi la Storia non è uscita (massimo 3 tentativi al giorno)."""
+    plan = page_story_settings(config.get("impostazioni", {}))
+    if not plan["attivo"]:
+        return False
+    now = datetime.now()
+    hour, minute = (int(part) for part in str(plan["ora"]).split(":")[:2])
+    if now < now.replace(hour=hour, minute=minute, second=0, microsecond=0):
+        return False
+    state = read_json(PAGE_STORY_STATE, {})
+    if state.get("data") != date.today().isoformat():
+        return True
+    return not state.get("id") and int(state.get("tentativi", 0)) < 3
+
+
+def publish_story_facebook(video: Path) -> str:
+    """Pubblica il video come Storia della Pagina (Page Stories API: POST {pagina}/video_stories
+    upload_phase=start -> caricamento su rupload.facebook.com -> upload_phase=finish).
+    Restituisce l'id del post della storia."""
+    link = read_json(FACEBOOK_CONFIG, {})
+    if not link.get("token") or not link.get("pagina_id"):
+        raise LookupError("collegamento Facebook non ancora fatto (Collega-Facebook.bat)")
+    token, version, page = link["token"], link.get("versione", ""), link["pagina_id"]
+    started = facebook_call(f"{page}/video_stories", {"upload_phase": "start", "access_token": token},
+                            version=version, method="POST")
+    video_id = started.get("video_id")
+    if not video_id:
+        raise RuntimeError(f"Facebook non ha dato l'id della Storia: {started}")
+    data = video.read_bytes()
+    request = urllib.request.Request(started.get("upload_url") or f"https://rupload.facebook.com/video-upload/{version or 'v21.0'}/{video_id}",
+                                     data=data, method="POST",
+                                     headers={"Authorization": f"OAuth {token}", "offset": "0", "file_size": str(len(data))})
+    with urllib.request.urlopen(request, timeout=900) as answer:
+        uploaded = json.loads(answer.read().decode("utf-8"))
+    if not uploaded.get("success", True):
+        raise RuntimeError(f"caricamento della Storia non riuscito: {uploaded}")
+    done = facebook_call(f"{page}/video_stories", {"upload_phase": "finish", "video_id": video_id,
+                                                   "access_token": token}, version=version, method="POST")
+    if done.get("success") is False:
+        raise RuntimeError(f"Facebook non ha pubblicato la Storia: {done}")
+    return str(done.get("post_id") or video_id)
+
+
+def make_page_story(config: dict[str, Any]) -> tuple[Path, str, int] | None:
+    """Video della Storia: come il Reel ma al massimo 58 secondi (dati/reel/AAAA-MM-GG-storia.mp4)."""
+    plan = page_story_settings(config.get("impostazioni", {}))
+    REELS.mkdir(parents=True, exist_ok=True)
+    return make_reel(config, REELS / f"{date.today().isoformat()}-storia.mp4",
+                     seconds_max=plan["secondi_max"], timings=PAGE_STORY_TIMINGS)
+
+
+def page_story_post(config: dict[str, Any], force: bool = False) -> bool:
+    """Storia del giorno alle 11:00 (page_story_due) oppure subito con force (--storia).
+    True se la Storia è uscita."""
+    if not force and not page_story_due(config):
+        return False
+    state = read_json(PAGE_STORY_STATE, {})
+    if state.get("data") != date.today().isoformat():
+        state = {"data": date.today().isoformat(), "tentativi": 0}
+    TIMER["fase"] = time.time()
+    state["tentativi"] = int(state.get("tentativi", 0)) + 1
+    try:
+        made = make_page_story(config)
+        if not made:
+            state["errore"] = "video non creato"
+            return False
+        video, _text, ready = made
+        if not ready:  # nessun menu: si riprova al giro dopo (non conta come tentativo)
+            state["tentativi"] -= 1
+            print("Storia non pubblicata: oggi nessun locale ha ancora il menu.")
+            return False
+        story = publish_story_facebook(video)
+        state.update({"id": story, "ora": datetime.now().strftime("%H:%M"), "pronti": ready, "tentativi": 0})
+        state.pop("errore", None)
+        print(f"Storia pubblicata sulla Pagina Facebook ({ready} locali con il menu).")
+        tick("Storia del giorno")
+        return True
+    except LookupError as exc:
+        state.update({"errore": str(exc), "tentativi": 3})
+        print(f"Storia NON pubblicata: {exc}")
+    except Exception as exc:
+        state["errore"] = str(exc)
+        print(f"Storia NON pubblicata: {exc}")
+        if int(state.get("tentativi", 0)) >= 3:
+            notify_phone(f"Storia non pubblicata: {str(exc)[:120]}")
+    finally:
+        REELS.mkdir(parents=True, exist_ok=True)
+        save_json(PAGE_STORY_STATE, state)
     return False
 
 
@@ -7428,6 +7545,10 @@ def main() -> None:
                         help="Crea il Reel di oggi (video verticale) e lo apre, senza pubblicare.")
     parser.add_argument("--reel", action="store_true",
                         help="Pubblica SUBITO il Reel di oggi sulla Pagina (toglie quello precedente).")
+    parser.add_argument("--storia-prova", action="store_true",
+                        help="Crea il video della Storia di oggi (max 58 secondi) e lo apre, senza pubblicare.")
+    parser.add_argument("--storia", action="store_true",
+                        help="Pubblica SUBITO la Storia di oggi sulla Pagina (di norma esce da sola alle 11:00).")
     parser.add_argument("--automatico", action="store_true",
                         help="Per l'attività pianificata: solo nella fascia oraria, senza finestre, con log e pubblicazione.")
     args = parser.parse_args()
@@ -7563,6 +7684,21 @@ def main() -> None:
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return
+    if args.storia_prova:  # solo per vedere il video della Storia: non pubblica, non tocca lo stato
+        made = make_page_story(config)
+        if made and sys.platform == "win32":
+            os.startfile(made[0])
+        return
+    if args.storia:  # Pubblica-storia.bat: Storia subito (anche se oggi è già uscita)
+        start_manual_log("Storia del giorno")
+        if not take_lock():
+            print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
+            return
+        try:
+            page_story_post(config, force=True)
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
     if args.riassunto_prova:  # solo per vedere il post: non tocca lo stato, il post delle 11:30 parte lo stesso
         made = make_summary(config)
         if made and sys.platform == "win32":
@@ -7655,6 +7791,10 @@ def main() -> None:
                 reel_post(fresh)
             except Exception as exc:
                 print(f"Reel non pubblicato: {exc!r}")
+            try:  # 08/11/2026: Storia della Pagina una volta al giorno, alle 11:00
+                page_story_post(fresh)
+            except Exception as exc:
+                print(f"Storia non pubblicata: {exc!r}")
             try:  # Facebook mostra sempre: 1° Menu, 2° News, 3° Meteo, 4° Farmacia
                 enforce_top_three(fresh)
             except Exception as exc:

@@ -33,6 +33,7 @@ Se una rosticceria oggi è chiusa, te lo dice un cartello ben visibile. E se il 
 Il Reel del giorno.
 Preferisci un video? Ogni giorno sulla pagina esce un Reel, un breve video verticale da guardare sul telefono, che fa scorrere uno dopo l'altro tutti i menù disponibili, e alla fine notizie, meteo e farmacia di turno.
 Esce appena tutte le rosticcerie hanno pubblicato il menù, oppure alle undici con quelli che ci sono; e se più tardi arrivano tutti, viene sostituito da quello completo.
+Alle undici lo stesso video esce anche come storia della pagina, con i menù pubblicati fino a quel momento.
 Lo puoi condividere nelle tue storie, così anche i tuoi amici sapranno dove andare a pranzo.
 
 Non solo menù.
