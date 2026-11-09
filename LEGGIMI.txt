@@ -76,7 +76,7 @@ FILE .BAT (per Nino: doppio clic)
   Prova-instagram.bat       --instagram-prova: dice se Instagram è collegato (account e permessi), non pubblica
   Collega_GitHub.bat        collega la cartella al repository GitHub "Menu" (una volta sola)
 
-CARTELLE (in .gitignore = restano solo sul PC: profilo, errori, ingresso, archivio, dati, backup,
+CARTELLE (in .gitignore = restano solo sul PC: profilo, ingresso, archivio, dati, backup,
 Foto, pdf-sito, Facebook\Video-*.mp4)
   ingresso\<id>\   TUTTE le foto/testi trovati per il locale, con la data nel nome:
                      AAAA-MM-GG_online.jpg                 foto letta online quel giorno
@@ -91,7 +91,17 @@ Foto, pdf-sito, Facebook\Video-*.mp4)
   loghi\           loghi dei locali (campo "logo") + Logo-Menu.jpg / Menu.jpg (logo dell'app)
   icone\           miniature generate: logo-<id>.jpg, icone dell'app (icona-512.png...), logo-titolo.png
   profilo\         profilo Chrome di Playwright con l'accesso a Facebook/Instagram (python Menu.py --login)
-  errori\          schermate di diagnostica (tolte dopo 2 giorni)
+  C:\Temp\Menu\    FILE TEMPORANEI, FUORI da Dropbox (dal 09/11/2026, costante TEMP in Menu.py):
+                     catture\            foto appena scaricate, prima di sapere se sono un menu,
+                                         parti dei menu su più immagini (<id>_parti\, <id>_menu_unito)
+                     errori\             schermate di diagnostica (tolte dopo 2 giorni)
+                     cache-browser\      cache di Chrome/Playwright (i login restano in profilo\)
+                     ocr_temp.png        foto ingrandita per l'OCR, cancellata subito dopo
+                     menu-video-*, menu-reel-*  cartelle di lavoro dei video (tempfile.mkdtemp),
+                                         cancellate a fine video; quelle rimaste da giri interrotti
+                                         vengono tolte dopo un giorno
+                   Se C:\Temp non si può creare si usa la cartella temporanea di Windows (%TEMP%\Menu).
+                   Tutta la cartella si può cancellare quando il programma non gira: si ricrea da sola.
   dati\            stato e file privati (NON su GitHub):
                      stato.json          risultato dell'ultimo giro per ogni locale (vedi cap. 5)
                      automatico.log      registro di TUTTI i giri (automatici e manuali)
@@ -104,7 +114,6 @@ Foto, pdf-sito, Facebook\Video-*.mp4)
                      avvisi.json         ultimo controllo degli avvisi di chiusura
                      segnalati.json      impronte di foto/testi segnalati come sbagliati (Monitor)
                      scartati\           foto tolte da ingresso perché non erano il menu giusto
-                     catture\            foto appena scaricate, prima di sapere se sono un menu
                      completo.json       impronta + ora dell'ultima pubblicazione di PDF e video
                      facebook.json       collegamento Graph: pagina_id, pagina_nome, token Pagina (NON
                                          scade), app_id, salvato_il. SEGRETO.
@@ -1001,7 +1010,7 @@ Nomi delle cartelle
   miniatura leggera (icone/logo-<id>.jpg, pochi KB) con il logo intero
   centrato; per cambiarlo basta sostituire il file in loghi.
 - profilo: sessione persistente del browser (cookie Facebook/Instagram)
-- errori: schermate di diagnostica delle acquisizioni fallite
+- C:\Temp\Menu\errori: schermate di diagnostica delle acquisizioni fallite
 - dati: stato dell'ultima esecuzione
 
 Data del menu
@@ -1082,7 +1091,7 @@ Tipi di fonte
   suo "profilo" usa il proprio.
 - browser (post Facebook): se il primo post non è un menu (pubblicità,
   auguri, post in evidenza) guarda i successivi fino al 5° ("post_da_controllare"
-  per cambiarlo). La foto viene scaricata prima in dati/catture e passa in
+  per cambiarlo). La foto viene scaricata prima in C:\Temp\Menu\catture e passa in
   ingresso solo se è davvero un menu: un post che non è un menu non può
   più cancellare il menu già trovato oggi. "Menù del giorno" senza data
   vale come menu di oggi (prima "giorno" veniva scambiato per "giovedì").
@@ -1162,7 +1171,7 @@ Blu: cambiano solo le righe dei piatti) risultavano "la stessa foto" e i menu
 dei giorni prima venivano tolti per errore. Misure reali: stessa foto
 ricompressa o rimpicciolita 0%, menu Stella Blu di giorni diversi 0,3-0,4%.
 Foto di servizio: la foto dell'ultimo post scaricata solo per cercare un
-avviso di chiusura va in dati/catture (mai in ingresso) e non conta mai come
+avviso di chiusura va in C:\Temp\Menu\catture (mai in ingresso) e non conta mai come
 menu. Se un giro si interrompe a metà non può quindi far sembrare "di oggi"
 un locale che non ha ancora pubblicato (es. Impastamò al rientro dalle
 ferie). Eventuali file "..._avviso_controllo" rimasti in ingresso da
@@ -1183,7 +1192,7 @@ del post viene salvato come AAAA-MM-GG_testo.json e la scheda lo mostra riga
 per riga. Lo stesso testo già visto mantiene la sua data. Il programma apre
 da solo "Altro..." per leggere il post intero e chiude la finestra dei
 cookie di Facebook (rifiutando quelli facoltativi) e l'invito ad accedere.
-Le schermate in "errori" più vecchie di 2 giorni vengono cancellate.
+Le schermate in "C:\Temp\Menu\errori" più vecchie di 2 giorni vengono cancellate.
 Data del menu: quella scritta nel post o nella foto (es. "Lunedì 5/10"),
 se è tra 7 giorni fa e domani; altrimenti il giorno in cui la foto compare
 per la prima volta ("data": "novita").
@@ -1235,7 +1244,7 @@ Serve la sessione Facebook salvata nella cartella profilo:
     python Menu.py --login
 
 Se il primo post non ha una foto, si usa la cartella ingresso come riserva.
-Le schermate degli errori finiscono nella cartella errori.
+Le schermate degli errori finiscono nella cartella C:\Temp\Menu\errori.
 
 Esempio di fonte pagina (Pane & Co):
 
@@ -1530,7 +1539,7 @@ backup\Monitor_2026-10-17_prima-del-riassunto.py, backup\locali_2026-10-17_prima
 FILE OCCUPATI (errore "WinError 32 ... utilizzato da un altro processo") - 17/10/2026
 Su Windows una foto appena scaricata può restare bloccata per qualche istante (Dropbox che
 la sincronizza, l'antivirus, il programma che l'ha letta). Prima questo fermava tutto il giro
-(e anche Pubblica-riassunto.bat). Ora le foto di lavoro (dati\catture, anteprime sfocate,
+(e anche Pubblica-riassunto.bat). Ora le foto di lavoro (C:\Temp\Menu\catture, anteprime sfocate,
 doppioni, vecchi Panorama) si cancellano con remove_file(): riprova per circa 3 secondi e,
 se il file è ancora occupato, lo lascia lì e va avanti scrivendo solo una riga di avviso.
 Copia precedente: backup\Menu_2026-10-17_prima-dei-file-occupati.py
@@ -2492,8 +2501,8 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
     nello spazio del menu della pagina A4, ~1100x1400; 5 parti = 3 colonne x 2 righe), larghezza 720 px
     per parte, spazio bianco 16 px; l'unione sostituisce la foto del menu in ingresso.
   - dati\parti-menu.json ricorda per locale l'impronta della prima parte e il file unito
-    (dati\catture\<id>_menu_unito.jpg): se la prima parte non cambia, ai giri dopo si riusa l'unione
-    senza rileggere tutte le parti. Le parti scaricate sono in dati\catture\<id>_parti\.
+    (C:\Temp\Menu\catture\<id>_menu_unito.jpg): se la prima parte non cambia, ai giri dopo si riusa l'unione
+    senza rileggere tutte le parti. Le parti scaricate sono in C:\Temp\Menu\catture\<id>_parti\.
   - Nel registro: "menu su 5 immagini (scritto 1/5): unite in una sola", oppure "parte K: non è il
     seguito del menu, mi fermo".
   - locali.json: L'Eclettico ha "menu_su_piu_parti": true (nel caso l'OCR non legga il piccolo "1/5").
@@ -2507,7 +2516,7 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
      un'apertura all'altra. Le parti successive del menu ("2/5"...) si leggono quindi NELLA STESSA
      apertura: BrowserCollector.story_sequence, chiamata da capture dopo aver salvato la parte, se la
      parte dice "1/N" oppure la fonte ha "menu_su_piu_parti" e la parte ha la data di oggi/domani:
-     freccia destra, foto più grande (_largest_media), salvata in dati\catture\<id>_seguito_K.jpg, finché
+     freccia destra, foto più grande (_largest_media), salvata in C:\Temp\Menu\catture\<id>_seguito_K.jpg, finché
      si resta nella storia del locale (max N-1 o MAX_MENU_PARTS-1). Le parti stanno in
      browser.last_sequence e add_menu_parts le usa (per le storie non riapre più la pagina).
      add_menu_parts: parte valida se dice "K/N" (stesso N) o ha la stessa data; parti uguali (stessa
@@ -2581,3 +2590,33 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Da fare più avanti se serve: su Instagram per ora NON escono il post dei menu, notizie, meteo e
   farmacia (servirebbero immagini JPEG su indirizzo internet; meglio come storie, che spariscono da sole).
   Copia precedente: backup\Menu_2026-11-08_prima-di-instagram.py
+- 09/11/2026 (09:30): FILE TEMPORANEI IN C:\Temp\Menu (FUORI DA DROPBOX). Richiesta di Nino: i file che
+  servono solo durante l'elaborazione e poi si cancellano non devono stare in Dropbox, che altrimenti
+  sincronizza e poi cancella moltissimi file a ogni giro. Nuova costante TEMP (C:\Temp\Menu su Windows,
+  %TEMP%\Menu se C:\Temp non è creabile o su altri sistemi), creata all'avvio. Spostati lì:
+    - CAPTURES (catture\: foto appena scaricate, seguiti delle storie, parti e menu uniti);
+    - ERRORS (errori\: schermate di diagnostica, ~0,5 MB l'una, centinaia al giorno);
+    - la foto ingrandita per l'OCR (ocr_temp.png), ora cancellata subito dopo l'OCR (finally in ocr_image);
+    - tempfile.tempdir = TEMP: le cartelle di lavoro di make_pdf_video / make_reel (tempfile.mkdtemp)
+      nascono in C:\Temp\Menu invece che in %TEMP%; make_folders toglie quelle rimaste da più di un giorno;
+    - cache del browser: launch_persistent_context riceve sempre --disk-cache-dir=TEMP\cache-browser\<profilo>
+      (anche nel ripiego sul profilo normale); i login restano in profilo\.
+  Pulizia una tantum (make_folders, a ogni avvio finché esistono): cancellate le vecchie posizioni
+  Menu\errori, dati\catture, dati\ocr_temp.png e profilo\Default\Cache, Code Cache, GPUCache.
+  Spostamenti tra dischi: Path.replace funziona solo sullo stesso disco, quindi tutti gli spostamenti di
+  foto (place_capture verso ingresso, verso dati\scartati, rinomine con la data) passano da move_file(),
+  che ripiega su shutil.move. Monitor.py: il file temporaneo dell'icona (write_ico) va anch'esso in C:\Temp\Menu.
+  NON spostati (non sono temporanei): dati\ (stato, registri, scartati, meteo, reel...), ingresso\,
+  archivio\, profilo\ (login), pdf-sito\ (copia git del sito dei PDF).
+  Copia precedente: backup\Menu_2026-11-09_prima-dei-temporanei.py
+- 09/11/2026 (09:20): ORDINE DELLE SCHEDE IN menu.pdf E NEL VIDEO. Prima tutte le schede erano in ordine
+  alfabetico unico (pronti e in attesa mescolati). Ora all_shop_pages le ordina come la prima pagina di
+  menu.pdf (summary_data): prima, in ordine alfabetico, i locali che oggi hanno pubblicato (stato.json >
+  results > menu_date = oggi: riquadri verdi, compresi i cartelli CHIUSO), poi, sempre in ordine alfabetico,
+  quelli ancora in attesa. Se stato.json è vuoto si usa il tipo della pagina ("attesa" in fondo). I numeri
+  di pagina dei pulsanti della prima pagina (page_of) seguono da soli il nuovo ordine. Vale anche per il
+  video del PDF e per Reel/Storia (che usano le stesse pagine, solo quelle con il menu).
+- 09/11/2026 (09:35): menu.pdf BLOCCATO ("Permission denied" alle 09:17: il PDF era aperto in un visualizzatore
+  e non si poteva riscrivere). Monitor > PDF-PC ora apre una COPIA in C:\Temp\Menu\menu-PC_hhmmss.pdf (le
+  copie vecchie si cancellano alla volta dopo, se non sono più aperte): l'originale in pdf-sito resta libero.
+  save_pdf: se il file di destinazione è bloccato riprova per circa 15 secondi, poi dà un errore chiaro.

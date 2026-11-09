@@ -26,8 +26,22 @@ CURRENT = ROOT / "menu"
 ARCHIVE = ROOT / "archivio"
 LOGOS = ROOT / "loghi"
 PROFILE = ROOT / "profilo"
-ERRORS = ROOT / "errori"
 DATA = ROOT / "dati"
+# FILE TEMPORANEI (dal 09/11/2026, richiesta di Nino): tutto ciò che serve solo durante un giro e poi
+# si butta (foto appena scaricate, parti dei menu, foto ingrandite per l'OCR, cartelle di lavoro
+# dei video, schermate di diagnostica, cache del browser) va in C:\Temp\Menu, FUORI da Dropbox:
+# così Dropbox non deve sincronizzare e poi cancellare migliaia di file a ogni giro.
+TEMP = Path(r"C:\Temp\Menu") if sys.platform == "win32" else Path(tempfile.gettempdir()) / "Menu"
+try:
+    TEMP.mkdir(parents=True, exist_ok=True)
+except OSError:  # C:\Temp non creabile (permessi): cartella temporanea normale di Windows
+    TEMP = Path(tempfile.gettempdir()) / "Menu"
+    TEMP.mkdir(parents=True, exist_ok=True)
+tempfile.tempdir = str(TEMP)  # anche tempfile.mkdtemp (video del PDF, Reel, Storia) lavora qui
+ERRORS = TEMP / "errori"  # schermate di diagnostica (tenute 2 giorni): prima erano in Menu\errori
+BROWSER_CACHE = TEMP / "cache-browser"  # cache del browser: prima dentro profilo\ (in Dropbox)
+# vecchie posizioni in Dropbox: svuotate una volta da make_folders (vedi sotto)
+OLD_TEMP_PLACES = (ROOT / "errori", DATA / "catture", DATA / "ocr_temp.png")
 STATE = DATA / "stato.json"
 MONITOR_ORDER = DATA / "ordine_monitor.json"  # ordine delle righe del Monitor quando vi si preme un pulsante
 IN_PROGRESS = DATA / "in_corso.json"  # locale che si sta controllando adesso (pallina gialla nel Monitor)
@@ -70,13 +84,23 @@ def remove_file(path: Path) -> bool:
     return False
 
 
+def move_file(source: Path, target: Path) -> Path:
+    """Sposta un file anche da un disco all'altro (es. da C:\\Temp\\Menu a Dropbox): Path.replace
+    funziona solo sullo stesso disco, quindi se fallisce si copia e si cancella l'originale."""
+    try:
+        source.replace(target)
+    except OSError:
+        shutil.move(str(source), str(target))
+    return target
+
+
 def slugify(value: str) -> str:
     clean = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]+", "-", clean.lower()).strip("-") or "locale"
 
 
 def make_folders() -> None:
-    for folder in (INPUT, CURRENT, ARCHIVE, LOGOS, PROFILE, ERRORS, DATA):
+    for folder in (INPUT, CURRENT, ARCHIVE, LOGOS, PROFILE, ERRORS, DATA, TEMP):
         folder.mkdir(parents=True, exist_ok=True)
     # le schermate di diagnostica servono solo per pochi giorni: tolgo quelle più vecchie di 2 giorni
     limit = datetime.now().timestamp() - 2 * 86400
@@ -86,6 +110,24 @@ def make_folders() -> None:
                 item.unlink()
         except OSError:
             pass
+    # cartelle di lavoro dei video rimaste da un giro interrotto (finestra chiusa, PC spento)
+    for leftover in TEMP.glob("menu-*"):
+        try:
+            if leftover.is_dir() and leftover.stat().st_mtime < datetime.now().timestamp() - 86400:
+                shutil.rmtree(leftover, ignore_errors=True)
+        except OSError:
+            pass
+    # i file temporanei stavano in Dropbox fino all'08/11/2026: le vecchie copie si tolgono
+    for old in OLD_TEMP_PLACES:
+        if old.is_dir():
+            shutil.rmtree(old, ignore_errors=True)
+        elif old.exists():
+            remove_file(old)
+    # vecchia cache del browser dentro profilo\Default (ora in C:\Temp\Menu\cache-browser)
+    for name in ("Cache", "Code Cache", "GPUCache"):
+        old = PROFILE / "Default" / name
+        if old.is_dir():
+            shutil.rmtree(old, ignore_errors=True)
 
 
 def read_json(path: Path, default: Any) -> Any:
@@ -321,8 +363,11 @@ class BrowserCollector:
             "viewport": {"width": 1280, "height": 900},
             "locale": "it-IT",
         }
+        # cache del browser fuori da Dropbox (C:\Temp\Menu\cache-browser\<profilo>): i login restano nel profilo
+        cache_arg = f"--disk-cache-dir={BROWSER_CACHE / profile.name}"
+        options["args"] = [cache_arg]
         if offscreen:
-            options["args"] = ["--window-position=-32000,-32000"]
+            options["args"].append("--window-position=-32000,-32000")
         if source.get("canale"):
             options["channel"] = source["canale"]
         try:
@@ -333,7 +378,7 @@ class BrowserCollector:
             # profilo collegato occupato (es. Stato.py lo sta usando): ripiego sul profilo normale
             print(f"  profilo {profile.name} non disponibile ({str(exc).splitlines()[0][:80]}): uso il profilo normale")
             options.pop("channel", None)
-            options.pop("args", None)
+            options["args"] = [f"--disk-cache-dir={BROWSER_CACHE / PROFILE.name}"]
             options["headless"] = not self.visible
             profile, profile_key = PROFILE, str(PROFILE.resolve())
             self.context = self.playwright.chromium.launch_persistent_context(str(profile), **options)
@@ -551,7 +596,7 @@ class BrowserCollector:
         """Parti della storia che seguono quella appena salvata, lette NELLA STESSA apertura (riaprendo
         la storia Instagram riparte dalla prima parte non ancora vista, quindi i numeri delle parti
         cambiano). Solo se la parte salvata dice "1/N", oppure se la fonte ha "menu_su_piu_parti" e
-        la parte ha la data di oggi o di domani. Restituisce i file dati/catture/<id>_seguito_K.jpg."""
+        la parte ha la data di oggi o di domani. Restituisce i file C:\\Temp\\Menu\\catture\\<id>_seguito_K.jpg."""
         text = ocr_image(first)
         counter = page_counter(text)
         if counter and counter[0] == 1:
@@ -606,7 +651,7 @@ class BrowserCollector:
             if page.locator(image_css).count():
                 target = page.locator(image_css).first
                 text += "\n" + (target.get_attribute("alt", timeout=2000) or "")
-                # foto usata solo per cercare un avviso di chiusura: va in dati/catture,
+                # foto usata solo per cercare un avviso di chiusura: va in C:\Temp\Menu\catture,
                 # MAI in ingresso (se il programma si interrompe non deve sembrare un menu)
                 CAPTURES.mkdir(parents=True, exist_ok=True)
                 image = CAPTURES / f"{shop['id']}_avviso_controllo.jpg"
@@ -1173,7 +1218,7 @@ def ocr_lines(path: Path) -> str:
         with Image.open(path) as picture:
             factor = max(1, min(3, 2000 // max(picture.size)))
             if factor > 1:
-                source = DATA / "ocr_temp.png"
+                source = TEMP / "ocr_temp.png"  # fuori da Dropbox, cancellata subito dopo l'OCR
                 picture.convert("RGB").resize((picture.width * factor, picture.height * factor),
                                               Image.LANCZOS).save(source)
     except Exception:
@@ -1185,6 +1230,9 @@ def ocr_lines(path: Path) -> str:
     except Exception as exc:
         print(f"  OCR non riuscito: {exc}")
         return ""
+    finally:
+        if source != path:
+            remove_file(source)  # la foto ingrandita serviva solo all'OCR
     if done.returncode != 0:
         print(f"  OCR non riuscito: {(done.stderr or '').strip()[:200]}")
         return ""
@@ -1374,7 +1422,7 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
         for wrong in folder.glob("*_testo.json"):
             if read_json(wrong, {}).get("testo") == clean:
                 DISCARDED.mkdir(parents=True, exist_ok=True)
-                wrong.replace(DISCARDED / f"{shop['id']}_{wrong.name}")
+                move_file(wrong, DISCARDED / f"{shop['id']}_{wrong.name}")
                 print(f"  {shop['nome']} - tolto {wrong.name} (non era un menu): ora in dati/scartati")
         raise NotAMenu("il post (solo testo) non sembra un menu")
     written_day = plausible_menu_date(clean)  # data o giorno scritto nel post ("MENÙ DI SABATO")
@@ -1383,7 +1431,7 @@ def text_post_result(shop: dict[str, Any], source: dict[str, Any], folder: Path,
         if read_json(earlier, {}).get("testo") == clean:
             if written_day and written_day != image_date(earlier):
                 corrected = folder / f"{written_day.isoformat()}_testo.json"
-                earlier.replace(corrected)
+                move_file(earlier, corrected)
                 return Result(corrected, written_day, name, checked)
             return Result(earlier, image_date(earlier), name, checked)
     # senza data scritta vale il giorno di pubblicazione del post (un post di ieri non è di oggi)
@@ -1678,15 +1726,15 @@ class NotAMenu(RuntimeError):
 
 
 DISCARDED = DATA / "scartati"  # foto tolte da ingresso perché non erano il menu di quel giorno
-CAPTURES = DATA / "catture"  # foto appena scaricate, prima di sapere se sono un menu
+CAPTURES = TEMP / "catture"  # foto appena scaricate, prima di sapere se sono un menu (fuori da Dropbox)
 
 
 def place_capture(folder: Path, image: Path) -> Path:
-    """Sposta una foto da dati/catture in ingresso/<id> come AAAA-MM-GG_online.jpg (menu di oggi)."""
+    """Sposta una foto da C:\\Temp\\Menu\\catture in ingresso/<id> come AAAA-MM-GG_online.jpg (menu di oggi)."""
     if image.parent == folder:
         return image
     final = folder / f"{date.today().isoformat()}_online{image.suffix}"
-    image.replace(final)
+    move_file(image, final)
     return final
 
 
@@ -1895,7 +1943,7 @@ def drop_copies(shop: dict[str, Any], folder: Path, keep: Path) -> None:
             same = same_print(seen, picture_print(other))
         if same:
             DISCARDED.mkdir(parents=True, exist_ok=True)
-            other.replace(DISCARDED / f"{shop['id']}_copia_{other.name}")
+            move_file(other, DISCARDED / f"{shop['id']}_copia_{other.name}")
             print(f"  {shop['nome']} - tolto {other.name}: è la stessa foto di {keep.name} (ora in dati/scartati)")
 
 
@@ -1908,7 +1956,7 @@ def discard_wrong_menu(shop: dict[str, Any], folder: Path, image: Path) -> None:
         for saved in folder.glob("*_online.*"):
             if saved.suffix.lower() in IMAGE_EXTENSIONS and same_picture(saved, image):
                 DISCARDED.mkdir(parents=True, exist_ok=True)
-                saved.replace(DISCARDED / f"{shop['id']}_{saved.name}")
+                move_file(saved, DISCARDED / f"{shop['id']}_{saved.name}")
                 print(f"  {shop['nome']} - tolto {saved.name}: era questa foto, che non è un menu (ora in dati/scartati)")
     finally:
         remove_file(image)
@@ -1959,7 +2007,7 @@ def post_first_seen_day(shop: dict[str, Any], source: dict[str, Any], text: str,
 def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, browser: "BrowserCollector",
                    checked: str) -> Result:
     """Un post Facebook/Instagram (fonte "browser"): menu, avviso o NotAMenu se non è un menu.
-    La foto viene scaricata in dati/catture e spostata in ingresso solo se viene usata, così
+    La foto viene scaricata in C:\\Temp\\Menu\\catture e spostata in ingresso solo se viene usata, così
     un post che non è un menu non cancella mai il menu già salvato oggi."""
     if browser is None:
         raise RuntimeError("browser non disponibile")
@@ -1978,14 +2026,14 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         for wrong in folder.glob("*_testo.json"):  # lo stesso post salvato prima come menu scritto
             if excluded[0].lower() in str(read_json(wrong, {}).get("testo", "")).lower():
                 DISCARDED.mkdir(parents=True, exist_ok=True)
-                wrong.replace(DISCARDED / f"{shop['id']}_{wrong.name}")
+                move_file(wrong, DISCARDED / f"{shop['id']}_{wrong.name}")
                 print(f"  {shop['nome']} - tolto {wrong.name} (non era il menu): ora in dati/scartati")
         raise NotAMenu(f"post escluso (contiene \"{excluded[0]}\")")
     if image is None:  # post solo testo
         return text_post_result(shop, source, folder, browser.last_text, checked, published)
     if source.get("menu_nel_testo") and (browser.last_text or "").strip():
         # il locale scrive il menu nel testo del post e le foto sono solo piatti (es. Da Giuseppe,
-        # "PRANZO DI OGGI DA GIUSEPPE!" + elenco): vale il testo, la foto resta in dati/catture
+        # "PRANZO DI OGGI DA GIUSEPPE!" + elenco): vale il testo, la foto resta in C:\Temp\Menu\catture
         return text_post_result(shop, source, folder, browser.last_text, checked, published)
     photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
     seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())
@@ -2054,7 +2102,7 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         # data scritta nel post (es. "menù del giorno 4 Ottobre"): rinomino il file con quella data
         dated = folder / f"{text_day.isoformat()}_online{image.suffix}"
         if dated != image:
-            image.replace(dated)
+            move_file(image, dated)
         drop_copies(shop, folder, dated)
         return Result(dated, text_day, source.get("nome", "browser"), checked)
     posted = browser.last_posted
@@ -2067,10 +2115,10 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         # letta dopo mezzanotte): la tolgo da ingresso (resta in dati/scartati, non si perde)
         for stale in folder.glob(f"{date.today().isoformat()}_online.*"):
             DISCARDED.mkdir(parents=True, exist_ok=True)
-            stale.replace(DISCARDED / f"{shop['id']}_{stale.name}")
+            move_file(stale, DISCARDED / f"{shop['id']}_{stale.name}")
             print(f"  {shop['nome']} - tolto {stale.name} (non era il menu di oggi): ora in dati/scartati")
         dated = folder / f"{posted.isoformat()}_online{image.suffix}"
-        image.replace(dated)
+        move_file(image, dated)
         return Result(dated, posted, source.get("nome", "browser"), checked)
     if source.get("data") == "novita":
         image, new_day = keep_first_seen(folder, image)
@@ -2150,7 +2198,7 @@ def report_wrong(shop: dict[str, Any], folder: Path) -> None:
         known.add(file_hash(item))
         if item.parent == folder:
             DISCARDED.mkdir(parents=True, exist_ok=True)
-            item.replace(DISCARDED / f"{shop['id']}_segnalato_{item.name}")
+            move_file(item, DISCARDED / f"{shop['id']}_segnalato_{item.name}")
             print(f"  {shop['nome']} - SEGNALATO: tolto {item.name} (ora in dati/scartati), non verrà più usato")
     marks[shop["id"]] = sorted(known)
     save_json(REPORTED, marks)
@@ -2172,7 +2220,7 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
     for leftover in folder.glob("*_avviso_controllo.*"):
         # foto di servizio rimasta in ingresso da un giro interrotto (versioni vecchie): via
         DISCARDED.mkdir(parents=True, exist_ok=True)
-        leftover.replace(DISCARDED / f"{shop['id']}_{leftover.name}")
+        move_file(leftover, DISCARDED / f"{shop['id']}_{leftover.name}")
         print(f"  {shop['nome']} - tolto {leftover.name} (foto di servizio, non è un menu)")
     if shop["id"] in SUSPECT:
         report_wrong(shop, folder)
@@ -2200,7 +2248,7 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
         print(f"  {shop['nome']} - {result.image.name} era stato segnalato come sbagliato: non lo uso")
         if result.image.parent == folder:
             DISCARDED.mkdir(parents=True, exist_ok=True)
-            result.image.replace(DISCARDED / f"{shop['id']}_segnalato_{result.image.name}")
+            move_file(result.image, DISCARDED / f"{shop['id']}_segnalato_{result.image.name}")
         skipped.add(result.source)
         result = acquire_sources(shop, browser, online, folder, checked, skipped)
     # anche una foto messa a mano in ingresso o scaricata può essere un avviso di chiusura
@@ -2258,7 +2306,7 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                 # locale (es. storia di Michela con il menu di Impastamò): via in dati/scartati
                 while image and is_reported(shop, image):
                     DISCARDED.mkdir(parents=True, exist_ok=True)
-                    image.replace(DISCARDED / f"{shop['id']}_segnalato_{image.name}")
+                    move_file(image, DISCARDED / f"{shop['id']}_segnalato_{image.name}")
                     print(f"  {shop['nome']} - tolto {image.name}: era stato segnalato come sbagliato")
                     image = newest_image(folder)
                 while image and image_date(image) == date.today() and image.suffix.lower() in IMAGE_EXTENSIONS:
@@ -2266,7 +2314,7 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                     if not owner:
                         break
                     DISCARDED.mkdir(parents=True, exist_ok=True)
-                    image.replace(DISCARDED / f"{shop['id']}_{image.name}")
+                    move_file(image, DISCARDED / f"{shop['id']}_{image.name}")
                     print(f"  {shop['nome']} - tolto {image.name}: era il menu di {owner} (ora in dati/scartati)")
                     image = newest_image(folder)
                 if image:
@@ -2291,7 +2339,7 @@ def acquire_sources(shop: dict[str, Any], browser: BrowserCollector | None, onli
                     # la storia mostrava il menu di un altro locale (ricondiviso, o Facebook è passato
                     # da solo alla storia successiva): non è il menu di questo locale
                     DISCARDED.mkdir(parents=True, exist_ok=True)
-                    image.replace(DISCARDED / f"{shop['id']}_{image.name}")
+                    move_file(image, DISCARDED / f"{shop['id']}_{image.name}")
                     print(f"  {shop['nome']} - la storia mostra il menu di {owner}: non la uso (ora in dati/scartati)")
                     raise RuntimeError(f"la storia mostra il menu di {owner}")
                 image, new_day = keep_first_seen(folder, image)  # stessa foto di ieri = non è il menu di oggi
@@ -3486,7 +3534,16 @@ def save_pdf(images, target: Path, dpi: int = 150) -> None:
     out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
     out += b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets)
     out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
-    target.write_bytes(bytes(out))
+    # 09/11/2026: se il PDF è aperto in un altro programma (visualizzatore PDF, anteprima di
+    # Esplora risorse) Windows lo blocca: si riprova per circa 15 secondi prima di arrendersi
+    for attempt in range(16):
+        try:
+            target.write_bytes(bytes(out))
+            break
+        except PermissionError:
+            if attempt == 15:
+                raise PermissionError(f"{target.name} è aperto in un altro programma: chiudilo e riprova")
+            time.sleep(1)
 
 
 # pagina del sito dei PDF aperta toccando un indirizzo: Apple Maps su iPhone/iPad/Mac, Google Maps altrove
@@ -4148,7 +4205,8 @@ def wait_sign_image(shop: dict[str, Any]):
 
 
 def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
-    """TUTTI i locali di locali.json in ordine alfabetico, ognuno con la sua pagina di oggi:
+    """TUTTI i locali di locali.json (prima chi ha pubblicato oggi, poi chi è in attesa, ciascun
+    gruppo in ordine alfabetico, come nella prima pagina di menu.pdf), ognuno con la sua pagina di oggi:
     "menu" (il menu di oggi), "chiuso" (cartello CHIUSO del riposo settimanale) o "attesa"
     (cartello IN ATTESA: aperto oggi ma il menu non c'è ancora).
     Ogni elemento: {"entry", "tipo", "a4" (immagine A4 a 150 dpi, con i link per save_pdf)}."""
@@ -4186,6 +4244,14 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
         menu = photo_menu(entry)
         # "menu" e "quando" servono a pdf_buttons_page per rifare la pagina con i bottoni di menu.pdf
         pages.append({"entry": entry, "tipo": kind, "a4": photo_page(entry, menu, when), "menu": menu, "quando": when})
+    # ORDINE DELLE SCHEDE (09/11/2026, richiesta di Nino): lo stesso della prima pagina di menu.pdf
+    # (summary_data): prima, in ordine alfabetico, i locali che oggi hanno pubblicato (riquadri verdi,
+    # compresi i cartelli CHIUSO), poi, sempre in ordine alfabetico, quelli ancora in attesa (arancioni).
+    # Vale per menu.pdf, per il video (stesse pagine) e quindi per Reel e Storia.
+    today = date.today().isoformat()
+    published = {item.get("id") for item in read_json(STATE, {}).get("results", []) if item.get("menu_date") == today}
+    waiting = lambda page: (page["entry"]["id"] not in published) if published else page["tipo"] == "attesa"
+    pages.sort(key=lambda page: (waiting(page), sort_key_name(page["entry"].get("nome", ""))))
     return pages
 
 

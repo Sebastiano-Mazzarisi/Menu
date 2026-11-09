@@ -367,7 +367,13 @@ def write_ico(images: list[tk.PhotoImage], path: Path) -> None:
         if getattr(image, "png_bytes", None):
             blobs.append((image.width(), image.png_bytes))
             continue
-        with tempfile.TemporaryDirectory() as folder:
+        # file di lavoro fuori da Dropbox (09/11/2026): C:\Temp\Menu, come Menu.py
+        temp_root = Path(r"C:\Temp\Menu") if sys.platform == "win32" else Path(tempfile.gettempdir()) / "Menu"
+        try:
+            temp_root.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            temp_root = Path(tempfile.gettempdir())
+        with tempfile.TemporaryDirectory(dir=temp_root) as folder:
             png = Path(folder) / "i.png"
             image.write(str(png), format="png")
             blobs.append((image.width(), png.read_bytes()))
@@ -987,13 +993,25 @@ class Monitor(tk.Tk):
 
     def open_local_pdf(self) -> None:
         """PDF-PC: apre menu.pdf della cartella pdf-sito sul PC (l'ultimo creato da Menu.py, prima
-        ancora che arrivi su GitHub) con il programma predefinito per i PDF."""
+        ancora che arrivi su GitHub) con il programma predefinito per i PDF, aprendone una copia
+        in C:\\Temp\\Menu così l'originale resta libero."""
         path = ROOT / "pdf-sito" / "menu.pdf"
         if not path.is_file():
             self.say("menu.pdf non c'è ancora sul PC (cartella pdf-sito)")
             return
+        # 09/11/2026: si apre una COPIA in C:\Temp\Menu, non l'originale: il visualizzatore PDF
+        # blocca il file aperto e Menu.py non potrebbe più riscrivere menu.pdf ("Permission denied")
+        temp_root = Path(r"C:\Temp\Menu") if sys.platform == "win32" else Path(os.environ.get("TEMP", "/tmp")) / "Menu"
         try:
-            os.startfile(str(path))
+            temp_root.mkdir(parents=True, exist_ok=True)
+            for old in temp_root.glob("menu-PC_*.pdf"):  # copie aperte prima: via quelle non più in uso
+                try:
+                    old.unlink()
+                except OSError:
+                    pass
+            copy = temp_root / f"menu-PC_{datetime.now():%H%M%S}.pdf"
+            copy.write_bytes(path.read_bytes())
+            os.startfile(str(copy))
         except Exception as exc:
             self.say(f"menu.pdf non aperto: {exc}")
 
