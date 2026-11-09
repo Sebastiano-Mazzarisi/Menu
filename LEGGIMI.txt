@@ -430,6 +430,32 @@ suggest_line, short_link, open_url - blocco "SUGGERISCI ROSTICCERIA" dopo il met
 - Lo script Google NON si aggiorna da solo: dopo una modifica a Registro_click.gs va incollato
   nell'editor Apps Script; la prima volta eseguire provaEmail (permesso di inviare email) e poi
   Esegui il deployment > Gestisci deployment > matita > Nuova versione > Esegui il deployment.
+PAGINA DI OGNI ROSTICCERIA CON IL CUORE (dal 09/11/2026 sera: write_shop_pages, SHOP_PAGE_HTML,
+SHOP_PAGE_SW, write_shop_icons, shop_page_url, favorite_aliases - blocco prima di "La tua rosticceria")
+- https://menurosticcerie.github.io/r/<id>/ (sito dei PDF, senza nome e cognome), scritta da
+  publish_complete subito dopo i PDF dei singoli locali (anche con --solo-pdf). Mostra logo, nome e
+  Comune, il menu di oggi (r/<id>/menu.jpg = la stessa pagina A4 del PDF del locale, salvata con gli
+  stessi parametri delle pagine di ascolta.html: byte identici, git non la invia due volte; nella
+  pagina si ricarica con ?t=<minuto>, così anche l'icona installata mostra sempre il menu di oggi) e
+  due pulsanti:
+    ♥ "Metti sul telefono" / "Metti sul desktop" (rosso): la pagina è un'app installabile (manifest
+      r/<id>/manifest.webmanifest con "id" ASSOLUTO /r/<id>/ - diverso per ogni locale, altrimenti
+      il browser le crederebbe tutte la stessa app -, name = nome del locale, icone r/icona-*.png =
+      logo di Menu; sw.js che non salva niente). Chrome/Edge (PC Windows, Android) aprono la finestra
+      "Installa" (beforeinstallprompt): un clic e l'icona di Menu con il nome del locale è sul
+      desktop / sulla Home. Altrimenti un riquadro spiega cosa fare: Android dentro Facebook = riapre
+      la pagina in Chrome (intent://); iPhone dentro Facebook = "tre puntini > Apri nel browser";
+      iPhone Safari = Condividi > Aggiungi alla schermata Home (freccia rossa in basso); Firefox =
+      trascinare il lucchetto; Edge/Chrome senza finestra = voce del menu del browser.
+      Installata, la pagina nasconde questo pulsante.
+    Condividi (verde): navigator.share con nome e link corto; dove non c'è (PC) copia il link.
+- Apple: apple-touch-icon r/icona-180.png e apple-mobile-web-app-title = nome (max 14 caratteri).
+- In menu.pdf ogni foglio di locale ha come PRIMO bottone "♥ Salva" (rosso, PDF_BUTTON_RED, cuore
+  disegnato con due cerchi e un triangolo perché il carattere ♥ manca in alcuni font) che apre
+  r/<id>/. draw_pdf_buttons rimpicciolisce la fila da sola se non entra nella pagina.
+- Link corti TinyURL delle pagine: <id>menu (es. tinyurl.com/fantasiamenu), poi menu-<id>, ...
+  (favorite_aliases). I nomi menu<id> del pomeriggio del 09/11 portano ancora ai PDF dei locali e
+  restano così (TinyURL non permette di cambiarli).
 POST "LA TUA ROSTICCERIA" (dal 09/11/2026: favorites_post, favorites_text, favorite_links,
 favorite_aliases, favorites_wanted - blocco dopo listen_link; quinto post in enforce_top_three)
 - Perché: Nino voleva che ogni utente potesse scegliere una rosticceria preferita e vederla come primo
@@ -2622,6 +2648,11 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Da fare più avanti se serve: su Instagram per ora NON escono il post dei menu, notizie, meteo e
   farmacia (servirebbero immagini JPEG su indirizzo internet; meglio come storie, che spariscono da sole).
   Copia precedente: backup\Menu_2026-11-08_prima-di-instagram.py
+- 09/11/2026 (19:50): CUORE "♥ Salva" IN menu.pdf E PAGINA DI OGNI ROSTICCERIA (r/<id>/) con "Metti sul
+  telefono/desktop" (app installabile: icona di Menu con il nome del locale sulla Home o sul desktop di
+  Windows 11) e "Condividi". I link del post "La tua rosticceria" ora portano a queste pagine (testo e
+  immagine aggiornati, FAVORITES_FORMAT "1080x1350-cuore": il post si ripubblica da solo).
+  Copia precedente: backup\Menu_2026-11-09_prima-del-cuore-e-pagine-rosticceria.py (anche LEGGIMI e Manuale)
 - 09/11/2026 (19:20): "LA TUA ROSTICCERIA" IN FORMATO VERTICALE 1080x1350 (come News, Meteo e Farmacia),
   con le rosticcerie in due colonne con logo e Comune: l'immagine 16:9 sul cellulare era troppo piccola.
   Il post già pubblicato viene sostituito da solo al primo giro (stato.json > "formato").

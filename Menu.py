@@ -4261,6 +4261,7 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
 # (Chiama) telefono del locale. SOLO in menu.pdf: il PDF del singolo locale (quello da stampare),
 # il video, il Reel e ascolta.html restano senza bottoni (lì non si possono toccare).
 PDF_BUTTON_GREEN = (46, 139, 87)
+PDF_BUTTON_RED = (200, 40, 63)   # bottone "♥ Salva" (pagina del locale: Home/desktop, Condividi)
 
 
 def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str, str]]:
@@ -4268,7 +4269,9 @@ def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str, s
     locali.json ci sono indirizzo e telefono, Origini solo se la fonte ha un indirizzo web.
     "#pagina=N" = salto interno a menu.pdf (vedi save_pdf)."""
     name = entry.get("nome", "")
-    buttons = [("Inizio", "#pagina=1", "Torna alla prima pagina"),
+    buttons = [("♥ Salva", shop_page_url(entry["id"]),  # 09/11/2026: pagina del locale (Home/desktop, Condividi)
+                f"Metti {name} sul telefono o sul desktop, o condividilo"),
+               ("Inizio", "#pagina=1", "Torna alla prima pagina"),
                ("Fine", f"#pagina={news_page}", "Vai alle notizie, al meteo e alla farmacia di turno"),
                ("PDF", f"{pdf_site()[0]}{entry['id']}.pdf", f"Apri il PDF del solo menu di {name}, da stampare")]
     if entry.get("indirizzo"):
@@ -4285,15 +4288,32 @@ def draw_pdf_buttons(image, draw, center: float, y: float, buttons: list[tuple[s
     """Disegna in fila i bottoni verdi (pillole con scritta bianca), la fila CENTRATA su x=center
     (07/11/2026: centrati nel rigo), dall'alto in y, e li rende cliccabili nel PDF.
     Restituisce l'altezza della fila."""
-    font = video_font(round(30 * k), bold=True)
-    height, pad, gap = round(58 * k), round(30 * k), round(20 * k)
-    total = sum(draw.textlength(label, font=font) + 2 * pad for label, _, _ in buttons) + gap * (len(buttons) - 1)
+    # "♥ ..." = bottone ROSSO con un cuore disegnato (il carattere ♥ manca in alcuni font)
+    heart = lambda label: label.startswith("♥")
+    text_of = lambda label: label[1:].strip() if heart(label) else label
+    while True:  # 09/11/2026: se la fila non entra nella pagina, bottoni un po' più piccoli
+        font = video_font(round(30 * k), bold=True)
+        height, pad, gap = round(58 * k), round(30 * k), round(20 * k)
+        widths = [draw.textlength(text_of(label), font=font) + 2 * pad + (round(height * .62) if heart(label) else 0)
+                  for label, _, _ in buttons]
+        total = sum(widths) + gap * (len(buttons) - 1)
+        if total <= image.width - 80 or k <= 0.6:
+            break
+        k -= 0.05
     x = center - total / 2
-    for label, uri, tip in buttons:
-        width = draw.textlength(label, font=font) + 2 * pad
+    for (label, uri, tip), width in zip(buttons, widths):
         box = (x, y, x + width, y + height)
-        draw.rounded_rectangle(box, radius=height // 2, fill=PDF_BUTTON_GREEN)
-        draw.text((x + width / 2, y + height / 2), label, font=font, fill="white", anchor="mm")
+        draw.rounded_rectangle(box, radius=height // 2, fill=PDF_BUTTON_RED if heart(label) else PDF_BUTTON_GREEN)
+        if heart(label):
+            size = height * .42
+            hx, hy = x + pad * .8 + size / 2, y + height / 2
+            r = size / 4  # due cerchi e un triangolo
+            draw.ellipse((hx - 2 * r, hy - 1.6 * r, hx, hy + .4 * r), fill="white")
+            draw.ellipse((hx, hy - 1.6 * r, hx + 2 * r, hy + .4 * r), fill="white")
+            draw.polygon([(hx - 1.93 * r, hy - .2 * r), (hx + 1.93 * r, hy - .2 * r), (hx, hy + 2 * r)], fill="white")
+            draw.text((x + width / 2 + size * .45, y + height / 2), text_of(label), font=font, fill="white", anchor="mm")
+        else:
+            draw.text((x + width / 2, y + height / 2), label, font=font, fill="white", anchor="mm")
         add_link(image, box, uri, tip)
         x += width + gap
     return height
@@ -4906,6 +4926,10 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     for page in pages:
         save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
     tick("PDF dei singoli locali")
+    try:  # 09/11/2026: pagina di ogni locale con il cuore (Metti sul telefono / Condividi)
+        write_shop_pages(config, pages)
+    except Exception as exc:
+        print(f"Pagine dei locali (r/) non create: {exc}")
     try:  # primo foglio del PDF unico e prima immagine del video: la pagina riepilogativa (A4)
         # i suoi pulsanti portano alla pagina del locale: riepilogo = pagina 1, i locali dalla 2
         page_of = {str(page["entry"]["id"]): number for number, page in enumerate(pages, 2)}
@@ -7616,6 +7640,198 @@ def listen_link() -> str:
 
 
 # ================================================================================================
+# PAGINA DI OGNI ROSTICCERIA CON IL CUORE (dal 09/11/2026, richiesta di Nino): sul sito dei PDF
+# https://menurosticcerie.github.io/r/<id>/ c'è una pagina per ogni locale, aperta dal pulsante
+# rosso "♥ Salva" di ogni foglio di menu.pdf e dai link del post "La tua rosticceria". Mostra il
+# menu di oggi (stessa immagine A4 del PDF del locale) e due pulsanti:
+#   ♥ Metti sul telefono / sul desktop: la pagina è una piccola "app" (manifest con nome del locale
+#     e logo di Menu rosticcerie): Chrome/Edge su PC e Chrome su Android mostrano la finestra
+#     "Installa" (un clic: icona sul desktop / sulla Home che apre subito questo menu). Dove non si
+#     può (iPhone, dentro Facebook, Firefox) un riquadro spiega i due passaggi da fare.
+#   Condividi: il pannello Condividi del telefono (navigator.share) con nome e link corto; sul PC
+#     senza pannello copia il link.
+# File: r/icona-180.png, r/icona-192.png, r/icona-512.png (logo di Menu, una volta) e per ogni
+# locale r/<id>/index.html, manifest.webmanifest, sw.js (necessario a qualche browser per
+# l'installazione: non salva niente, passa tutto alla rete), logo.jpg, menu.jpg (salvato come le
+# pagine di ascolta.html: stessi byte, quindi git non lo invia due volte).
+# ================================================================================================
+SHOP_PAGES = "r"   # cartella del sito dei PDF con le pagine dei locali
+
+
+def shop_page_url(shop_id: str, settings: dict[str, Any] | None = None) -> str:
+    """Indirizzo della pagina del locale sul sito dei PDF (senza nome e cognome)."""
+    return f"{pdf_site(settings)[0]}{SHOP_PAGES}/{shop_id}/"
+
+
+def favorite_aliases(shop_id: str) -> tuple[str, ...]:
+    """Nomi da provare per il link corto della pagina di una rosticceria, dal più corto
+    (fantasiamenu, menu-fantasia, ...). I nomi menu<id> erano dei vecchi link ai PDF (09/11 pomeriggio)
+    e restano a quelli: TinyURL non permette di cambiare dove porta un nome."""
+    plain = re.sub(r"[^a-z0-9]", "", shop_id.lower())
+    return (f"{plain}menu", f"menu-{plain}", f"menurost-{plain}", f"rosticceria-{plain}")
+
+
+SHOP_PAGE_HTML = r"""<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>@@NAME@@ · menu del giorno</title>
+<meta name="description" content="Il menu del giorno di @@NAME@@ (@@TOWN@@), sempre aggiornato. Menu rosticcerie: servizio gratuito e senza scopo di lucro.">
+<meta property="og:title" content="@@NAME@@ · menu del giorno"><meta property="og:description" content="Il menu di oggi di @@NAME@@, sempre aggiornato">
+<meta property="og:image" content="@@SITE@@@@DIR@@menu.jpg"><meta property="og:url" content="@@SITE@@@@DIR@@">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="../icona-192.png"><link rel="apple-touch-icon" href="../icona-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="@@SHORT@@"><meta name="theme-color" content="#e8921e">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#f4efe6;color:#1e1a16;font:18px "Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif}
+.w{max-width:760px;margin:0 auto;padding:16px 14px 40px}
+.hd{display:flex;align-items:center;gap:14px}
+.hd img{width:64px;height:64px;border-radius:16px;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.1);object-fit:contain;flex:none}
+.kk{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#b8700a;font-weight:700}
+h1{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800;font-size:28px;line-height:1.05;margin:2px 0 0;letter-spacing:-.01em}
+.tw{color:#6b5f52;font-size:16px}
+.bt{display:flex;gap:10px;margin:16px 0 12px}
+.bt button{flex:1;font:700 18px "Atkinson Hyperlegible","Segoe UI",sans-serif;padding:14px 8px;border:0;border-radius:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;min-height:54px}
+#inst{background:#c8283f}#cond{background:#1d7f46}
+.bt svg{width:22px;height:22px;flex:none}
+.aiuto{display:none;background:#fff;border:3px solid #c8283f;border-radius:18px;padding:14px 16px;margin:0 0 14px;line-height:1.35}
+.aiuto.on{display:block}.aiuto b{color:#c8283f}.aiuto ol{margin:8px 0 0;padding-left:22px}.aiuto li{margin:4px 0}
+.aiuto .x{float:right;border:0;background:none;font-size:26px;line-height:1;color:#6b5f52;cursor:pointer;padding:0 0 0 10px}
+.ok{display:none;background:#1d7f46;color:#fff;border-radius:14px;padding:10px 14px;margin:0 0 12px;font-weight:700}
+.ok.on{display:block}
+.menu{display:block;width:100%;height:auto;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(60,40,10,.12)}
+.ft{text-align:center;margin-top:18px}.ft a{color:#b8700a;font-weight:700;text-decoration:none;display:inline-block;margin:6px 10px}
+.st .bt #inst{display:none}
+.freccia{position:fixed;left:50%;bottom:6px;transform:translateX(-50%);font-size:44px;color:#c8283f;display:none;animation:su 1s infinite}
+.freccia.on{display:block}@keyframes su{50%{transform:translate(-50%,-10px)}}
+</style></head><body><div class="w">
+<div class="hd"><img src="logo.jpg?v=@@V@@" alt=""><div><div class="kk">Menu rosticcerie</div><h1>@@NAME@@</h1><div class="tw">@@TOWN@@</div></div></div>
+<div class="bt"><button id="inst" type="button"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.5 1.1 4.3 2.4.8-1.3 2.2-2.4 4.3-2.4 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg><span id="instL">Metti sul telefono</span></button>
+<button id="cond" type="button"><svg viewBox="0 0 24 24"><path fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>Condividi</button></div>
+<div class="ok" id="ok"></div>
+<div class="aiuto" id="aiuto"><button class="x" type="button" aria-label="Chiudi">&times;</button><div id="aiutoT"></div></div>
+<img class="menu" id="menu" src="menu.jpg?v=@@V@@" alt="Menu di oggi di @@NAME@@" width="1240" height="1754">
+<div class="ft"><a href="../../menu.pdf">Tutti i menu di oggi</a><a href="@@APP@@">App Menu</a></div>
+</div><div class="freccia" id="freccia">&#8595;</div>
+<script>
+var NAME = @@JSNAME@@, LINK = @@JSLINK@@;
+var ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+var android = /Android/.test(ua), mobile = ios || android, social = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger/.test(ua);
+var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+var firefox = /Firefox|FxiOS/.test(ua), edge = /Edg\//.test(ua), safari = ios && !/CriOS|FxiOS|EdgiOS/.test(ua);
+var D = document, $ = function (id) { return D.getElementById(id); }, prompt = null;
+if (standalone) D.body.className = 'st';
+$('instL').textContent = mobile ? 'Metti sul telefono' : 'Metti sul desktop';
+/* menu sempre fresco: l'immagine si ricarica con un numero che cambia ogni minuto */
+$('menu').src = 'menu.jpg?t=' + Math.floor(Date.now() / 60000);
+try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js'); } catch (e) {}
+window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); prompt = e; });
+window.addEventListener('appinstalled', function () { mostraOk(mobile ? 'Fatto! Trovi ' + NAME + ' sulla schermata Home.' : 'Fatto! Trovi ' + NAME + ' sul desktop e nel menu Start.'); });
+function mostraOk(t) { var o = $('ok'); o.textContent = t; o.className = 'ok on'; chiudiAiuto(); }
+function aiuto(html, freccia) { $('aiutoT').innerHTML = html; $('aiuto').className = 'aiuto on'; $('freccia').className = 'freccia' + (freccia ? ' on' : ''); $('aiuto').scrollIntoView({behavior: 'smooth', block: 'nearest'}); }
+function chiudiAiuto() { $('aiuto').className = 'aiuto'; $('freccia').className = 'freccia'; }
+D.querySelector('.aiuto .x').onclick = chiudiAiuto;
+$('inst').onclick = function () {
+  if (prompt) { prompt.prompt(); prompt.userChoice.then(function (r) { prompt = null; if (r.outcome === 'accepted') mostraOk('Fatto! ' + NAME + (mobile ? ' è sulla schermata Home.' : ' è sul desktop.')); }); return; }
+  if (android && social) {  /* dentro Facebook: si riapre la pagina in Chrome, che sa installarla */
+    location.href = 'intent://' + location.host + location.pathname + '#Intent;scheme=https;package=com.android.chrome;end'; return; }
+  if (ios && social) return aiuto('<b>Prima apri la pagina in Safari:</b><ol><li>tocca i <b>tre puntini</b> &middot;&middot;&middot; in alto a destra</li><li>tocca <b>Apri nel browser</b> (o Apri in Safari)</li><li>poi tocca di nuovo il cuore rosso &#9829;</li></ol>');
+  if (ios) return aiuto('<b>Due tocchi e ' + NAME + ' è sul telefono:</b><ol><li>tocca il pulsante <b>Condividi</b> di ' + (safari ? 'Safari (il quadrato con la freccia, in basso)' : 'questo browser') + '</li><li>scorri e tocca <b>Aggiungi alla schermata Home</b>, poi <b>Aggiungi</b></li></ol>', safari);
+  if (android) return aiuto('<b>Per mettere ' + NAME + ' sul telefono:</b><ol><li>tocca il menu <b>&#8942;</b> in alto a destra</li><li>tocca <b>Aggiungi a schermata Home</b> (o <b>Installa app</b>)</li></ol>');
+  if (firefox) return aiuto('<b>Con Firefox:</b> trascina il <b>lucchetto</b> a sinistra dell\'indirizzo, in alto, sul desktop.<br>Con <b>Chrome</b> o <b>Edge</b> invece basta un clic su questo pulsante e l\'icona di Menu rosticcerie compare sul desktop.');
+  return aiuto(edge ? '<b>In Edge:</b> menu <b>&middot;&middot;&middot;</b> in alto a destra &rarr; <b>App</b> &rarr; <b>Installa questo sito come app</b>, poi lascia la spunta su <b>Crea collegamento sul desktop</b>.'
+                    : '<b>In Chrome:</b> menu <b>&#8942;</b> in alto a destra &rarr; <b>Trasmetti, salva e condividi</b> &rarr; <b>Installa pagina come app</b> (o <b>Crea scorciatoia</b>, con la spunta su <b>Apri come finestra</b>).');
+};
+$('cond').onclick = function () {
+  var dati = {title: NAME + ' · menu del giorno', text: 'Il menu di oggi di ' + NAME + ':', url: LINK};
+  if (navigator.share) { navigator.share(dati).catch(function () {}); return; }
+  var fatto = function () { mostraOk('Link copiato: ' + LINK + ' (incollalo dove vuoi)'); };
+  if (navigator.clipboard) navigator.clipboard.writeText(LINK).then(fatto, function () { prompt_copia(); }); else prompt_copia();
+  function prompt_copia() { aiuto('<b>Copia questo link:</b><br><span style="user-select:all">' + LINK + '</span>'); }
+};
+</script></body></html>
+"""
+
+SHOP_PAGE_SW = """// Menu rosticcerie: serve solo perché il browser permetta di installare la pagina. Non salva
+// niente: ogni richiesta va in rete, così il menu è sempre quello di oggi.
+self.addEventListener('install', function () { self.skipWaiting(); });
+self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
+self.addEventListener('fetch', function (e) { e.respondWith(fetch(e.request)); });
+"""
+
+
+def write_shop_icons() -> None:
+    """r/icona-180/192/512.png dal logo di Menu (rifatte solo se il logo cambia)."""
+    folder = PDF_SITE_DIR / SHOP_PAGES
+    folder.mkdir(parents=True, exist_ok=True)
+    if not APP_LOGO.is_file():
+        return
+    stamp = file_hash(APP_LOGO)[:12]
+    mark = folder / "icona.txt"
+    if mark.is_file() and mark.read_text(encoding="utf-8").strip() == stamp \
+            and all((folder / f"icona-{size}.png").is_file() for size in (180, 192, 512)):
+        return
+    from PIL import Image
+    with Image.open(APP_LOGO) as logo:
+        logo = logo.convert("RGB")
+        side = max(logo.size)  # quadrato bianco con il logo al centro (icona mai deformata)
+        square = Image.new("RGB", (side, side), (255, 255, 255))
+        square.paste(logo, ((side - logo.width) // 2, (side - logo.height) // 2))
+        for size in (180, 192, 512):
+            square.resize((size, size), Image.LANCZOS).save(folder / f"icona-{size}.png", optimize=True)
+    mark.write_text(stamp, encoding="utf-8")
+
+
+def write_shop_pages(config: dict[str, Any], pages: list[dict[str, Any]]) -> None:
+    """r/<id>/ per ogni locale delle pagine di menu.pdf (vedi il blocco sopra SHOP_PAGES)."""
+    settings = config.get("impostazioni", {})
+    site = pdf_site(settings)[0]
+    write_shop_icons()
+    version = datetime.now().strftime("%Y%m%d%H%M")
+    shops = {shop.get("id"): shop for shop in config.get("locali", [])}
+    for page in pages:
+        entry = page.get("entry", {})
+        shop_id = entry.get("id")
+        if not shop_id or shop_id == "riepilogo" or page.get("tipo") == "riepilogo":
+            continue
+        shop = shops.get(shop_id, entry)
+        name = str(shop.get("nome") or entry.get("nome") or shop_id)
+        town = str(shop.get("comune") or entry.get("comune") or "")
+        folder = PDF_SITE_DIR / SHOP_PAGES / shop_id
+        folder.mkdir(parents=True, exist_ok=True)
+        page["a4"].convert("RGB").save(folder / "menu.jpg", quality=PDF_JPEG_QUALITY, optimize=True)
+        logo = shop_logo_source(shop)
+        mark = folder / "logo.txt"  # logo rifatto solo se cambia quello in loghi
+        if logo and (not (folder / "logo.jpg").is_file() or not mark.is_file()
+                     or mark.read_text(encoding="utf-8") != file_hash(logo)[:12]):
+            from PIL import Image
+            with Image.open(logo) as picture:
+                picture.convert("RGB").resize((192, 192), Image.LANCZOS).save(folder / "logo.jpg", quality=88)
+            mark.write_text(file_hash(logo)[:12], encoding="utf-8")
+        page_url = shop_page_url(shop_id, settings)
+        link = short_link(page_url, favorite_aliases(shop_id))
+        short = name if len(name) <= 14 else name.split(" - ")[0][:14].strip()
+        # id ASSOLUTO e diverso per ogni locale: con "./" sarebbe la radice del sito per tutti e il
+        # browser crederebbe che le rosticcerie siano la stessa app (se ne installerebbe una sola)
+        manifest = {"id": f"/{SHOP_PAGES}/{shop_id}/", "name": name, "short_name": short,
+                    "description": f"Il menu del giorno di {name}" + (f" ({town})" if town else "") + " - Menu rosticcerie",
+                    "start_url": "./", "scope": "./", "display": "standalone", "lang": "it",
+                    "background_color": "#f4efe6", "theme_color": "#e8921e",
+                    "icons": [{"src": "../icona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+                              {"src": "../icona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}]}
+        (folder / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+        (folder / "sw.js").write_text(SHOP_PAGE_SW, encoding="utf-8")
+        text = (SHOP_PAGE_HTML.replace("@@NAME@@", html.escape(name)).replace("@@TOWN@@", html.escape(town))
+                .replace("@@SHORT@@", html.escape(short)).replace("@@SITE@@", site)
+                .replace("@@DIR@@", f"{SHOP_PAGES}/{shop_id}/").replace("@@V@@", version)
+                .replace("@@APP@@", SHORT_URL).replace("@@JSNAME@@", json.dumps(name))
+                .replace("@@JSLINK@@", json.dumps(link)))
+        (folder / "index.html").write_text(text, encoding="utf-8")
+
+
+# ================================================================================================
 # POST "LA TUA ROSTICCERIA" (dal 09/11/2026): su Facebook non si può mostrare a ogni utente un primo
 # post diverso (la Pagina è uguale per tutti), quindi chi segue UNA sola rosticceria ha il suo link
 # diretto. Ogni locale ha già sul sito dei PDF il suo <id>.pdf (menu di oggi, cartello CHIUSO o IN
@@ -7630,35 +7846,29 @@ def listen_link() -> str:
 FAVORITES = DATA / "preferite"
 FAVORITES_STATE = FAVORITES / "stato.json"
 FAVORITES_TITLE = "La tua rosticceria"
-FAVORITES_FORMAT = "1080x1350"   # formato dell'immagine: se cambia, il post si ripubblica da solo
-
-
-def favorite_aliases(shop_id: str) -> tuple[str, ...]:
-    """Nomi da provare per il link corto di una rosticceria, dal più corto: menufantasia, ..."""
-    plain = re.sub(r"[^a-z0-9]", "", shop_id.lower())
-    return (f"menu{plain}", f"menurost{plain}", f"menurosticceria{plain}")
-
-
-def favorite_links(config: dict[str, Any]) -> list[tuple[str, str, str]] | None:
-    """[(nome, Comune, link corto)] in ordine alfabetico, solo per i locali che hanno il loro PDF sul
-    sito. None se manca anche un solo link corto (TinyURL non ha risposto): si riprova al giro dopo,
-    così nel post non finiscono mai link lunghi con il nome del sito."""
-    site = pdf_site(config.get("impostazioni", {}))[0]
-    rows = []
-    for shop in favorite_shops(config):
-        shop_id = str(shop["id"])
-        link = short_link(f"{site}{shop_id}.pdf", favorite_aliases(shop_id))
-        if not link.startswith("https://tinyurl.com/"):
-            return None
-        rows.append((str(shop.get("nome") or shop_id), str(shop.get("comune") or ""), link))
-    return sorted(rows, key=lambda row: sort_key_name(row[0]))
+FAVORITES_FORMAT = "1080x1350-cuore"   # formato dell'immagine: se cambia, il post si ripubblica da solo
 
 
 def favorite_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
-    """Locali del post "La tua rosticceria": quelli con il loro <id>.pdf sul sito, in ordine alfabetico."""
+    """Locali del post "La tua rosticceria": quelli con la loro pagina r/<id>/ sul sito, in ordine alfabetico."""
     shops = [shop for shop in config.get("locali", [])
-             if shop.get("id") and (PDF_SITE_DIR / f"{shop['id']}.pdf").is_file()]
+             if shop.get("id") and (PDF_SITE_DIR / SHOP_PAGES / shop["id"] / "index.html").is_file()]
     return sorted(shops, key=lambda shop: sort_key_name(str(shop.get("nome") or shop["id"])))
+
+
+def favorite_links(config: dict[str, Any]) -> list[tuple[str, str, str]] | None:
+    """[(nome, Comune, link corto)] in ordine alfabetico, solo per i locali che hanno la loro pagina
+    r/<id>/ sul sito (dal 09/11/2026 sera i link portano lì, prima al PDF del locale). None se manca
+    anche un solo link corto (TinyURL non ha risposto): si riprova al giro dopo, così nel post non
+    finiscono mai link lunghi con il nome del sito."""
+    rows = []
+    for shop in favorite_shops(config):
+        shop_id = str(shop["id"])
+        link = short_link(shop_page_url(shop_id, config.get("impostazioni", {})), favorite_aliases(shop_id))
+        if not link.startswith("https://tinyurl.com/"):
+            return None
+        rows.append((str(shop.get("nome") or shop_id), str(shop.get("comune") or ""), link))
+    return rows
 
 
 def favorites_html(config: dict[str, Any]) -> str:
@@ -7707,9 +7917,9 @@ h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
 </style></head><body><div class="c">
 <div class="hd"><img src="{app}"><div><div class="kk">Menu rosticcerie</div>
 <h1 class="D">La tua rosticceria</h1></div></div>
-<div class="in">Ti interessa una sola rosticceria? Ognuna ha il suo link diretto al menu del giorno.</div>
+<div class="in">Ti interessa una sola rosticceria? Mettila sul telefono o sul PC: un tocco e vedi subito il suo menu.</div>
 <div class="g">{"".join(cards)}</div>
-<div class="tip"><i>👇</i><span>I link sono nel testo del post: salva quello della tua preferita e vedi subito il suo menu</span></div>
+<div class="tip"><i>♥</i><span>Tocca il suo link nel testo del post, poi il cuore rosso: è sulla Home o sul desktop</span></div>
 <div class="ft"><div class="u D">tinyurl.com/<span>menurosticcerie</span></div></div>
 </div></body></html>'''
 
@@ -7741,8 +7951,9 @@ def favorites_text(config: dict[str, Any]) -> str:
     if not rows:
         return ""
     lines = ["Ti interessa una sola rosticceria?",
-             "Salva il link della tua preferita (tra i preferiti o sulla schermata Home del telefono): "
-             "con un tocco vedi subito il suo menu del giorno, sempre aggiornato.", ""]
+             "Tocca il link della tua preferita: si apre il suo menu del giorno, sempre aggiornato. "
+             "Poi tocca il cuore rosso ♥ per metterla sulla Home del telefono o sul desktop del PC, "
+             "oppure Condividi per mandarla a chi vuoi.", ""]
     lines += [f"{name}{f' ({town})' if town else ''}: {link}" for name, town, link in rows]
     lines += ["", f"Tutti i menu insieme: {SHORT_URL.replace('https://', '')}"]
     return "\n".join(lines)

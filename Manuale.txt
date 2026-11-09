@@ -31,9 +31,12 @@ E "Chiama", per telefonare subito e prenotare il tuo piatto preferito.
 Se una rosticceria oggi è chiusa, te lo dice un cartello ben visibile. E se il menù non è ancora uscito, vedrai il cartello "in attesa": appena viene pubblicato, compare al suo posto.
 
 Ti interessa una sola rosticceria?
-Subito dopo i post con menù, notizie, meteo e farmacia trovi il post "La tua rosticceria", con un collegamento diretto per ogni rosticceria.
-Tocca quello della tua preferita e vedi subito solo il suo menù del giorno, sempre aggiornato.
-Salvalo tra i preferiti o sulla schermata principale del telefono: la prossima volta ti basta un tocco, senza cercare.
+Nel documento con tutti i menù, in ogni pagina c'è anche un bottone rosso con il cuore: "Salva".
+Toccalo e si apre la pagina di quella rosticceria, con il suo menù di oggi e due pulsanti.
+Il cuore rosso, "Metti sul telefono", mette la rosticceria sulla schermata Home, come una piccola app con il logo di Menu e il nome del locale. Sul computer, con Chrome o Edge, basta un clic e l'icona compare sul desktop.
+Il pulsante verde, "Condividi", ti fa mandare il menù di quella rosticceria a chi vuoi, per esempio su WhatsApp.
+La prossima volta ti basta toccare l'icona: si apre subito il menù del giorno, sempre aggiornato.
+Sulla pagina Facebook, subito dopo menù, notizie, meteo e farmacia, c'è anche il post "La tua rosticceria", con il collegamento diretto a ogni rosticceria.
 
 Il Reel del giorno.
 Preferisci un video? Ogni giorno sulla pagina esce un Reel, un breve video verticale da guardare sul telefono, che fa scorrere uno dopo l'altro tutti i menù disponibili, e alla fine notizie, meteo e farmacia di turno.
