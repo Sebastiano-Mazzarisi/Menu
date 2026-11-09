@@ -5598,9 +5598,10 @@ def delete_facebook_posts(ids: list[str]) -> list[str]:
 LINK_POSTS = DATA / "post-link.json"   # {"pdf": {"post", "commento", "ora"}, "video": {...}}
 
 
-def link_post_image(title: str, target: Path) -> Path:
+def link_post_image(title: str, target: Path, note: str = "Il link è nel primo commento") -> Path:
     """Immagine ORIZZONTALE 16:9 (1920x1080) per i post con il link nel commento: logo dell'app,
-    la scritta grande (es. "I menu in pdf") e, sotto, dove trovare il link."""
+    la scritta grande (es. "I menu in pdf") e, sotto, dove trovare il link (note: per il post
+    "La tua rosticceria" è "I link sono qui sotto, nel testo del post")."""
     from PIL import Image, ImageDraw
     width, height = 1920, 1080
     image = Image.new("RGB", (width, height), (255, 253, 247))
@@ -5615,7 +5616,8 @@ def link_post_image(title: str, target: Path) -> Path:
     font, title = video_fit_text(draw, title, 170, True, width - 240)
     draw.text((width / 2, 600), title, font=font, fill=(40, 40, 40), anchor="mm")
     draw.text((width / 2, 760), "Rosticcerie di Putignano e dintorni", font=video_font(64), fill=(90, 90, 90), anchor="mm")
-    draw.text((width / 2, 880), "Il link è nel primo commento", font=video_font(64, True), fill=accent, anchor="mm")
+    note_font, note = video_fit_text(draw, note, 64, True, width - 240)
+    draw.text((width / 2, 880), note, font=note_font, fill=accent, anchor="mm")
     image.save(target, quality=92)
     return target
 
@@ -5797,6 +5799,7 @@ def clean_facebook_posts() -> None:
     weather_ids = set(read_json(WEATHER_HISTORY, [])[:1])  # il post del meteo di oggi resta
     news_ids = set(read_json(NEWS_HISTORY, [])[:1])  # e il post orario delle notizie
     pharmacy_ids = set(read_json(PHARMACY_HISTORY, [])[:1])  # e la farmacia del prossimo weekend
+    pharmacy_ids |= {read_json(FAVORITES_STATE, {}).get("pubblicato", "")} - {""}  # e "La tua rosticceria"
     page_photo = re.compile(r"copertina|immagine del profilo|foto del profilo|cover photo|profile picture", re.I)
     remove, keep = [], []
     for post in posts:
@@ -5816,7 +5819,7 @@ def clean_facebook_posts() -> None:
         for post, first, media in rows:
             print(f"  {post.get('created_time', '')[:16].replace('T', ' ')}  {first[:80] or '(senza testo)'}")
     print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): Menu, News, Meteo, "
-          "Farmacia e i cambi di copertina/profilo")
+          "Farmacia, La tua rosticceria e i cambi di copertina/profilo")
     show(keep)
     print(f"\nDA CANCELLARE ({len(remove)}):")
     show(remove)
@@ -7407,16 +7410,23 @@ def enforce_top_three(config: dict[str, Any], force: bool = False) -> None:
     summary = read_json(SUMMARY_STATE, {})
     wanted = [summary.get("pubblicato", ""), news.get("pubblicato", ""),
               weather.get("pubblicato", ""), pharmacy.get("pubblicato", "")]
+    # 09/11/2026: quinto il post "La tua rosticceria" (link diretto di ogni locale), se c'è o se va
+    # pubblicato; se i suoi link non sono pronti si controllano solo i primi quattro come prima
+    favorite, favorite_due = favorites_wanted(config)
+    if favorite or favorite_due:
+        wanted.append(favorite)
     try:
-        current = facebook_top_posts(4)
+        current = facebook_top_posts(len(wanted))
     except Exception as exc:
         current = []
         print(f"Ordine dei post non letto da Facebook: {exc}")
-    if not force and all(wanted) and current[:4] == wanted:
-        print("Ordine Facebook già corretto: Menu, News, Meteo, Farmacia")
+    if not force and not favorite_due and all(wanted) and current[:len(wanted)] == wanted:
+        print("Ordine Facebook già corretto: Menu, News, Meteo, Farmacia" + (", La tua rosticceria" if len(wanted) > 4 else ""))
         return
 
-    print("Ripristino i primi quattro post: 1° Menu, 2° News, 3° Meteo, 4° Farmacia")
+    print("Ripristino i primi post: 1° Menu, 2° News, 3° Meteo, 4° Farmacia" + (", 5° La tua rosticceria" if len(wanted) > 4 else ""))
+    if len(wanted) > 4:  # il più in basso si pubblica per primo; se non riesce gli altri escono lo stesso
+        favorites_post(config, force=True)
     if not pharmacy_post(config, force=True):
         raise RuntimeError("non è stato possibile pubblicare il post Farmacia")
     weather_post(config, force=True)
@@ -7430,10 +7440,13 @@ def enforce_top_three(config: dict[str, Any], force: bool = False) -> None:
               read_json(NEWS_STATE, {}).get("pubblicato", ""),
               read_json(WEATHER_STATE, {}).get("pubblicato", ""),
               read_json(PHARMACY_STATE, {}).get("pubblicato", "")]
-    current = facebook_top_posts(4)
+    current = facebook_top_posts(5)
     if current[:4] != wanted:
         raise RuntimeError(f"ordine Facebook inatteso: {current[:4]}")
-    print("Ordine Facebook verificato: 1° Menu, 2° News, 3° Meteo, 4° Farmacia")
+    favorite = read_json(FAVORITES_STATE, {}).get("pubblicato", "")
+    if favorite and current[4:5] != [favorite]:
+        print(f"Post \"{FAVORITES_TITLE}\" non è quinto ({current[4:5]}): sistemato al prossimo giro")
+    print("Ordine Facebook verificato: 1° Menu, 2° News, 3° Meteo, 4° Farmacia" + (", 5° La tua rosticceria" if favorite and current[4:5] == [favorite] else ""))
 
 
 def menus_on_top(config: dict[str, Any]) -> None:
@@ -7602,7 +7615,111 @@ def listen_link() -> str:
     return short_link(pdf_site()[0] + LISTEN_PAGE, LISTEN_ALIASES)
 
 
-PAGE_STATS = DATA / "statistiche.json"   # ultimi numeri della Pagina, letti anche dal Monitor
+# ================================================================================================
+# POST "LA TUA ROSTICCERIA" (dal 09/11/2026): su Facebook non si può mostrare a ogni utente un primo
+# post diverso (la Pagina è uguale per tutti), quindi chi segue UNA sola rosticceria ha il suo link
+# diretto. Ogni locale ha già sul sito dei PDF il suo <id>.pdf (menu di oggi, cartello CHIUSO o IN
+# ATTESA), rifatto a ogni giro: per ognuno si crea UNA volta un link corto TinyURL
+# (tinyurl.com/menu<id>, vedi FAVORITE_ALIASES) e sulla Pagina c'è un post fisso, QUINTO dopo Menu,
+# News, Meteo e Farmacia (lo tiene lì enforce_top_three), con un'immagine 16:9 e nel testo
+# l'elenco "Nome (Comune): link". L'utente salva il link della sua rosticceria (preferiti o Home del
+# telefono) e con un tocco vede subito solo quel menu. menu.pdf e video.mp4 non cambiano.
+# Il post si rifà da solo solo quando cambia il testo (es. una rosticceria aggiunta o tolta).
+# Stato in dati/preferite/stato.json: {"pubblicato", "testo", "ora", "precedenti"}.
+# ================================================================================================
+FAVORITES = DATA / "preferite"
+FAVORITES_STATE = FAVORITES / "stato.json"
+FAVORITES_TITLE = "La tua rosticceria"
+
+
+def favorite_aliases(shop_id: str) -> tuple[str, ...]:
+    """Nomi da provare per il link corto di una rosticceria, dal più corto: menufantasia, ..."""
+    plain = re.sub(r"[^a-z0-9]", "", shop_id.lower())
+    return (f"menu{plain}", f"menurost{plain}", f"menurosticceria{plain}")
+
+
+def favorite_links(config: dict[str, Any]) -> list[tuple[str, str, str]] | None:
+    """[(nome, Comune, link corto)] in ordine alfabetico, solo per i locali che hanno il loro PDF sul
+    sito. None se manca anche un solo link corto (TinyURL non ha risposto): si riprova al giro dopo,
+    così nel post non finiscono mai link lunghi con il nome del sito."""
+    site = pdf_site(config.get("impostazioni", {}))[0]
+    rows = []
+    for shop in config.get("locali", []):
+        shop_id = str(shop.get("id") or "")
+        if not shop_id or not (PDF_SITE_DIR / f"{shop_id}.pdf").is_file():
+            continue
+        link = short_link(f"{site}{shop_id}.pdf", favorite_aliases(shop_id))
+        if not link.startswith("https://tinyurl.com/"):
+            return None
+        rows.append((str(shop.get("nome") or shop_id), str(shop.get("comune") or ""), link))
+    return sorted(rows, key=lambda row: sort_key_name(row[0]))
+
+
+def favorites_text(config: dict[str, Any]) -> str:
+    """Testo del post "La tua rosticceria" ("" se i link non sono ancora tutti pronti)."""
+    rows = favorite_links(config)
+    if not rows:
+        return ""
+    lines = ["Ti interessa una sola rosticceria?",
+             "Salva il link della tua preferita (tra i preferiti o sulla schermata Home del telefono): "
+             "con un tocco vedi subito il suo menu del giorno, sempre aggiornato.", ""]
+    lines += [f"{name}{f' ({town})' if town else ''}: {link}" for name, town, link in rows]
+    lines += ["", f"Tutti i menu insieme: {SHORT_URL.replace('https://', '')}"]
+    return "\n".join(lines)
+
+
+def favorites_post(config: dict[str, Any], force: bool = False, test: bool = False) -> bool:
+    """Pubblica il post "La tua rosticceria" se manca o se il testo è cambiato (force=True: sempre).
+    Il post precedente viene tolto dalla Pagina. test=True: crea solo immagine e testo, apre
+    l'immagine e stampa il testo, senza Facebook. True se il post è sulla Pagina (o in prova creato)."""
+    FAVORITES.mkdir(parents=True, exist_ok=True)
+    text = favorites_text(config)
+    if not text:
+        print("Post \"La tua rosticceria\": link corti non ancora pronti (TinyURL o PDF dei locali), riprovo al giro dopo.")
+        return False
+    state = read_json(FAVORITES_STATE, {})
+    if test:
+        image = link_post_image(FAVORITES_TITLE, FAVORITES / "prova.jpg", "I link sono nel testo del post")
+        print(f"PROVA del post \"{FAVORITES_TITLE}\" (non pubblicato)\n\n{text}\n\nImmagine: {image}")
+        if sys.platform == "win32":
+            os.startfile(image)
+        return True
+    if state.get("pubblicato") and state.get("testo") == text and not force:
+        return True
+    image = link_post_image(FAVORITES_TITLE, FAVORITES / "post.jpg", "I link sono nel testo del post")
+    try:
+        post = publish_summary_facebook(image, text)
+    except Exception as exc:
+        print(f"Post \"{FAVORITES_TITLE}\" NON pubblicato: {exc}")
+        today = date.today().isoformat()  # tentativi falliti di oggi: dopo 2 non si riprova fino a domani
+        tries = int(state.get("tentativi", 0)) + 1 if state.get("tentativi_data") == today else 1
+        save_json(FAVORITES_STATE, {**state, "tentativi": tries, "tentativi_data": today, "errore": str(exc)[:300]})
+        return False
+    print(f"Post \"{FAVORITES_TITLE}\" pubblicato: https://www.facebook.com/{post}")
+    old = [p for p in state.get("precedenti", []) + [state.get("pubblicato", "")] if p and p != post]
+    left = delete_facebook_posts(list(dict.fromkeys(old))) if old else []
+    save_json(FAVORITES_STATE, {"pubblicato": post, "testo": text, "precedenti": left,
+                                "ora": datetime.now().isoformat(timespec="seconds")})
+    return True
+
+
+def favorites_wanted(config: dict[str, Any]) -> tuple[str, bool]:
+    """(id del post "La tua rosticceria" sulla Pagina, True se va ripubblicato perché il testo è
+    cambiato o il post manca). ("", False) se i link non sono pronti: allora non si tocca niente."""
+    try:
+        text = favorites_text(config)
+    except Exception as exc:
+        print(f"Post \"{FAVORITES_TITLE}\": link non preparati: {exc}")
+        return read_json(FAVORITES_STATE, {}).get("pubblicato", ""), False
+    state = read_json(FAVORITES_STATE, {})
+    if not text:
+        return state.get("pubblicato", ""), False
+    if state.get("tentativi_data") == date.today().isoformat() and int(state.get("tentativi", 0)) >= 2:
+        return state.get("pubblicato", ""), False  # Facebook lo rifiuta: non si ripubblica tutto a ogni giro
+    return state.get("pubblicato", ""), not state.get("pubblicato") or state.get("testo") != text
+
+
+PAGE_STATS = DATA / "statistiche.json"  # ultimi numeri della Pagina, letti anche dal Monitor
 # metriche delle statistiche della Pagina, in ordine di preferenza (Meta cambia nomi nel tempo:
 # si usa la prima che risponde). "views" = visualizzazioni dei contenuti della Pagina.
 VIEW_METRICS = ("page_media_view", "page_views_total", "page_impressions", "page_impressions_unique")
@@ -7804,6 +7921,11 @@ def main() -> None:
                         help="DISATTIVATO (22/10/2026): i vecchi post \"I menu in pdf\"/\"I menu in video\" non si usano più.")
     parser.add_argument("--forza", action="store_true",
                         help="Con --post-link: ripubblica i due post anche se ci sono già (i vecchi vengono tolti).")
+    parser.add_argument("--post-rosticcerie", action="store_true",
+                        help="Pubblica SUBITO sulla Pagina il post \"La tua rosticceria\" con il link diretto al menu di "
+                             "ogni locale (quinto post) e rimette in ordine i primi post (Pubblica-rosticcerie.bat).")
+    parser.add_argument("--post-rosticcerie-prova", action="store_true",
+                        help="Crea immagine e testo del post \"La tua rosticceria\" SENZA pubblicarlo (Prova-rosticcerie.bat).")
     parser.add_argument("--pulisci-facebook", action="store_true",
                         help="Elenca TUTTI i post della Pagina tranne quello con l'immagine del giorno e i link e, dopo la conferma, "
                              "li cancella con le loro foto; restano i cambi di copertina e profilo (Pulisci-Facebook.bat).")
@@ -7885,6 +8007,22 @@ def main() -> None:
     if args.post_link:  # disattivato dal 22/10/2026: sulla Pagina c'è un solo post (vedi daily_summary)
         print("I post \"I menu in pdf\" e \"I menu in video\" non si usano più: sulla Pagina c'è un solo post,\n"
               "l'immagine del giorno con i link (si aggiorna da sola; subito: \"Pubblica FB\" nel Monitor).")
+        return
+    if args.post_rosticcerie_prova:
+        favorites_post(config, test=True)
+        return
+    if args.post_rosticcerie:  # "La tua rosticceria": post con il link diretto di ogni locale (quinto)
+        start_manual_log("post La tua rosticceria")
+        if not take_lock():
+            print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
+            return
+        try:
+            if favorites_post(config, force=True):
+                enforce_top_three(config, force=False)
+        except Exception as exc:
+            print(f"Ordine dei post non sistemato: {exc!r} (si sistema al prossimo giro automatico)")
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
         return
     if args.pulisci_facebook:  # una tantum: toglie dalla Pagina i vecchi post con foto e video dei menu
         clean_facebook_posts()

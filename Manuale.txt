@@ -30,6 +30,11 @@ E sotto l'intestazione ci sono dei comodi bottoni verdi:
 E "Chiama", per telefonare subito e prenotare il tuo piatto preferito.
 Se una rosticceria oggi è chiusa, te lo dice un cartello ben visibile. E se il menù non è ancora uscito, vedrai il cartello "in attesa": appena viene pubblicato, compare al suo posto.
 
+Ti interessa una sola rosticceria?
+Subito dopo i post con menù, notizie, meteo e farmacia trovi il post "La tua rosticceria", con un collegamento diretto per ogni rosticceria.
+Tocca quello della tua preferita e vedi subito solo il suo menù del giorno, sempre aggiornato.
+Salvalo tra i preferiti o sulla schermata principale del telefono: la prossima volta ti basta un tocco, senza cercare.
+
 Il Reel del giorno.
 Preferisci un video? Ogni giorno sulla pagina esce un Reel, un breve video verticale da guardare sul telefono, che fa scorrere uno dopo l'altro tutti i menù disponibili, e alla fine notizie, meteo e farmacia di turno.
 Esce appena tutte le rosticcerie hanno pubblicato il menù, oppure alle undici con quelli che ci sono; e se più tardi arrivano tutti, viene sostituito da quello completo.

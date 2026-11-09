@@ -73,6 +73,9 @@ FILE .BAT (per Nino: doppio clic)
   Prova-storia.bat / Pubblica-storia.bat   --storia-prova (crea e apre il video della Storia, max 58 s,
                             non pubblica) / --storia (pubblica SUBITO la Storia della Pagina; di norma esce
                             da sola alle 11:00, una volta al giorno; anche su Instagram se collegato)
+  Prova-rosticcerie.bat / Pubblica-rosticcerie.bat   --post-rosticcerie-prova (crea e apre l'immagine,
+                            stampa il testo, non pubblica) / --post-rosticcerie (pubblica SUBITO il post
+                            "La tua rosticceria" e rimette in ordine i primi post; di norma va da solo)
   Prova-instagram.bat       --instagram-prova: dice se Instagram è collegato (account e permessi), non pubblica
   Collega_GitHub.bat        collega la cartella al repository GitHub "Menu" (una volta sola)
 
@@ -427,6 +430,30 @@ suggest_line, short_link, open_url - blocco "SUGGERISCI ROSTICCERIA" dopo il met
 - Lo script Google NON si aggiorna da solo: dopo una modifica a Registro_click.gs va incollato
   nell'editor Apps Script; la prima volta eseguire provaEmail (permesso di inviare email) e poi
   Esegui il deployment > Gestisci deployment > matita > Nuova versione > Esegui il deployment.
+POST "LA TUA ROSTICCERIA" (dal 09/11/2026: favorites_post, favorites_text, favorite_links,
+favorite_aliases, favorites_wanted - blocco dopo listen_link; quinto post in enforce_top_three)
+- Perché: Nino voleva che ogni utente potesse scegliere una rosticceria preferita e vederla come primo
+  post. Su Facebook è impossibile (la Pagina mostra a tutti gli stessi post nello stesso ordine, nessun
+  pulsante/stellina nei post). Soluzione: un link diretto per ogni locale.
+- Ogni locale ha già sul sito dei PDF il suo <id>.pdf (rifatto a ogni giro da publish_complete: menu
+  di oggi, cartello CHIUSO o IN ATTESA). Per ognuno short_link crea UNA volta un link TinyURL
+  (tinyurl.com/menu<id> senza trattini, poi menurost<id>, menurosticceria<id>, poi un codice
+  qualsiasi), salvato in dati\link-corti.json. Solo i locali con <id>.pdf in pdf-sito.
+- Post sulla Pagina: foto 16:9 (link_post_image con titolo "La tua rosticceria" e nota "I link sono
+  nel testo del post") e testo: "Ti interessa una sola rosticceria?" + spiegazione + una riga per
+  locale "Nome (Comune): https://tinyurl.com/menu<id>" in ordine alfabetico + "Tutti i menu insieme:
+  tinyurl.com/menurosticcerie". Se anche un solo link corto non è pronto (TinyURL giù) non si
+  pubblica niente e si riprova al giro dopo (mai link lunghi nel post).
+- POSIZIONE: QUINTO, dopo Menu, News, Meteo, Farmacia. enforce_top_three (fine di ogni giro
+  automatico) controlla i primi 5; se l'ordine è sbagliato, o il post manca, o il testo è cambiato
+  (es. locale aggiunto/tolto), ripubblica dal basso: prima "La tua rosticceria", poi Farmacia, Meteo,
+  News, Menu. Il post vecchio viene cancellato. Se i link non sono pronti si controllano solo i primi
+  4 come prima. Se Facebook rifiuta il post 2 volte nello stesso giorno (dati\preferite\stato.json >
+  tentativi/tentativi_data/errore) non lo si considera più "da pubblicare" fino al giorno dopo, così
+  non si ripubblicano tutti i post a ogni giro.
+- Stato: dati\preferite\stato.json {"pubblicato", "testo", "ora", "precedenti"}; immagini
+  dati\preferite\post.jpg (pubblicata) e prova.jpg (prova). La pulizia (Pulisci-Facebook.bat) non lo
+  cancella. menu.pdf, video, Reel e Storia NON cambiano.
 SICUREZZA: il token sta solo in dati\facebook.json (fuori da GitHub). Non stamparlo nei log.
 
 
@@ -2590,6 +2617,13 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Da fare più avanti se serve: su Instagram per ora NON escono il post dei menu, notizie, meteo e
   farmacia (servirebbero immagini JPEG su indirizzo internet; meglio come storie, che spariscono da sole).
   Copia precedente: backup\Menu_2026-11-08_prima-di-instagram.py
+- 09/11/2026 (17:50): POST "LA TUA ROSTICCERIA" (link diretto al menu di ogni locale). Richiesta di Nino:
+  scegliere una rosticceria preferita e vederla come primo post su Facebook, senza toccare menu.pdf e
+  video. Su Facebook non si può avere un ordine dei post diverso per ogni utente, quindi: link corto
+  TinyURL a <id>.pdf di ogni locale e un post fisso QUINTO sulla Pagina con l'elenco dei link
+  (dettagli nella guida sopra, sezione POST "LA TUA ROSTICCERIA"). link_post_image ha il parametro
+  note (scritta arancione in basso). Nuovi Prova-rosticcerie.bat / Pubblica-rosticcerie.bat.
+  Copia precedente: backup\Menu_2026-11-09_prima-dei-link-per-rosticceria.py (anche LEGGIMI e Manuale)
 - 09/11/2026 (09:30): FILE TEMPORANEI IN C:\Temp\Menu (FUORI DA DROPBOX). Richiesta di Nino: i file che
   servono solo durante l'elaborazione e poi si cancellano non devono stare in Dropbox, che altrimenti
   sincronizza e poi cancella moltissimi file a ogni giro. Nuova costante TEMP (C:\Temp\Menu su Windows,
