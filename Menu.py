@@ -7630,6 +7630,7 @@ def listen_link() -> str:
 FAVORITES = DATA / "preferite"
 FAVORITES_STATE = FAVORITES / "stato.json"
 FAVORITES_TITLE = "La tua rosticceria"
+FAVORITES_FORMAT = "1080x1350"   # formato dell'immagine: se cambia, il post si ripubblica da solo
 
 
 def favorite_aliases(shop_id: str) -> tuple[str, ...]:
@@ -7644,15 +7645,94 @@ def favorite_links(config: dict[str, Any]) -> list[tuple[str, str, str]] | None:
     così nel post non finiscono mai link lunghi con il nome del sito."""
     site = pdf_site(config.get("impostazioni", {}))[0]
     rows = []
-    for shop in config.get("locali", []):
-        shop_id = str(shop.get("id") or "")
-        if not shop_id or not (PDF_SITE_DIR / f"{shop_id}.pdf").is_file():
-            continue
+    for shop in favorite_shops(config):
+        shop_id = str(shop["id"])
         link = short_link(f"{site}{shop_id}.pdf", favorite_aliases(shop_id))
         if not link.startswith("https://tinyurl.com/"):
             return None
         rows.append((str(shop.get("nome") or shop_id), str(shop.get("comune") or ""), link))
     return sorted(rows, key=lambda row: sort_key_name(row[0]))
+
+
+def favorite_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Locali del post "La tua rosticceria": quelli con il loro <id>.pdf sul sito, in ordine alfabetico."""
+    shops = [shop for shop in config.get("locali", [])
+             if shop.get("id") and (PDF_SITE_DIR / f"{shop['id']}.pdf").is_file()]
+    return sorted(shops, key=lambda shop: sort_key_name(str(shop.get("nome") or shop["id"])))
+
+
+def favorites_html(config: dict[str, Any]) -> str:
+    """Pagina 1080x1350 da fotografare (stesso formato e grafica di Meteo, News e Farmacia, PENSATA
+    PER IL CELLULARE: nessuna scritta sotto i 28 px): logo e titolo "La tua rosticceria", una riga di
+    spiegazione, le rosticcerie in due colonne (logo, nome, Comune; le righe si adattano da sole al
+    numero di locali), il riquadro verde "il link è nel testo del post" e in fondo l'indirizzo dell'app."""
+    shops = favorite_shops(config)
+    rows = max(1, -(-len(shops) // 2))
+    name_size = 34 if rows <= 7 else 30 if rows <= 10 else 28
+    logo_size = 74 if rows <= 7 else 62 if rows <= 10 else 50
+    cards = []
+    for shop in shops:
+        logo = shop_logo_source(shop)
+        picture = (f'<img src="{logo.as_uri()}">' if logo else
+                   f'<div class="ni D">{html.escape(str(shop.get("nome") or "?")[:1].upper())}</div>')
+        town = f'<div class="ct">{html.escape(str(shop.get("comune") or ""))}</div>' if shop.get("comune") else ""
+        cards.append(f'<div class="cd">{picture}<div class="tx"><div class="nm">'
+                     f'{html.escape(str(shop.get("nome") or shop["id"]))}</div>{town}</div></div>')
+    app = APP_LOGO.as_uri() if APP_LOGO.exists() else ""
+    return f'''<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+*{{box-sizing:border-box}}html,body{{margin:0}}
+.c{{width:1080px;height:1350px;position:relative;overflow:hidden;color:#1e1a16;padding:46px 44px;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#ffe3a3 0,#f4efe6 520px);font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
+.D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
+.hd{{display:flex;align-items:center;gap:24px}}
+.hd img{{width:120px;height:120px;border-radius:26px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.1);object-fit:contain}}
+.kk{{font-size:32px;letter-spacing:.06em;text-transform:uppercase;color:#8a5306;font-weight:700}}
+h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em}}
+.in{{font-size:38px;line-height:1.2;margin:30px 4px 24px;font-weight:700}}
+.g{{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat({rows},1fr);gap:12px;min-height:0}}
+.cd{{background:#fff;border-radius:22px;padding:0 18px;display:flex;align-items:center;gap:16px;min-width:0;
+  box-shadow:0 3px 10px rgba(60,40,10,.10)}}
+.cd img,.ni{{width:{logo_size}px;height:{logo_size}px;flex:none;border-radius:14px;object-fit:contain;background:#fff}}
+.ni{{display:grid;place-items:center;background:#f4efe6;font-size:{logo_size // 2}px}}
+.tx{{min-width:0}}
+.nm{{font-size:{name_size}px;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.ct{{font-size:28px;color:#6b5f52;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.tip{{margin-top:22px;background:#1d7f46;color:#fff;border-radius:26px;padding:22px 30px;font-size:40px;
+  font-weight:700;line-height:1.15;display:flex;align-items:center;gap:20px}}
+.tip i{{font-style:normal;font-size:52px}}
+.ft{{text-align:center;margin-top:16px}}
+.ft .u{{font-size:46px}}.ft .u span{{color:#b8700a}}
+</style></head><body><div class="c">
+<div class="hd"><img src="{app}"><div><div class="kk">Menu rosticcerie</div>
+<h1 class="D">La tua rosticceria</h1></div></div>
+<div class="in">Ti interessa una sola rosticceria? Ognuna ha il suo link diretto al menu del giorno.</div>
+<div class="g">{"".join(cards)}</div>
+<div class="tip"><i>👇</i><span>I link sono nel testo del post: salva quello della tua preferita e vedi subito il suo menu</span></div>
+<div class="ft"><div class="u D">tinyurl.com/<span>menurosticcerie</span></div></div>
+</div></body></html>'''
+
+
+def render_favorites(config: dict[str, Any], target: Path) -> Path:
+    """Fotografa favorites_html in target (JPEG 1080x1350, come Meteo, News e Farmacia)."""
+    page_file = target.with_suffix(".html")
+    page_file.write_text(favorites_html(config), encoding="utf-8")
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(viewport={"width": 1080, "height": 1350})
+            page.goto(page_file.as_uri(), wait_until="load", timeout=60000)
+            try:
+                page.evaluate("document.fonts.ready.then(() => true)")
+            except Exception:
+                pass
+            page.wait_for_timeout(300)
+            page.screenshot(path=str(target), type="jpeg", quality=90)
+        finally:
+            browser.close()
+    return target
 
 
 def favorites_text(config: dict[str, Any]) -> str:
@@ -7679,14 +7759,15 @@ def favorites_post(config: dict[str, Any], force: bool = False, test: bool = Fal
         return False
     state = read_json(FAVORITES_STATE, {})
     if test:
-        image = link_post_image(FAVORITES_TITLE, FAVORITES / "prova.jpg", "I link sono nel testo del post")
+        image = render_favorites(config, FAVORITES / "prova.jpg")  # 1080x1350 come Meteo/News/Farmacia
         print(f"PROVA del post \"{FAVORITES_TITLE}\" (non pubblicato)\n\n{text}\n\nImmagine: {image}")
         if sys.platform == "win32":
             os.startfile(image)
         return True
-    if state.get("pubblicato") and state.get("testo") == text and not force:
+    if state.get("pubblicato") and state.get("testo") == text and state.get("formato") == FAVORITES_FORMAT \
+            and not force:
         return True
-    image = link_post_image(FAVORITES_TITLE, FAVORITES / "post.jpg", "I link sono nel testo del post")
+    image = render_favorites(config, FAVORITES / "post.jpg")  # 1080x1350 come Meteo/News/Farmacia
     try:
         post = publish_summary_facebook(image, text)
     except Exception as exc:
@@ -7698,7 +7779,7 @@ def favorites_post(config: dict[str, Any], force: bool = False, test: bool = Fal
     print(f"Post \"{FAVORITES_TITLE}\" pubblicato: https://www.facebook.com/{post}")
     old = [p for p in state.get("precedenti", []) + [state.get("pubblicato", "")] if p and p != post]
     left = delete_facebook_posts(list(dict.fromkeys(old))) if old else []
-    save_json(FAVORITES_STATE, {"pubblicato": post, "testo": text, "precedenti": left,
+    save_json(FAVORITES_STATE, {"pubblicato": post, "testo": text, "formato": FAVORITES_FORMAT, "precedenti": left,
                                 "ora": datetime.now().isoformat(timespec="seconds")})
     return True
 
@@ -7716,7 +7797,8 @@ def favorites_wanted(config: dict[str, Any]) -> tuple[str, bool]:
         return state.get("pubblicato", ""), False
     if state.get("tentativi_data") == date.today().isoformat() and int(state.get("tentativi", 0)) >= 2:
         return state.get("pubblicato", ""), False  # Facebook lo rifiuta: non si ripubblica tutto a ogni giro
-    return state.get("pubblicato", ""), not state.get("pubblicato") or state.get("testo") != text
+    return state.get("pubblicato", ""), (not state.get("pubblicato") or state.get("testo") != text
+                                         or state.get("formato") != FAVORITES_FORMAT)
 
 
 PAGE_STATS = DATA / "statistiche.json"  # ultimi numeri della Pagina, letti anche dal Monitor

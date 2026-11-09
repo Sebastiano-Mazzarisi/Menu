@@ -439,8 +439,13 @@ favorite_aliases, favorites_wanted - blocco dopo listen_link; quinto post in enf
   di oggi, cartello CHIUSO o IN ATTESA). Per ognuno short_link crea UNA volta un link TinyURL
   (tinyurl.com/menu<id> senza trattini, poi menurost<id>, menurosticceria<id>, poi un codice
   qualsiasi), salvato in dati\link-corti.json. Solo i locali con <id>.pdf in pdf-sito.
-- Post sulla Pagina: foto 16:9 (link_post_image con titolo "La tua rosticceria" e nota "I link sono
-  nel testo del post") e testo: "Ti interessa una sola rosticceria?" + spiegazione + una riga per
+- Post sulla Pagina: foto VERTICALE 1080x1350 come Meteo, News e Farmacia (dal 09/11/2026 sera, prima
+  era 16:9: sul cellulare si vedeva piccola). favorites_html + render_favorites (Playwright, come
+  render_weather): logo e titolo "La tua rosticceria", una riga di spiegazione, tutte le rosticcerie
+  in due colonne (logo, nome, Comune; righe, caratteri e loghi si adattano al numero di locali,
+  scritte mai sotto i 28 px), riquadro verde "I link sono nel testo del post..." e in fondo
+  tinyurl.com/menurosticcerie. FAVORITES_FORMAT ("1080x1350") è salvato in stato.json > "formato":
+  se cambia, il post si ripubblica da solo al giro dopo. Testo: "Ti interessa una sola rosticceria?" + spiegazione + una riga per
   locale "Nome (Comune): https://tinyurl.com/menu<id>" in ordine alfabetico + "Tutti i menu insieme:
   tinyurl.com/menurosticcerie". Se anche un solo link corto non è pronto (TinyURL giù) non si
   pubblica niente e si riprova al giro dopo (mai link lunghi nel post).
@@ -2617,6 +2622,10 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Da fare più avanti se serve: su Instagram per ora NON escono il post dei menu, notizie, meteo e
   farmacia (servirebbero immagini JPEG su indirizzo internet; meglio come storie, che spariscono da sole).
   Copia precedente: backup\Menu_2026-11-08_prima-di-instagram.py
+- 09/11/2026 (19:20): "LA TUA ROSTICCERIA" IN FORMATO VERTICALE 1080x1350 (come News, Meteo e Farmacia),
+  con le rosticcerie in due colonne con logo e Comune: l'immagine 16:9 sul cellulare era troppo piccola.
+  Il post già pubblicato viene sostituito da solo al primo giro (stato.json > "formato").
+  Copia precedente: backup\Menu_2026-11-09_prima-di-rosticcerie-verticale.py
 - 09/11/2026 (17:50): POST "LA TUA ROSTICCERIA" (link diretto al menu di ogni locale). Richiesta di Nino:
   scegliere una rosticceria preferita e vederla come primo post su Facebook, senza toccare menu.pdf e
   video. Su Facebook non si può avere un ordine dei post diverso per ogni utente, quindi: link corto
