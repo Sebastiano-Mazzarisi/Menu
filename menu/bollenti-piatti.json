@@ -1,0 +1,96 @@
+{
+  "data": "2026-11-09",
+  "testo": "MENÙ DI LUNEDÌ\nPRIMI PIATTI\n●CICORIE CON POLPETTINE 5,5\n●CANNELLONI ALLA CARNE 5,5\n●PASTA E FAGIOLI CREMOSA 4,5\n●PENNETTE ALL'ARRABBIATA 4,5\n●RIGATONCELLO CON PISELLI, SPECK E SALSA DI DATTERINO GIALLO 5,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●BRACIOLE AL SUGO\n●FETTINA DI VITELLO AI FUNGHI\n●FAGOTTO DI CAPOCOLLO FARCITO AL SUGO DI CASTAGNE\n●STINCO DI SUINO ARROSTO ALLE ERBE CON PATATE\n●CUORE DI MERLUZZO CON ERBA CIPOLLINA IN SALSA DI ZUCCHINE\n●INSALATA DI MARE CON VERDURINE\n●MILLEFOGLIE DI VERDURE VEGETARIANO\n●PIZZA DI PATATE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI LUNEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CICORIE CON POLPETTINE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CANNELLONI ALLA CARNE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PASTA E FAGIOLI CREMOSA 4,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PENNETTE ALL'ARRABBIATA 4,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RIGATONCELLO CON PISELLI, SPECK E SALSA DI DATTERINO GIALLO 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BRACIOLE AL SUGO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FETTINA DI VITELLO AI FUNGHI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAGOTTO DI CAPOCOLLO FARCITO AL SUGO DI CASTAGNE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STINCO DI SUINO ARROSTO ALLE ERBE CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CUORE DI MERLUZZO CON ERBA CIPOLLINA IN SALSA DI ZUCCHINE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INSALATA DI MARE CON VERDURINE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MILLEFOGLIE DI VERDURE VEGETARIANO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PIZZA DI PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
