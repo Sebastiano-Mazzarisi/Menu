@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-09",
+  "data": "2026-11-10",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -36,9 +36,9 @@
           "descrizione": ""
         },
         {
-          "nome": "Funghi pleurotus con bresaola, rucola e grana",
-          "prezzo": "€6.50",
-          "descrizione": ""
+          "nome": "Farro con caponata di verdure",
+          "prezzo": "€5.50",
+          "descrizione": "Melanzane, zucchina e peperoni."
         },
         {
           "nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto",
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pennette all'arrabbiata",
+          "nome": "Spaghetti alla carbonara",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+          "descrizione": ""
         },
         {
-          "nome": "Risotto con funghi porcini e zucca",
+          "nome": "Risotto con funghi misti e zafferano",
+          "prezzo": "€7.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Gnocchi con gorgonzola e noci",
+          "prezzo": "€8.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cavatelli al grano arso con tonno, pomodorino e olive",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con pesce spada, capperi, origano e pomodoro",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Orecchiette con sugo di pomodoro e bracioletta di vitello",
-          "prezzo": "€9.00",
-          "descrizione": ""
-        },
-        {
-          "nome": "Minestrone di verdure",
+          "nome": "Zuppa di ceci",
           "prezzo": "€6.00",
-          "descrizione": "Carote, zucchina, patate, piselli, melanzane, cicorie, cavolfiore, sedano e cipolla. Con o senza pasta"
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -91,13 +91,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Spezzatino di vitello con verdurine miste",
-          "prezzo": "€7.50",
-          "descrizione": "Zucchina, carote, piselli e sedano"
+          "nome": "Trancio di pesce spada alla pizzaiola",
+          "prezzo": "€8.50",
+          "descrizione": "Con pomodorini, origano e olive"
         },
         {
-          "nome": "Filetto di merluzzo gratinato con zucchina",
-          "prezzo": "€8.50",
+          "nome": "Bocconcini di petto di pollo al limone",
+          "prezzo": "€7.50",
           "descrizione": ""
         }
       ]
