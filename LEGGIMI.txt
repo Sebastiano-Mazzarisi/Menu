@@ -485,6 +485,47 @@ favorite_aliases, favorites_wanted - blocco dopo listen_link; quinto post in enf
 - Stato: dati\preferite\stato.json {"pubblicato", "testo", "ora", "precedenti"}; immagini
   dati\preferite\post.jpg (pubblicata) e prova.jpg (prova). La pulizia (Pulisci-Facebook.bat) non lo
   cancella. menu.pdf, video, Reel e Storia NON cambiano.
+POST "CHI PUBBLICA IL MENU" (dal 11/11/2026: blocco "CHI PUBBLICA IL MENU" di Menu.py, subito dopo
+menus_on_top: record_publications, rebuild_publications, publication_stats, frequency_html,
+make_frequency, frequency_post, frequency_wanted)
+- Che cos'è: una tabella con una riga per rosticceria e quattro colonne: Nome, Chiusura (giorno di
+  riposo settimanale, "—" se non ne ha), % pubblicazione (in quanti giorni di apertura il menu è
+  arrivato, cioè il locale NON è rimasto "in attesa di pubblicazione") e Orario medio (a che ora, in
+  media, il menu compare in Menu). Righe dalla percentuale più alta alla più bassa (a parità di
+  percentuale: ordine alfabetico). Percentuale verde da 80 in su, arancione da 50 a 79, rossa sotto 50.
+- Dove esce: SOLO come post della Pagina Facebook (foto verticale 1080x1350, stesso look di News,
+  Meteo e Farmacia, descrizione con i soli hashtag). NON è in menu.pdf, nel video, nel Reel, nella Storia.
+- POSIZIONE: SECONDO, subito dopo il post dei menu e prima delle News. Ordine della Pagina:
+  Menu, Chi pubblica il menu, News, Meteo, Farmacia, La tua rosticceria. Lo tengono enforce_top_three
+  (fine di ogni giro) e news_hourly (ogni ora alle hh:15: Meteo, News, tabella, Menu, perché Facebook
+  ordina per data di pubblicazione). Sulla Pagina ne resta uno solo: il precedente viene cancellato.
+  Se Facebook rifiuta la tabella 2 volte nello stesso giorno (dati\frequenza\stato.json > tentativi)
+  fino al giorno dopo l'ordine torna quello senza tabella, così non si ripubblica tutto a ogni giro.
+- DATI: dati\pubblicazioni.json = registro di chi ha pubblicato ogni giorno:
+  {"ricostruito": "AAAA-MM-GG", "giorni": {"AAAA-MM-GG": {"<id>": {"tipo": "menu", "ora": "HH:MM"}
+  oppure {"tipo": "chiuso"}}}}. Alla fine di OGNI giro (run, dopo stato.json) record_publications
+  scrive, solo la prima volta nella giornata, l'ora del controllo che ha trovato il menu di oggi;
+  cartello di riposo o avviso di chiusura = "chiuso". I giorni passati sono stati ricostruiti UNA
+  volta (rebuild_publications, quando manca "ricostruito") da archivio\<id>\AAAA-MM-GG_HHMMSS.*
+  (giorno del menu e ora in cui è stato trovato) e dagli avvisi in ingresso\<id>\ (_riposo,
+  _chiusura_fino_AAAAMMGG). Per rifare la ricostruzione: cancellare dati\pubblicazioni.json
+  (i giorni già scritti dai giri si perdono e vengono ricostruiti dall'archivio).
+- CONTI (publication_stats): ultimi 30 giorni fino a IERI (oggi non è finito). Contano solo i giorni
+  in cui il programma ha girato (almeno un menu trovato) e, per ogni locale, solo da quando è seguito.
+  NON contano i giorni di riposo settimanale (locali.json > "riposo" + dati\riposi.json) e quelli di
+  chiusura per avviso. Menu fisso (Guagliò): nei giorni del menu fisso il locale risulta pubblicato
+  se in quella settimana il menu c'era; l'orario si conta solo il giorno in cui è stato trovato.
+  Orario: è quello in cui Menu ha TROVATO il menu (precisione dei controlli, ogni 30 minuti); i menu
+  trovati prima delle 08:00 (già pronti al primo controllo) valgono 08:00.
+- Impostazioni facoltative in locali.json > impostazioni > "frequenza":
+  {"attivo": true, "facebook": true, "giorni": 30}. "attivo": false = niente post e ordine di prima
+  (il registro dati\pubblicazioni.json continua comunque a riempirsi).
+- Prova-frequenza.bat (python Menu.py --frequenza-prova): crea e apre l'immagine SENZA pubblicare e
+  scrive nella finestra, per ogni locale, anche "N giorni su M". Pubblica-frequenza.bat
+  (python Menu.py --frequenza): pubblica subito e rimette in ordine i primi post.
+- File: dati\frequenza\AAAA-MM-GG.jpg e .html (ultimi 10 giorni), stato.json {"data", "pubblicato",
+  "pubblicato_alle", "tentativi", "tentativi_data", "errore"}, pubblicati.json. La pulizia
+  (Pulisci-Facebook.bat) non cancella il post.
 SICUREZZA: il token sta solo in dati\facebook.json (fuori da GitHub). Non stamparlo nei log.
 
 
@@ -2694,3 +2735,14 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   e non si poteva riscrivere). Monitor > PDF-PC ora apre una COPIA in C:\Temp\Menu\menu-PC_hhmmss.pdf (le
   copie vecchie si cancellano alla volta dopo, se non sono più aperte): l'originale in pdf-sito resta libero.
   save_pdf: se il file di destinazione è bloccato riprova per circa 15 secondi, poi dà un errore chiaro.
+- 11/11/2026 (09:00): NUOVO POST "CHI PUBBLICA IL MENU" (richiesta di Nino): tabella Nome, Chiusura,
+  % pubblicazione, Orario medio, per capire quante volte ogni rosticceria pubblica il menu (non resta
+  "in attesa di pubblicazione") e a che ora in media. Solo post della Pagina, SECONDO (dopo il Menu,
+  prima delle News): enforce_top_three e news_hourly ora tengono l'ordine Menu, Chi pubblica il menu,
+  News, Meteo, Farmacia, La tua rosticceria. Nuovo registro dati\pubblicazioni.json (scritto a ogni
+  giro da record_publications in run; passato ricostruito una volta da archivio e ingresso). Nuovi
+  comandi --frequenza e --frequenza-prova, nuovi Prova-frequenza.bat e Pubblica-frequenza.bat,
+  clean_facebook_posts non cancella il nuovo post. Dettagli: capitolo Facebook, POST "CHI PUBBLICA
+  IL MENU". Copia precedente: backup\Menu_2026-11-11_prima-di-chi-pubblica-il-menu.py
+- 11/11/2026 (09:05): "CHI PUBBLICA IL MENU": a parità di percentuale le righe sono in ORDINE ALFABETICO
+  (prima: chi pubblica prima). publication_stats, rows.sort.

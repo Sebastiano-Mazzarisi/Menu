@@ -5824,6 +5824,7 @@ def clean_facebook_posts() -> None:
     news_ids = set(read_json(NEWS_HISTORY, [])[:1])  # e il post orario delle notizie
     pharmacy_ids = set(read_json(PHARMACY_HISTORY, [])[:1])  # e la farmacia del prossimo weekend
     pharmacy_ids |= {read_json(FAVORITES_STATE, {}).get("pubblicato", "")} - {""}  # e "La tua rosticceria"
+    pharmacy_ids |= set(read_json(FREQUENCY_HISTORY, [])[:1])  # e "Chi pubblica il menu" (11/11/2026)
     page_photo = re.compile(r"copertina|immagine del profilo|foto del profilo|cover photo|profile picture", re.I)
     remove, keep = [], []
     for post in posts:
@@ -5842,7 +5843,7 @@ def clean_facebook_posts() -> None:
     def show(rows):
         for post, first, media in rows:
             print(f"  {post.get('created_time', '')[:16].replace('T', ' ')}  {first[:80] or '(senza testo)'}")
-    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): Menu, News, Meteo, "
+    print(f"\nPost sulla Pagina: {len(posts)}.\n\nRESTANO ({len(keep)}): Menu, Chi pubblica il menu, News, Meteo, "
           "Farmacia, La tua rosticceria e i cambi di copertina/profilo")
     show(keep)
     print(f"\nDA CANCELLARE ({len(remove)}):")
@@ -7392,15 +7393,21 @@ def news_hourly(config: dict[str, Any], force: bool = False) -> bool:
         weather_post(config, force=True)  # se non riesce le News escono lo stesso (ordine sistemato al giro dopo)
     if not news_post(force=force):
         return False
+    # 11/11/2026: "Chi pubblica il menu" sta tra Menu e News, quindi si ripubblica dopo le News e
+    # prima del Menu; se non riesce il resto esce lo stesso (ordine sistemato al giro dopo)
+    frequency_ok = frequency_wanted(config)[1] and frequency_post(config)
     daily_summary(config, force=True, refresh_pdf=False)
-    wanted = [read_json(SUMMARY_STATE, {}).get("pubblicato", ""),
-              read_json(NEWS_STATE, {}).get("pubblicato", "")]
+    wanted = [read_json(SUMMARY_STATE, {}).get("pubblicato", "")]
+    if frequency_ok:
+        wanted.append(read_json(FREQUENCY_STATE, {}).get("pubblicato", ""))
+    wanted.append(read_json(NEWS_STATE, {}).get("pubblicato", ""))
     if weather_on:
         wanted.append(read_json(WEATHER_STATE, {}).get("pubblicato", ""))
     current = facebook_top_posts(len(wanted))
     if not all(wanted) or current[:len(wanted)] != wanted:
         raise RuntimeError(f"ordine Facebook inatteso dopo notizie e meteo: {current[:len(wanted)]}")
-    print("Ordine Facebook verificato: 1° Menu rosticcerie, 2° News" + (", 3° Meteo" if weather_on else ""))
+    print("Ordine Facebook verificato: Menu rosticcerie, " + ("Chi pubblica il menu, " if frequency_ok else "")
+          + "News" + (", Meteo" if weather_on else ""))
     return True
 
 
@@ -7416,7 +7423,9 @@ def facebook_top_posts(limit: int = 4) -> list[str]:
 
 
 def enforce_top_three(config: dict[str, Any], force: bool = False) -> None:
-    """Mantiene i primi quattro post nell'ordine fisso Menu, News, Meteo, Farmacia.
+    """Mantiene i primi post nell'ordine fisso Menu, Chi pubblica il menu, News, Meteo, Farmacia
+    (dal 11/11/2026 il secondo è la tabella "Chi pubblica il menu": frequency_post; se è spenta o
+    oggi Facebook l'ha rifiutata due volte l'ordine resta quello di prima, senza di lei).
 
     Facebook ordina per data di pubblicazione, quindi i post vengono ricreati al contrario:
     prima Farmacia, poi Meteo, News e infine Menu. Ogni metodo elimina la versione precedente.
@@ -7432,9 +7441,12 @@ def enforce_top_three(config: dict[str, Any], force: bool = False) -> None:
     pharmacy = read_json(PHARMACY_STATE, {})
     weather = read_json(WEATHER_STATE, {})
     summary = read_json(SUMMARY_STATE, {})
-    wanted = [summary.get("pubblicato", ""), news.get("pubblicato", ""),
-              weather.get("pubblicato", ""), pharmacy.get("pubblicato", "")]
-    # 09/11/2026: quinto il post "La tua rosticceria" (link diretto di ogni locale), se c'è o se va
+    frequency, frequency_on = frequency_wanted(config)
+    wanted = [summary.get("pubblicato", "")] + ([frequency] if frequency_on else []) + [
+        news.get("pubblicato", ""), weather.get("pubblicato", ""), pharmacy.get("pubblicato", "")]
+    fixed = len(wanted)  # i post fissi prima di "La tua rosticceria": 4, oppure 5 con "Chi pubblica il menu"
+    names = "Menu, " + ("Chi pubblica il menu, " if frequency_on else "") + "News, Meteo, Farmacia"
+    # 09/11/2026: ultimo il post "La tua rosticceria" (link diretto di ogni locale), se c'è o se va
     # pubblicato; se i suoi link non sono pronti si controllano solo i primi quattro come prima
     favorite, favorite_due = favorites_wanted(config)
     if favorite or favorite_due:
@@ -7445,11 +7457,11 @@ def enforce_top_three(config: dict[str, Any], force: bool = False) -> None:
         current = []
         print(f"Ordine dei post non letto da Facebook: {exc}")
     if not force and not favorite_due and all(wanted) and current[:len(wanted)] == wanted:
-        print("Ordine Facebook già corretto: Menu, News, Meteo, Farmacia" + (", La tua rosticceria" if len(wanted) > 4 else ""))
+        print(f"Ordine Facebook già corretto: {names}" + (", La tua rosticceria" if len(wanted) > fixed else ""))
         return
 
-    print("Ripristino i primi post: 1° Menu, 2° News, 3° Meteo, 4° Farmacia" + (", 5° La tua rosticceria" if len(wanted) > 4 else ""))
-    if len(wanted) > 4:  # il più in basso si pubblica per primo; se non riesce gli altri escono lo stesso
+    print(f"Ripristino i primi post: {names}" + (", La tua rosticceria" if len(wanted) > fixed else ""))
+    if len(wanted) > fixed:  # il più in basso si pubblica per primo; se non riesce gli altri escono lo stesso
         favorites_post(config, force=True)
     if not pharmacy_post(config, force=True):
         raise RuntimeError("non è stato possibile pubblicare il post Farmacia")
@@ -7458,24 +7470,396 @@ def enforce_top_three(config: dict[str, Any], force: bool = False) -> None:
         raise RuntimeError("non è stato possibile pubblicare il post Meteo")
     if not news_post(force=True):
         raise RuntimeError("non è stato possibile pubblicare il post News")
+    # "Chi pubblica il menu" dopo le News e prima del Menu: se non riesce gli altri escono lo stesso
+    frequency_ok = frequency_on and frequency_post(config)
     daily_summary(config, force=True, refresh_pdf=False)
 
-    wanted = [read_json(SUMMARY_STATE, {}).get("pubblicato", ""),
-              read_json(NEWS_STATE, {}).get("pubblicato", ""),
-              read_json(WEATHER_STATE, {}).get("pubblicato", ""),
-              read_json(PHARMACY_STATE, {}).get("pubblicato", "")]
-    current = facebook_top_posts(5)
-    if current[:4] != wanted:
-        raise RuntimeError(f"ordine Facebook inatteso: {current[:4]}")
+    wanted = [read_json(SUMMARY_STATE, {}).get("pubblicato", "")] + (
+        [read_json(FREQUENCY_STATE, {}).get("pubblicato", "")] if frequency_ok else []) + [
+        read_json(NEWS_STATE, {}).get("pubblicato", ""),
+        read_json(WEATHER_STATE, {}).get("pubblicato", ""),
+        read_json(PHARMACY_STATE, {}).get("pubblicato", "")]
+    fixed = len(wanted)
+    names = "Menu, " + ("Chi pubblica il menu, " if frequency_ok else "") + "News, Meteo, Farmacia"
+    current = facebook_top_posts(fixed + 1)
+    if current[:fixed] != wanted:
+        raise RuntimeError(f"ordine Facebook inatteso: {current[:fixed]}")
     favorite = read_json(FAVORITES_STATE, {}).get("pubblicato", "")
-    if favorite and current[4:5] != [favorite]:
-        print(f"Post \"{FAVORITES_TITLE}\" non è quinto ({current[4:5]}): sistemato al prossimo giro")
-    print("Ordine Facebook verificato: 1° Menu, 2° News, 3° Meteo, 4° Farmacia" + (", 5° La tua rosticceria" if favorite and current[4:5] == [favorite] else ""))
+    if favorite and current[fixed:fixed + 1] != [favorite]:
+        print(f"Post \"{FAVORITES_TITLE}\" non è al suo posto ({current[fixed:fixed + 1]}): sistemato al prossimo giro")
+    print(f"Ordine Facebook verificato: {names}" + (", La tua rosticceria" if favorite and current[fixed:fixed + 1] == [favorite] else ""))
 
 
 def menus_on_top(config: dict[str, Any]) -> None:
     """Compatibilità con i richiami esistenti: mantiene i quattro post fissi."""
     enforce_top_three(config)
+
+
+# ================================================================================================
+# "CHI PUBBLICA IL MENU" (dal 11/11/2026, richiesta di Nino): tabella con Nome, Chiusura (giorno di
+# riposo), % pubblicazione (in quanti giorni di apertura il menu è arrivato, cioè il locale NON è
+# rimasto "in attesa di pubblicazione") e Orario medio (a che ora, in media, il menu compare in Menu).
+# È una foto verticale 1080x1350 con lo stesso look di News, Meteo e Farmacia, pubblicata SOLO come
+# post della Pagina (non è in menu.pdf, video, Reel o Storia), SECONDA: subito dopo il post dei menu
+# e prima delle News (ordine tenuto da enforce_top_three e news_hourly).
+#
+# DATI: dati\pubblicazioni.json, il registro di chi ha pubblicato ogni giorno:
+#   {"ricostruito": "AAAA-MM-GG", "giorni": {"AAAA-MM-GG": {"<id locale>": {"tipo": "menu", "ora": "HH:MM"}
+#                                                          oppure {"tipo": "chiuso"}}}}
+# - record_publications (alla fine di ogni giro, in run): la PRIMA volta che un locale ha il menu
+#   di oggi scrive l'ora di quel controllo; cartello di riposo o avviso di chiusura = "chiuso".
+# - rebuild_publications (una volta sola, se manca "ricostruito"): ricostruisce i giorni passati
+#   dall'archivio (archivio\<id>\AAAA-MM-GG_HHMMSS.*: giorno del menu e ora in cui è stato trovato)
+#   e dagli avvisi in ingresso\<id>\ (..._riposo.*, ..._chiusura_fino_AAAAMMGG.*).
+# CONTI (publication_stats), sugli ultimi "giorni" (predefinito 30) fino a IERI (oggi non è finito):
+# - contano solo i giorni in cui il programma ha girato (almeno un menu trovato) e, per ogni locale,
+#   solo da quando è seguito (primo giorno in cui compare nel registro);
+# - NON contano i giorni di riposo settimanale (rest_days) e quelli di chiusura per avviso;
+# - menu fisso (es. Guagliò: il menu del martedì vale fino a venerdì): nei giorni del menu fisso
+#   il locale risulta pubblicato se in quella settimana il menu c'era; l'orario si conta solo nel
+#   giorno in cui il menu è stato davvero trovato;
+# - orario: i menu trovati prima dell'inizio dei controlli (impostazioni > automatico > dalle) valgono
+#   come trovati a quell'ora (erano già pronti al primo controllo del mattino). L'orario è quello in
+#   cui Menu ha trovato il menu, quindi ha la precisione dei controlli (ogni 30 minuti).
+# Impostazioni facoltative in locali.json > impostazioni > "frequenza":
+#   {"attivo": true, "facebook": true, "giorni": 30}
+# Prova senza pubblicare: Prova-frequenza.bat (--frequenza-prova). Subito sulla Pagina:
+# Pubblica-frequenza.bat (--frequenza).
+# ================================================================================================
+PUBLICATIONS = DATA / "pubblicazioni.json"
+FREQUENCY = DATA / "frequenza"
+FREQUENCY_STATE = FREQUENCY / "stato.json"          # {"data", "pubblicato", "pubblicato_alle", "tentativi", "tentativi_data", "errore"?}
+FREQUENCY_HISTORY = FREQUENCY / "pubblicati.json"   # id dei post della tabella ancora sulla Pagina
+FREQUENCY_TITLE = "Chi pubblica il menu"
+FREQUENCY_KEEP_DAYS = 400                           # giorni tenuti nel registro
+WEEKDAY_SHORT = ("Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom")
+ARCHIVE_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})(\d{2})$")
+
+
+def frequency_settings(settings: dict[str, Any]) -> dict[str, Any]:
+    """impostazioni > "frequenza" di locali.json (tutte facoltative): attivo, facebook, giorni."""
+    plan = {"attivo": True, "facebook": True, "giorni": 30, **settings.get("frequenza", {})}
+    try:
+        plan["giorni"] = max(7, int(plan["giorni"]))
+    except (TypeError, ValueError):
+        plan["giorni"] = 30
+    return plan
+
+
+def rebuild_publications(log: dict[str, Any]) -> None:
+    """Ricostruisce nel registro i giorni passati (senza toccare quelli già scritti dai giri):
+    dall'archivio il primo menu trovato ogni giorno da ogni locale, dalla cartella ingresso i
+    cartelli di riposo e gli avvisi di chiusura (dal giorno dell'avviso alla data "fino")."""
+    days = log.setdefault("giorni", {})
+    today = date.today()
+    if ARCHIVE.is_dir():
+        for folder in sorted(item for item in ARCHIVE.iterdir() if item.is_dir()):
+            first: dict[str, str] = {}
+            for path in folder.iterdir():
+                match = ARCHIVE_NAME.match(path.stem)
+                if not match or path.suffix.lower() not in MENU_EXTENSIONS:
+                    continue
+                clock = f"{match.group(2)}:{match.group(3)}"
+                if match.group(1) not in first or clock < first[match.group(1)]:
+                    first[match.group(1)] = clock
+            for day, clock in first.items():
+                days.setdefault(day, {}).setdefault(folder.name, {"tipo": "menu", "ora": clock})
+    if INPUT.is_dir():
+        for folder in sorted(item for item in INPUT.iterdir() if item.is_dir()):
+            for path in folder.iterdir():
+                try:
+                    start = date.fromisoformat(path.stem[:10])
+                except ValueError:
+                    continue
+                end = None
+                if path.stem.endswith("_riposo"):
+                    end = start
+                else:
+                    match = re.search(r"_chiusura_fino_(\d{4})(\d{2})(\d{2})", path.stem)
+                    if match:
+                        try:
+                            end = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+                        except ValueError:
+                            end = None
+                if end is None or end < start or (end - start).days > 120:
+                    continue
+                day = start
+                while day <= min(end, today):
+                    days.setdefault(day.isoformat(), {})[folder.name] = {"tipo": "chiuso"}
+                    day += timedelta(days=1)
+    log["ricostruito"] = today.isoformat()
+
+
+def read_publications() -> dict[str, Any]:
+    """Il registro dati\\pubblicazioni.json; la prima volta lo ricostruisce da archivio e ingresso."""
+    log = read_json(PUBLICATIONS, {})
+    if not isinstance(log, dict):
+        log = {}
+    log.setdefault("giorni", {})
+    if not log.get("ricostruito"):
+        rebuild_publications(log)
+        log["giorni"] = dict(sorted(log["giorni"].items()))
+        save_json(PUBLICATIONS, log)
+        print(f"Registro delle pubblicazioni ricostruito dall'archivio: {len(log['giorni'])} giorni")
+    return log
+
+
+def record_publications(shops: list[dict[str, Any]], results: list[dict[str, Any]]) -> None:
+    """Alla fine di ogni giro: per ogni locale che ha il menu di OGGI scrive nel registro, solo la
+    prima volta, l'ora del controllo che l'ha trovato. Cartello di riposo o avviso di chiusura:
+    "chiuso" (un menu vero arrivato dopo lo sostituisce). Menu fisso che vale anche oggi senza un
+    file nuovo in archivio: non si scrive niente (lo conta publication_stats, senza orario)."""
+    log = read_publications()
+    today = date.today()
+    key = today.isoformat()
+    entries = log["giorni"].setdefault(key, {})
+    by_id = {shop["id"]: shop for shop in shops}
+    changed = False
+    for item in results:
+        shop_id = item.get("id")
+        if not shop_id or item.get("menu_date") != key:
+            continue
+        closed = bool(item.get("nota")) or item.get("source") in ("riposo settimanale", "avviso")
+        old = entries.get(shop_id)
+        if old and (old.get("tipo") == "menu" or closed):
+            continue
+        if closed:
+            entries[shop_id] = {"tipo": "chiuso"}
+            changed = True
+            continue
+        shop = by_id.get(shop_id, {})
+        if today.weekday() in fixed_menu_days(shop) and not any((ARCHIVE / shop_id).glob(f"{key}_*")):
+            continue  # menu fisso dei giorni scorsi: oggi non è stato pubblicato niente di nuovo
+        clock = datetime.now().strftime("%H:%M")
+        try:
+            checked = datetime.fromisoformat(str(item.get("checked_at", "")))
+            if checked.date() == today:
+                clock = checked.strftime("%H:%M")
+        except ValueError:
+            pass
+        entries[shop_id] = {"tipo": "menu", "ora": clock}
+        changed = True
+    if not entries:
+        log["giorni"].pop(key, None)
+    if changed:
+        limit = (today - timedelta(days=FREQUENCY_KEEP_DAYS)).isoformat()
+        log["giorni"] = dict(sorted((day, value) for day, value in log["giorni"].items() if day >= limit))
+        save_json(PUBLICATIONS, log)
+
+
+def rest_days_text(shop: dict[str, Any]) -> str:
+    """Colonna "Chiusura": il giorno di riposo per esteso ("Domenica"), più giorni abbreviati
+    ("Lun, Mar"), "—" se il locale non ha un giorno di riposo."""
+    days = sorted(rest_days(shop))
+    if not days:
+        return "—"
+    if len(days) == 1:
+        return SUMMARY_WEEKDAYS[days[0]]
+    return ", ".join(WEEKDAY_SHORT[day] for day in days)
+
+
+def publication_stats(config: dict[str, Any], until: date | None = None) -> dict[str, Any]:
+    """Conti della tabella (regole nel commento qui sopra). Restituisce {"dal", "al" (date del
+    periodo davvero coperto dai dati), "giorni" (giorni contati), "righe": [{"id", "nome", "comune",
+    "chiusura", "aperti", "pubblicati", "percento" (0-100 o None), "ora" ("HH:MM" o "")}]},
+    righe ordinate dalla percentuale più alta (a parità di percentuale: ordine alfabetico)."""
+    settings = config.get("impostazioni", {})
+    plan = frequency_settings(settings)
+    until = until or date.today() - timedelta(days=1)
+    start = until - timedelta(days=plan["giorni"] - 1)
+    log = read_publications()["giorni"]
+    opening = schedule_plan(settings)["dalle"]
+    try:
+        floor = int(opening[:2]) * 60 + int(opening[3:5])
+    except ValueError:
+        floor = 8 * 60
+    is_menu = lambda day, shop_id: log.get(day.isoformat(), {}).get(shop_id, {}).get("tipo") == "menu"
+    period = [start + timedelta(days=offset) for offset in range((until - start).days + 1)]
+    # giorni in cui il programma ha girato: almeno un menu trovato (PC spento = giorno che non conta)
+    worked = [day for day in period
+              if any(entry.get("tipo") == "menu" for entry in log.get(day.isoformat(), {}).values())]
+    rows = []
+    for shop in config.get("locali", []):
+        shop_id = shop["id"]
+        followed = min((day for day, entries in log.items() if shop_id in entries), default="")
+        rest, fixed = rest_days(shop), fixed_menu_days(shop)
+        opened = published = 0
+        minutes: list[int] = []
+        for day in worked:
+            if not followed or day.isoformat() < followed:
+                continue
+            entry = log.get(day.isoformat(), {}).get(shop_id, {})
+            if entry.get("tipo") == "chiuso" or day.weekday() in rest:
+                continue
+            opened += 1
+            if entry.get("tipo") == "menu":
+                published += 1
+                try:
+                    clock = int(entry["ora"][:2]) * 60 + int(entry["ora"][3:5])
+                    minutes.append(max(floor, clock))
+                except (KeyError, TypeError, ValueError):
+                    pass
+            elif day.weekday() in fixed and any(
+                    is_menu(day - timedelta(days=back), shop_id) for back in range(1, day.weekday() + 2)):
+                published += 1  # menu fisso di questa settimana: vale anche oggi
+        mean = round(sum(minutes) / len(minutes)) if minutes else None
+        rows.append({"id": shop_id, "nome": shop.get("nome", shop_id), "comune": shop_town(shop),
+                     "chiusura": rest_days_text(shop), "aperti": opened, "pubblicati": published,
+                     "percento": round(100 * published / opened) if opened else None,
+                     "ora": f"{mean // 60:02d}:{mean % 60:02d}" if mean is not None else "",
+                     "minuti": mean})
+    # dalla percentuale più alta; a parità di percentuale in ordine alfabetico (richiesta di Nino, 11/11/2026)
+    rows.sort(key=lambda row: (-(row["percento"] if row["percento"] is not None else -1),
+                               sort_key_name(row["nome"])))
+    return {"dal": worked[0] if worked else start, "al": worked[-1] if worked else until,
+            "giorni": len(worked), "righe": rows, "ogni_minuti": schedule_plan(settings)["ogni_minuti"],
+            "dalle": opening}
+
+
+def frequency_percent(row: dict[str, Any]) -> str:
+    return f"{row['percento']}%" if row["percento"] is not None else "—"
+
+
+def frequency_html(data: dict[str, Any]) -> str:
+    """Pagina 1080x1350 da fotografare, stesso look di Meteo, News e Farmacia e PENSATA PER IL
+    CELLULARE (nessuna scritta sotto i 24 px, quelle della tabella da 28 in su): logo e titolo, la
+    tabella Nome / Chiusura / % pubblicazione / Orario medio (una riga bianca per locale: altezza e
+    caratteri si adattano da soli al numero di locali) e in fondo il periodo e come leggere i numeri.
+    La percentuale è verde da 80 in su, arancione da 50 a 79, rossa sotto 50."""
+    rows = data["righe"]
+    count = max(1, len(rows))
+    size = 34 if count <= 14 else 30 if count <= 19 else 28
+    cells = []
+    for row in rows:
+        percent = row["percento"]
+        tone = "na" if percent is None else "ok" if percent >= 80 else "mid" if percent >= 50 else "low"
+        cells.append(
+            f'<div class="r"><div class="n">{html.escape(str(row["nome"]))}</div>'
+            f'<div class="k">{html.escape(row["chiusura"])}</div>'
+            f'<div class="p {tone}"><i><b style="width:{percent or 0}%"></b></i><span class="D">{frequency_percent(row)}</span></div>'
+            f'<div class="o D">{row["ora"] or "—"}</div></div>')
+    first, last = data["dal"], data["al"]
+    month = lambda day: list(MONTHS)[day.month - 1]
+    period = (f"Dal {first.day} al {last.day} {month(last)}" if (first.month, first.year) == (last.month, last.year)
+              else f"Dal {first.day} {month(first)} al {last.day} {month(last)}")
+    logo = APP_LOGO.as_uri() if APP_LOGO.exists() else ""
+    return f'''<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+*{{box-sizing:border-box}}html,body{{margin:0}}
+.c{{width:1080px;height:1350px;position:relative;overflow:hidden;color:#1e1a16;padding:46px 44px 30px;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#cfe3f7 0,#f4efe6 520px);font-family:"Atkinson Hyperlegible","Segoe UI",sans-serif}}
+.D{{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;font-weight:800}}
+.hd{{display:flex;align-items:center;gap:24px}}
+.hd img{{width:120px;height:120px;border-radius:26px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.1);object-fit:contain}}
+.kk{{font-size:32px;letter-spacing:.06em;text-transform:uppercase;color:#8a5306;font-weight:700}}
+h1{{font-size:78px;line-height:1;margin:2px 0 0;letter-spacing:-.02em;white-space:nowrap}}
+.r,.th{{display:grid;grid-template-columns:minmax(0,1fr) 160px 226px 178px;align-items:center;column-gap:14px;padding:0 20px}}
+.th{{margin-top:26px;font-size:26px;font-weight:700;color:#6b5f52;height:44px;white-space:nowrap}}
+.th div:nth-child(n+2),.k,.o{{text-align:center}}
+.g{{flex:1;display:grid;grid-template-rows:repeat({count},1fr);gap:6px;min-height:0}}
+.r{{background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(60,40,10,.09);min-height:0}}
+.n{{font-size:{size}px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.k{{font-size:28px;color:#6b5f52;white-space:nowrap}}
+.p{{display:flex;align-items:center;justify-content:flex-end;gap:12px}}
+.p i{{flex:1;height:12px;border-radius:6px;background:#ece5d8;overflow:hidden;display:block}}
+.p i b{{display:block;height:100%;border-radius:6px;background:currentColor}}
+.p span{{font-size:{size + 4}px;width:96px;text-align:right;line-height:1}}
+.p.ok{{color:#15803d}}.p.mid{{color:#c2610c}}.p.low{{color:#c8283f}}.p.na{{color:#9a8f82}}
+.o{{font-size:{size + 4}px;line-height:1}}
+.ft{{margin-top:16px;text-align:center;font-size:25px;line-height:1.3;color:#6b5f52}}
+.ft b{{color:#1e1a16}}
+</style></head><body><div class="c">
+<div class="hd"><img src="{logo}"><div><div class="kk">Menu rosticcerie · ultimi {data["giorni"]} giorni</div>
+<h1 class="D">{html.escape(FREQUENCY_TITLE)}</h1></div></div>
+<div class="th"><div>Nome</div><div>Chiusura</div><div>% pubblicazione</div><div>Orario medio</div></div>
+<div class="g">{"".join(cells)}</div>
+<div class="ft"><b>{html.escape(period)}</b> · % = giorni con il menu sui giorni di apertura<br>
+Orario = quando il menu compare in Menu (controlli ogni {data["ogni_minuti"]} minuti dalle {html.escape(data["dalle"])})</div>
+</div></body></html>'''
+
+
+def render_frequency(data: dict[str, Any], target: Path) -> Path:
+    """Fotografa frequency_html in target (JPEG 1080x1350, come Meteo, News e Farmacia)."""
+    page_file = target.with_suffix(".html")
+    page_file.write_text(frequency_html(data), encoding="utf-8")
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(viewport={"width": 1080, "height": 1350})
+            page.goto(page_file.as_uri(), wait_until="load", timeout=60000)
+            try:
+                page.evaluate("document.fonts.ready.then(() => true)")
+            except Exception:
+                pass
+            page.wait_for_timeout(300)
+            page.screenshot(path=str(target), type="jpeg", quality=90)
+        finally:
+            browser.close()
+    return target
+
+
+def make_frequency(config: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
+    """Crea dati/frequenza/AAAA-MM-GG.jpg (e .html) con i conti fino a ieri. Tiene le immagini
+    degli ultimi 10 giorni. Errore se nel registro non c'è ancora nessun giorno da contare."""
+    data = publication_stats(config)
+    if not data["giorni"]:
+        raise RuntimeError("nel registro delle pubblicazioni non c'è ancora nessun giorno completo")
+    FREQUENCY.mkdir(parents=True, exist_ok=True)
+    stem = FREQUENCY / date.today().isoformat()
+    image = render_frequency(data, stem.with_suffix(".jpg"))
+    limit = (date.today() - timedelta(days=10)).isoformat()
+    for old in FREQUENCY.glob("????-??-??.*"):
+        if old.stem < limit:
+            remove_file(old)
+    print(f"Tabella \"{FREQUENCY_TITLE}\" creata: {image.name} ({len(data['righe'])} locali, {data['giorni']} giorni)")
+    return image, data
+
+
+def frequency_wanted(config: dict[str, Any]) -> tuple[str, bool]:
+    """(id del post "Chi pubblica il menu" sulla Pagina, True se il post fa parte dell'ordine
+    fisso). False se è spento (impostazioni > frequenza), se Facebook non è collegato o se oggi la
+    pubblicazione è già fallita 2 volte (così non si ripubblicano tutti i post a ogni giro)."""
+    plan = frequency_settings(config.get("impostazioni", {}))
+    state = read_json(FREQUENCY_STATE, {})
+    posted = state.get("pubblicato", "")
+    if not plan["attivo"] or not plan["facebook"] or not read_json(FACEBOOK_CONFIG, {}).get("token"):
+        return posted, False
+    if state.get("tentativi_data") == date.today().isoformat() and int(state.get("tentativi", 0)) >= 2:
+        return posted, False
+    return posted, True
+
+
+def frequency_post(config: dict[str, Any]) -> bool:
+    """Crea la tabella e la pubblica sulla Pagina come foto con i soli hashtag, togliendo il post
+    precedente (ne resta uno solo). True solo se Facebook ha ricevuto il nuovo post. Va chiamata
+    dopo le News e prima del post dei menu: Facebook ordina per data di pubblicazione."""
+    state = read_json(FREQUENCY_STATE, {})
+    today = date.today().isoformat()
+    TIMER["fase"] = time.time()
+    try:
+        image, _data = make_frequency(config)
+        newest = publish_summary_facebook(image, hashtag_line("menu del giorno", "rosticcerie", "Putignano"))
+        if not newest:
+            raise RuntimeError("Facebook non ha restituito l'id del post")
+        print(f"Tabella \"{FREQUENCY_TITLE}\" pubblicata su Facebook: https://www.facebook.com/{newest}")
+        old = [post for post in read_json(FREQUENCY_HISTORY, []) if post and post != newest]
+        save_json(FREQUENCY_HISTORY, [newest] + (delete_facebook_posts(old) if old else []))
+        state = {"data": today, "pubblicato": newest, "immagine": image.name,
+                 "pubblicato_alle": datetime.now().isoformat(timespec="seconds")}
+        tick("post Chi pubblica il menu")
+        return True
+    except Exception as exc:
+        tries = int(state.get("tentativi", 0)) + 1 if state.get("tentativi_data") == today else 1
+        state.update({"tentativi": tries, "tentativi_data": today, "errore": str(exc)[:300]})
+        print(f"Tabella \"{FREQUENCY_TITLE}\" NON pubblicata: {exc}")
+        return False
+    finally:
+        FREQUENCY.mkdir(parents=True, exist_ok=True)
+        save_json(FREQUENCY_STATE, state)
+
+
 
 # ================================================================================================
 # SUGGERISCI ROSTICCERIA (dal 02/11/2026): pagina suggerisci.html sul sito dei PDF con un modulo
@@ -8242,6 +8626,11 @@ def main() -> None:
                         help="Pubblica SUBITO la farmacia di turno del prossimo fine settimana.")
     parser.add_argument("--farmacia-prova", action="store_true",
                         help="Crea immagine e testo della farmacia di turno e li apre, senza pubblicare.")
+    parser.add_argument("--frequenza", action="store_true",
+                        help="Pubblica SUBITO la tabella \"Chi pubblica il menu\" (nome, chiusura, %% pubblicazione, "
+                             "orario medio) come secondo post della Pagina e rimette in ordine i primi post.")
+    parser.add_argument("--frequenza-prova", action="store_true",
+                        help="Crea e apre l'immagine della tabella \"Chi pubblica il menu\", senza pubblicare.")
     parser.add_argument("--reel-prova", action="store_true",
                         help="Crea il Reel di oggi (video verticale) e lo apre, senza pubblicare.")
     parser.add_argument("--reel", action="store_true",
@@ -8380,6 +8769,24 @@ def main() -> None:
         return
     if args.meteo:  # Pubblica-meteo.bat: post del meteo subito (anche se oggi è già stato fatto)
         start_manual_log("post del meteo")
+        if not take_lock():
+            print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
+            return
+        try:
+            enforce_top_three(config, force=True)
+        finally:
+            AUTO_LOCK.unlink(missing_ok=True)
+        return
+    if args.frequenza_prova:  # solo per vedere la tabella: non pubblica, non tocca lo stato del post
+        image, data = make_frequency(config)
+        for row in data["righe"]:
+            print(f"{row['nome']:<28} {row['chiusura']:<12} {frequency_percent(row):>5} {row['ora'] or '-':>6}"
+                  f"   ({row['pubblicati']} giorni su {row['aperti']})")
+        if sys.platform == "win32":
+            os.startfile(image)
+        return
+    if args.frequenza:  # Pubblica-frequenza.bat: tabella subito, poi ordine dei primi post
+        start_manual_log("tabella Chi pubblica il menu")
         if not take_lock():
             print("Un controllo è in corso o bloccato: riprova tra qualche minuto.")
             return
@@ -8683,6 +9090,10 @@ def run(args: argparse.Namespace, config: dict[str, Any]) -> None:
     state = {"generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
              "results": results, "firme": prints}
     save_json(STATE, state)
+    try:  # 11/11/2026: registro di chi ha pubblicato oggi e a che ora (tabella "Chi pubblica il menu")
+        record_publications(shops, results)
+    except Exception as exc:
+        print(f"Registro delle pubblicazioni non aggiornato: {exc!r}")
     make_icons()
     generate_html(settings, shops, results)
     print(f"Creato: {OUTPUT}")
