@@ -4294,7 +4294,7 @@ def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str, s
     buttons = [("♥ Salva", shop_page_url(entry["id"]),  # 09/11/2026: pagina del locale (Home/desktop, Condividi)
                 f"Metti {name} sul telefono o sul desktop, o condividilo"),
                ("Inizio", "#pagina=1", "Torna alla prima pagina"),
-               ("Fine", f"#pagina={news_page}", "Vai alle notizie, al meteo e alla farmacia di turno"),
+               ("Fine", f"#pagina={news_page}", "Vai alle ultime pagine: chi pubblica il menu, notizie, meteo e farmacia di turno"),
                ("PDF", f"{pdf_site()[0]}{entry['id']}.pdf", f"Apri il PDF del solo menu di {name}, da stampare")]
     if entry.get("indirizzo"):
         buttons.append(("Mappa", maps_link(name, entry["indirizzo"]), f"Apri la mappa: {entry['indirizzo']}"))
@@ -5018,6 +5018,14 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     except Exception as exc:
         extra = []
         print(f"Pagine notizie/meteo/farmacia non create: {exc}")
+    try:  # 11/11/2026: subito dopo l'ultimo locale la tabella "Chi pubblica il menu" (nomi cliccabili)
+        where = {str(page["entry"]["id"]): number for number, page in enumerate(pages, 1) if page["tipo"] != "riepilogo"}
+        table = frequency_page(config, where)
+        if table is not None:
+            extra = [table] + extra
+    except Exception as exc:
+        print(f"Pagina \"Chi pubblica il menu\" non creata: {exc}")
+    tick("pagine finali (Chi pubblica il menu, notizie, meteo, farmacia)")
     # pagine dei locali con i bottoni verdi (Inizio, Fine, PDF, Mappa, Chiama): SOLO in menu.pdf.
     # Fine = primo foglio dopo i locali (le notizie; se mancano, meteo o farmacia; se non c'è
     # nessuna scheda, l'ultima pagina)
@@ -7829,7 +7837,7 @@ def frequency_html(data: dict[str, Any]) -> str:
         percent = row["percento"]
         tone = "na" if percent is None else "ok" if percent >= 80 else "mid" if percent >= 50 else "low"
         cells.append(
-            f'<div class="r"><div class="n">{html.escape(str(row["nome"]))}</div>'
+            f'<div class="r" data-shop="{html.escape(str(row["id"]))}"><div class="n">{html.escape(str(row["nome"]))}</div>'
             f'<div class="k">{html.escape(row["chiusura"])}</div>'
             f'<div class="p {tone}"><i><b style="width:{percent or 0}%"></b></i><span class="D">{frequency_percent(row)}</span></div>'
             f'<div class="o D">{row["ora"] or "—"}</div></div>')
@@ -7874,8 +7882,10 @@ Orario = quando il menu compare in Menu (controlli ogni {data["ogni_minuti"]} mi
 </div></body></html>'''
 
 
-def render_frequency(data: dict[str, Any], target: Path) -> Path:
-    """Fotografa frequency_html in target (JPEG 1080x1350, come Meteo, News e Farmacia)."""
+def render_frequency(data: dict[str, Any], target: Path, boxes: list | None = None) -> Path:
+    """Fotografa frequency_html in target (JPEG 1080x1350, come Meteo, News e Farmacia).
+    boxes (se passato) riceve (id del locale, (x0, y0, x1, y1)) per ogni riga della tabella:
+    servono a frequency_page per rendere cliccabili i nomi nel foglio di menu.pdf."""
     page_file = target.with_suffix(".html")
     page_file.write_text(frequency_html(data), encoding="utf-8")
     from playwright.sync_api import sync_playwright
@@ -7889,10 +7899,45 @@ def render_frequency(data: dict[str, Any], target: Path) -> Path:
             except Exception:
                 pass
             page.wait_for_timeout(300)
+            if boxes is not None:
+                found = page.evaluate("""() => [...document.querySelectorAll('[data-shop]')].map(e => {
+                  const r = e.getBoundingClientRect(); return [e.dataset.shop, [r.left, r.top, r.right, r.bottom]]; })""")
+                boxes.extend((shop_id, tuple(rect)) for shop_id, rect in found)
             page.screenshot(path=str(target), type="jpeg", quality=90)
         finally:
             browser.close()
     return target
+
+
+def frequency_page(config: dict[str, Any], page_of: dict[str, int]):
+    """Foglio A4 (1240x1754) di menu.pdf con la tabella "Chi pubblica il menu", messo SUBITO DOPO
+    l'ultimo locale e prima di notizie, meteo e farmacia (11/11/2026, richiesta di Nino). Stessa
+    scheda del post (1080x1350) rimpicciolita e centrata come le altre schede finali (info_pages).
+    Ogni riga della tabella (nome compreso) è cliccabile e porta all'inizio della pagina di quel
+    locale nello stesso PDF (page_of = id del locale -> numero di pagina). None se la tabella è
+    spenta (impostazioni > frequenza > attivo) o se nel registro non c'è ancora nessun giorno."""
+    from PIL import Image
+    if not frequency_settings(config.get("impostazioni", {}))["attivo"]:
+        return None
+    data = publication_stats(config)
+    if not data["giorni"]:
+        return None
+    FREQUENCY.mkdir(parents=True, exist_ok=True)
+    boxes: list = []
+    card_file = render_frequency(data, FREQUENCY / "pdf.jpg", boxes)
+    width, height = 1240, 1754
+    scale = INFO_CARD_WIDTH / 1080
+    card_w, card_h = INFO_CARD_WIDTH, round(1350 * scale)
+    dx, dy = (width - card_w) // 2, (height - card_h) // 2
+    page = Image.new("RGB", (width, height), (244, 239, 230))
+    with Image.open(card_file) as opened:
+        page.paste(opened.convert("RGB").resize((card_w, card_h), Image.LANCZOS), (dx, dy))
+    names = {row["id"]: row["nome"] for row in data["righe"]}
+    for shop_id, (x0, y0, x1, y1) in boxes:
+        if shop_id in page_of:
+            add_link(page, (x0 * scale + dx, y0 * scale + dy, x1 * scale + dx, y1 * scale + dy),
+                     f"#pagina={page_of[shop_id]}", f"Vai al menu di {names.get(shop_id, shop_id)}")
+    return page
 
 
 def make_frequency(config: dict[str, Any]) -> tuple[Path, dict[str, Any]]:

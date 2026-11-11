@@ -493,8 +493,12 @@ make_frequency, frequency_post, frequency_wanted)
   arrivato, cioè il locale NON è rimasto "in attesa di pubblicazione") e Orario medio (a che ora, in
   media, il menu compare in Menu). Righe dalla percentuale più alta alla più bassa (a parità di
   percentuale: ordine alfabetico). Percentuale verde da 80 in su, arancione da 50 a 79, rossa sotto 50.
-- Dove esce: SOLO come post della Pagina Facebook (foto verticale 1080x1350, stesso look di News,
-  Meteo e Farmacia, descrizione con i soli hashtag). NON è in menu.pdf, nel video, nel Reel, nella Storia.
+- Dove esce: come post della Pagina Facebook (foto verticale 1080x1350, stesso look di News, Meteo e
+  Farmacia, descrizione con i soli hashtag) e, dal 11/11/2026 (09:50), anche in menu.pdf: un foglio A4
+  SUBITO DOPO l'ultimo locale e prima di notizie, meteo e farmacia (frequency_page, chiamata da
+  publish_complete). Nel PDF ogni riga della tabella (nome compreso) è cliccabile e porta alla pagina
+  di quel locale (link interno "#pagina=N"). Il bottone verde "Fine" dei locali porta a questo foglio
+  (il primo dopo i locali). NON è nel video, nel Reel, nella Storia e nei PDF dei singoli locali.
 - POSIZIONE: SECONDO, subito dopo il post dei menu e prima delle News. Ordine della Pagina:
   Menu, Chi pubblica il menu, News, Meteo, Farmacia, La tua rosticceria. Lo tengono enforce_top_three
   (fine di ogni giro) e news_hourly (ogni ora alle hh:15: Meteo, News, tabella, Menu, perché Facebook
@@ -2773,3 +2777,8 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Nel modo "http1-intero" la riga "Invio a GitHub: x MB di y MB" arriva subito al totale e poi resta
   ferma finché GitHub ha ricevuto tutto. Dopo due rifiuti di fila si torna al modo "normale" per
   quell'invio. Funzioni: push_mode, push_record, push_with_progress(git, branch, mode).
+- 11/11/2026 (09:50): "CHI PUBBLICA IL MENU" ANCHE IN menu.pdf (richiesta di Nino), subito dopo l'ultimo
+  locale, con ogni riga/nome cliccabile verso la pagina di quel locale. Nuova frequency_page (scheda
+  1080x1350 centrata nel foglio A4 come le altre schede finali; immagine in dati\frequenza\pdf.jpg);
+  render_frequency raccoglie le zone delle righe (data-shop); publish_complete la mette prima di
+  info_pages. Se la tabella è spenta o non riesce, menu.pdf esce come prima.
