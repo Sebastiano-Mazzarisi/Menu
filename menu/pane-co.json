@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-10",
+  "data": "2026-11-11",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -46,6 +46,11 @@
           "descrizione": ""
         },
         {
+          "nome": "Orzo con ceci, gamberetti e cetrioli",
+          "prezzo": "€6.50",
+          "descrizione": ""
+        },
+        {
           "nome": "Riso venere e riso basmati con zucchina, gamberetti e mais",
           "prezzo": "€6.50",
           "descrizione": ""
@@ -61,29 +66,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla carbonara",
+          "nome": "Pasta e patate con provola alla napoletana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con funghi misti e zafferano",
+          "nome": "Risotto con asparagi e speck croccante",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Gnocchi con gorgonzola e noci",
-          "prezzo": "€8.00",
-          "descrizione": ""
-        },
-        {
-          "nome": "Cavatelli al grano arso con tonno, pomodorino e olive",
+          "nome": "Orecchiette con vellutata di zucca e salsiccia a punta di coltello",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di ceci",
+          "nome": "Tagliolino con ragù di pesce spada, pomodorini, capperi e origano",
+          "prezzo": "€8.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Zuppa del casale",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Fagioli, lenticchie, ceci, orzo e farro. Con o senza pasta."
         }
       ]
     },
@@ -91,14 +96,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Trancio di pesce spada alla pizzaiola",
+          "nome": "Filetto di merluzzo gratinato con zucchina",
           "prezzo": "€8.50",
-          "descrizione": "Con pomodorini, origano e olive"
+          "descrizione": ""
         },
         {
-          "nome": "Bocconcini di petto di pollo al limone",
+          "nome": "Scaloppe di lonza con funghi misti",
           "prezzo": "€7.50",
-          "descrizione": ""
+          "descrizione": "2 pezzi"
         }
       ]
     }
