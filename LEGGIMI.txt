@@ -517,6 +517,13 @@ make_frequency, frequency_post, frequency_wanted)
   se in quella settimana il menu c'era; l'orario si conta solo il giorno in cui è stato trovato.
   Orario: è quello in cui Menu ha TROVATO il menu (precisione dei controlli, ogni 30 minuti); i menu
   trovati prima delle 08:00 (già pronti al primo controllo) valgono 08:00.
+- CARTELLI "IN ATTESA" (11/11/2026): l'orario medio di pubblicazione è l'informazione più importante
+  del cartello: riquadro arancione pieno al centro con l'etichetta "Orario medio di pubblicazione" e
+  l'ora molto grande in bianco (lo stesso orario della tabella, usual_time); sopra "IN ATTESA" e, su
+  un rigo solo, "del menù di oggi · <giorno data>"; sotto solo "Per ordinare" e l'indirizzo dell'app.
+  Il rigo "Appena pubblicato compare qui" è stato tolto. Vale per il cartello di menu.pdf / video / PDF del
+  locale (wait_sign_image) e per quello della pagina dell'app (waitSign nel PAGE_TEMPLATE, campo
+  "ora_media" di ogni locale nei dati). Se il locale non ha ancora un orario la riga non c'è.
 - Impostazioni facoltative in locali.json > impostazioni > "frequenza":
   {"attivo": true, "facebook": true, "giorni": 30}. "attivo": false = niente post e ordine di prima
   (il registro dati\pubblicazioni.json continua comunque a riempirsi).
@@ -2746,3 +2753,23 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   IL MENU". Copia precedente: backup\Menu_2026-11-11_prima-di-chi-pubblica-il-menu.py
 - 11/11/2026 (09:05): "CHI PUBBLICA IL MENU": a parità di percentuale le righe sono in ORDINE ALFABETICO
   (prima: chi pubblica prima). publication_stats, rows.sort.
+- 11/11/2026 (09:15): ORARIO MEDIO NEI CARTELLI "IN ATTESA" (richiesta di Nino): riga "Orario medio di
+  pubblicazione: HH:MM" sotto la data, in wait_sign_image (PDF, video) e in waitSign (pagina dell'app,
+  nuovo campo "ora_media" in generate_html). Nuova usual_time (conti di publication_stats fatti una
+  volta per esecuzione). Le righe "Appena pubblicato compare qui" e "Per ordinare" scendono di 20 px.
+- 11/11/2026 (09:25): CARTELLO "IN ATTESA" RIDISEGNATO (Nino: troppo vicino ai margini e confuso; per
+  quel cartello l'orario è la cosa più importante). Tolto "Appena pubblicato compare qui"; orario
+  medio in un riquadro arancione pieno (x 170-910, y 860-1110) con l'ora a 150 px in bianco; "IN ATTESA"
+  ridotto a 120 px; data sullo stesso rigo di "del menù di oggi". Uguale in wait_sign_image e in waitSign.
+- 11/11/2026 (09:40): INVIO A GITHUB LENTO (sito dei PDF). Dal registro (36 invii dall'8 all'11 novembre):
+  13 invii a 370-2150 KB/s (5-21 secondi) e 23 bloccati a 28-61 KB/s (1-5 minuti), niente in mezzo e
+  nessun legame con la grandezza (12,9 MB in 6 s, 6,7 MB in 183 s): non è la linea. Rimedio che si
+  regola DA SOLO: publish_pdf_site sceglie un "modo" di invio (PUSH_MODES: "http1" = git con HTTP/1.1
+  invece di HTTP/2; "http1-intero" = in più pacchetto in un colpo solo, http.postBuffer; "http1-ipv4" =
+  in più solo IPv4, git push --ipv4; "normale" = come prima). Se un invio di almeno 1,5 MB va sotto
+  150 KB/s (PUSH_SLOW_KB) la volta dopo si passa al modo successivo, se va forte si resta su quello.
+  Stato e ultime 40 velocità in dati\invio-github.json; nel registro la riga "invio vero e proprio a
+  GitHub" ora dice anche KB/s e modo. Per ripartire dal primo modo: cancellare dati\invio-github.json.
+  Nel modo "http1-intero" la riga "Invio a GitHub: x MB di y MB" arriva subito al totale e poi resta
+  ferma finché GitHub ha ricevuto tutto. Dopo due rifiuti di fila si torna al modo "normale" per
+  quell'invio. Funzioni: push_mode, push_record, push_with_progress(git, branch, mode).

@@ -2838,7 +2838,7 @@ const imgUrl=r=>r.image+'?v='+(r.v||DATA.v);
    stesso formato del cartello CHIUSO (1080x1350, cornice, logo, nome, scritta grande), disegnato
    qui nella pagina con la data di oggi; al posto del menu vecchio */
 const SIGNS={};
-function waitSign(s){const key=s.nome+'|'+TODAY;if(SIGNS[key])return SIGNS[key];
+function waitSign(s){const key=s.nome+'|'+TODAY+'|'+(s.ora_media||'');if(SIGNS[key])return SIGNS[key];
   return SIGNS[key]=new Promise(ok=>{const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
     const F='"Atkinson Hyperlegible",system-ui,"Segoe UI",sans-serif',col='#c77a0a';
     const fit=(t,size,bold,max)=>{do{x.font=(bold?'800 ':'400 ')+size+'px '+F;size-=2}while(x.measureText(t).width>max&&size>20)};
@@ -2850,12 +2850,18 @@ function waitSign(s){const key=s.nome+'|'+TODAY;if(SIGNS[key])return SIGNS[key];
       else{x.fillStyle='#fff';x.fillRect(410,120,260,260);x.fillStyle='#222';fit(s.nome.slice(0,1).toUpperCase(),120,true,200);x.fillText(s.nome.slice(0,1).toUpperCase(),540,250)}
       x.fillStyle='#282828';fit(s.nome,74,true,W-160);x.fillText(s.nome,540,485);
       x.fillStyle='#6e6e6e';fit(s.comune||'',44,false,W-160);x.fillText(s.comune||'',540,570);
-      x.fillStyle=col;fit('IN ATTESA',150,true,W-160);x.fillText('IN ATTESA',540,730);
-      x.fillStyle='#282828';fit('del menù di oggi',64,true,W-160);x.fillText('del menù di oggi',540,850);
-      const d=new Date(TODAY+'T12:00'),g=GG[d.getDay()];x.fillStyle='#5a5a5a';fit(g[0].toUpperCase()+g.slice(1)+' '+d.getDate()+' '+MM[d.getMonth()],46,false,W-160);
-      x.fillText(g[0].toUpperCase()+g.slice(1)+' '+d.getDate()+' '+MM[d.getMonth()],540,935);
-      x.fillStyle='#1e783c';fit('Appena pubblicato compare qui',48,true,W-160);x.fillText('Appena pubblicato compare qui',540,1060);
-      if(s.telefono){x.fillStyle='#5a5a5a';fit('Per ordinare: '+s.telefono,40,false,W-160);x.fillText('Per ordinare: '+s.telefono,540,1135)}
+      const d=new Date(TODAY+'T12:00'),g=GG[d.getDay()],when=g[0].toUpperCase()+g.slice(1)+' '+d.getDate()+' '+MM[d.getMonth()];let py=1060;
+      /* 11/11/2026: l'orario medio di pubblicazione e' l'informazione piu' importante (riquadro arancione
+         pieno, ora grande in bianco), come nel cartello dei PDF (wait_sign_image); senza orario: cartello semplice */
+      if(s.ora_media){x.fillStyle=col;fit('IN ATTESA',120,true,W-260);x.fillText('IN ATTESA',540,690);
+        x.fillStyle='#5a5a5a';fit('del menù di oggi · '+when,42,false,W-260);x.fillText('del menù di oggi · '+when,540,790);
+        x.fillStyle=col;x.beginPath();if(x.roundRect)x.roundRect(170,860,W-340,250,40);else x.rect(170,860,W-340,250);x.fill();
+        x.fillStyle='#fff';fit('Orario medio di pubblicazione',40,true,W-440);x.fillText('Orario medio di pubblicazione',540,915);
+        fit(s.ora_media,150,true,W-500);x.fillText(s.ora_media,540,1025);py=1165}
+      else{x.fillStyle=col;fit('IN ATTESA',150,true,W-160);x.fillText('IN ATTESA',540,730);
+        x.fillStyle='#282828';fit('del menù di oggi',64,true,W-160);x.fillText('del menù di oggi',540,850);
+        x.fillStyle='#5a5a5a';fit(when,46,false,W-160);x.fillText(when,540,935)}
+      if(s.telefono){x.fillStyle='#5a5a5a';fit('Per ordinare: '+s.telefono,40,false,W-160);x.fillText('Per ordinare: '+s.telefono,540,py)}
       x.fillStyle='#828282';fit('tinyurl.com/menurosticcerie',34,false,W-160);x.fillText('tinyurl.com/menurosticcerie',540,H-110);
       ok(c.toDataURL('image/jpeg',.9))};
     if(!s.logo){draw(null);return}const l=new Image();l.onload=()=>draw(l);l.onerror=()=>draw(null);l.src=s.logo})}
@@ -3199,6 +3205,8 @@ def generate_html(settings: dict[str, Any], shops: list[dict[str, Any]], results
                      # indirizzo da mostrare nella scheda: "Via ... numero - Comune"
                      "indirizzo_breve": short_address(shop),
                      "comune": shop_town(shop),
+                     # orario medio di pubblicazione per il cartello IN ATTESA ("" se non c'è ancora)
+                     "ora_media": usual_time(shop),
                      # miniatura del logo (icone/logo-<id>.jpg?v=...): vuota se il locale non ha logo
                      "logo": logos.get(shop["id"], ""),
                      # regole per il pulsante "Testo" (vedi LEGGIMI.txt > Regole del testo)
@@ -4191,15 +4199,29 @@ def wait_sign_image(shop: dict[str, Any]):
     if shop.get("indirizzo"):  # nome + indirizzo = una sola zona da toccare per la mappa
         add_link(image, union_box(draw.textbbox((width / 2, 450), name, font=font, anchor="mt"), box),
                  maps_link(shop.get("nome", ""), shop["indirizzo"]))
-    draw.text((width / 2, 730), "IN ATTESA", font=video_font(150, bold=True), fill=color, anchor="mm")
-    draw.text((width / 2, 850), "del menù di oggi", font=video_font(64, bold=True), fill=(40, 40, 40), anchor="mm")
-    draw.text((width / 2, 935), f"{SUMMARY_WEEKDAYS[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}",
-              font=video_font(46), fill=(90, 90, 90), anchor="mm")
-    draw.text((width / 2, 1060), "Appena pubblicato compare qui", font=video_font(48, bold=True), fill=(30, 120, 60), anchor="mm")
+    when = f"{SUMMARY_WEEKDAYS[today.weekday()]} {today.day} {list(MONTHS)[today.month - 1]}"
+    # 11/11/2026 (richieste di Nino): l'ORARIO MEDIO DI PUBBLICAZIONE (lo stesso della tabella "Chi
+    # pubblica il menu") è l'informazione più importante del cartello: riquadro arancione pieno al
+    # centro, etichetta piccola e ora molto grande in bianco, lontano dai margini. Tolto il rigo
+    # "Appena pubblicato compare qui". Se l'orario non c'è ancora (locale nuovo): cartello senza riquadro.
+    usual = usual_time(shop)
+    if usual:
+        draw.text((width / 2, 690), "IN ATTESA", font=video_font(120, bold=True), fill=color, anchor="mm")
+        draw.text((width / 2, 790), f"del menù di oggi · {when}", font=video_font(42), fill=(90, 90, 90), anchor="mm")
+        draw.rounded_rectangle((170, 860, width - 170, 1110), radius=40, fill=color)
+        label_font, label = video_fit_text(draw, "Orario medio di pubblicazione", 40, True, width - 340 - 100)
+        draw.text((width / 2, 915), label, font=label_font, fill=(255, 255, 255), anchor="mm")
+        draw.text((width / 2, 1020), usual, font=video_font(150, bold=True), fill=(255, 255, 255), anchor="mm")
+        phone_y = 1165
+    else:
+        draw.text((width / 2, 730), "IN ATTESA", font=video_font(150, bold=True), fill=color, anchor="mm")
+        draw.text((width / 2, 850), "del menù di oggi", font=video_font(64, bold=True), fill=(40, 40, 40), anchor="mm")
+        draw.text((width / 2, 935), when, font=video_font(46), fill=(90, 90, 90), anchor="mm")
+        phone_y = 1060
     if shop.get("telefono"):
         text, small = f"Per ordinare: {shop['telefono']}", video_font(40)
-        draw.text((width / 2, 1135), text, font=small, fill=(90, 90, 90), anchor="mm")
-        add_link(image, draw.textbbox((width / 2, 1135), text, font=small, anchor="mm"), tel_link(shop["telefono"]))
+        draw.text((width / 2, phone_y), text, font=small, fill=(90, 90, 90), anchor="mm")
+        add_link(image, draw.textbbox((width / 2, phone_y), text, font=small, anchor="mm"), tel_link(shop["telefono"]))
     app_link(image, draw, (width / 2, height - 110), "tinyurl.com/menurosticcerie", video_font(34), "mm")
     return image
 
@@ -4380,7 +4402,49 @@ def bytes_to_send(branch: str) -> int:
 GIT_BINARY_ATTRIBUTES = "*.pdf -delta\n*.mp4 -delta\n*.mp3 -delta\n*.jpg -delta\n*.jpeg -delta\n*.png -delta\n"
 
 
-def push_with_progress(git, branch: str) -> subprocess.CompletedProcess:
+# INVIO LENTO A GITHUB (11/11/2026). Dal registro: gli invii del sito dei PDF vanno O a piena velocità
+# (600-2000 KB/s, 5-6 secondi) O bloccati intorno a 40 KB/s (1-5 minuti), senza vie di mezzo e senza
+# legame con la grandezza: non è la linea, è il modo in cui git parla con GitHub in quel collegamento.
+# Rimedi noti, provati DA SOLI: ogni invio usa un "modo"; se va piano (sotto PUSH_SLOW_KB al secondo)
+# la volta dopo si passa al modo successivo, se va forte si resta su quello. Così il programma si
+# ferma da solo sul modo che funziona su questo PC. Stato e ultime velocità: dati\invio-github.json.
+PUSH_STATE = DATA / "invio-github.json"   # {"modo": "...", "prove": [{"ora", "modo", "mb", "secondi", "kb_s"}]}
+PUSH_SLOW_KB = 150                        # sotto questa velocità (KB/s) l'invio è "lento"
+PUSH_MODES: dict[str, dict[str, list[str]]] = {
+    # HTTP/1.1 al posto di HTTP/2 (con HTTP/2 gli invii grandi di git a volte restano strozzati)
+    "http1": {"config": ["-c", "http.version=HTTP/1.1"], "push": []},
+    # in più tutto il pacchetto in un colpo solo (non a pezzetti): la riga "Invio a GitHub" arriva
+    # subito al totale e poi resta ferma finché GitHub non ha ricevuto tutto
+    "http1-intero": {"config": ["-c", "http.version=HTTP/1.1", "-c", "http.postBuffer=209715200"], "push": []},
+    # in più solo indirizzi IPv4 (un percorso IPv6 lento darebbe proprio questo effetto a volte sì a volte no)
+    "http1-ipv4": {"config": ["-c", "http.version=HTTP/1.1"], "push": ["--ipv4"]},
+    "normale": {"config": [], "push": []},  # come prima del 11/11/2026
+}
+
+
+def push_mode() -> str:
+    mode = read_json(PUSH_STATE, {}).get("modo", "")
+    return mode if mode in PUSH_MODES else next(iter(PUSH_MODES))
+
+
+def push_record(mode: str, size: int, seconds: float) -> str:
+    """Scrive la velocità dell'invio e, se è stato lento, sceglie il modo successivo per la prossima
+    volta. Gli invii piccoli (sotto 1,5 MB) non dicono niente sulla velocità: non contano.
+    Restituisce il testo da aggiungere alla riga del registro."""
+    if size < 1_500_000 or seconds <= 0:
+        return f"modo {mode}"
+    speed = size / 1000 / seconds
+    state = read_json(PUSH_STATE, {})
+    tests = (state.get("prove", []) + [{"ora": datetime.now().isoformat(timespec="seconds"), "modo": mode,
+                                         "mb": round(size / 1_000_000, 1), "secondi": round(seconds),
+                                         "kb_s": round(speed)}])[-40:]
+    names = list(PUSH_MODES)
+    following = names[(names.index(mode) + 1) % len(names)] if speed < PUSH_SLOW_KB else mode
+    save_json(PUSH_STATE, {"modo": following, "prove": tests})
+    return f"{speed:.0f} KB/s, modo {mode}" + (f": lento, la prossima volta provo il modo {following}" if following != mode else "")
+
+
+def push_with_progress(git, branch: str, mode: str = "normale") -> subprocess.CompletedProcess:
     """git push --force con i MB inviati su quelli da inviare che avanzano sulla stessa riga
     ("Invio a GitHub: 1,2 MB di circa 3,1 MB"): l'invio di PDF e video può durare qualche minuto.
     Il totale è una stima (bytes_to_send): git spesso manda meno, perché comprime le differenze."""
@@ -4391,8 +4455,9 @@ def push_with_progress(git, branch: str) -> subprocess.CompletedProcess:
     if total:
         progress(f"Da inviare a GitHub: circa {megabytes(total)}")
     units = {"B": 1, "KiB": 1024, "MiB": 1048576, "GiB": 1073741824, "KB": 1000, "MB": 1000000, "GB": 1000000000}
+    how = PUSH_MODES.get(mode, PUSH_MODES["normale"])
     command = ["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost", "-c", "core.compression=1",
-               "-c", "pack.compression=1", "push", "--progress", "--force", "origin", branch]
+               "-c", "pack.compression=1", *how["config"], "push", "--progress", "--force", *how["push"], "origin", branch]
     process = subprocess.Popen(command, cwd=PDF_SITE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     error, piece, shown = [], b"", ""
@@ -4526,15 +4591,26 @@ def publish_pdf_site() -> bool:
                 pass
     # se nello stesso momento un altro invio aggiorna il sito (es. Rifai-PDF.bat mentre gira il
     # controllo automatico) GitHub rifiuta con "cannot lock ref": si aspetta un attimo e si riprova
+    mode = push_mode()  # 11/11/2026: modo di invio scelto da solo in base alle velocità (vedi PUSH_MODES)
+    try:
+        size = bytes_to_send(branch)
+    except Exception:
+        size = 0
+    waited = 0.0
     started = time.time()
     for attempt in range(4):
-        pushed = push_with_progress(git, branch)
+        pushed = push_with_progress(git, branch, mode)
         if pushed.returncode == 0 or attempt == 3:
             break
+        if attempt == 1 and mode != "normale":  # due rifiuti di fila: non sia il modo di invio a dare errore
+            mode = "normale"
         print(f"Invio dei PDF rifiutato da GitHub, riprovo tra {10 * (attempt + 1)} secondi...")
         time.sleep(10 * (attempt + 1))
+        waited += 10 * (attempt + 1)
     # nel registro: quanto è durato l'invio vero e proprio (rete + GitHub), il resto è il lavoro sul PC
-    print(f"  invio vero e proprio a GitHub (rete + risposta di GitHub): {time.time() - started:.0f} s")
+    seconds = time.time() - started - waited
+    note = push_record(mode, size, seconds) if pushed.returncode == 0 and attempt == 0 else f"modo {mode}"
+    print(f"  invio vero e proprio a GitHub (rete + risposta di GitHub): {time.time() - started:.0f} s ({note})")
     if pushed.returncode != 0:
         print(f"PDF NON pubblicati su {site}: {(pushed.stderr or pushed.stdout).strip()[:200]}")
         return False
@@ -7714,6 +7790,25 @@ def publication_stats(config: dict[str, Any], until: date | None = None) -> dict
     return {"dal": worked[0] if worked else start, "al": worked[-1] if worked else until,
             "giorni": len(worked), "righe": rows, "ogni_minuti": schedule_plan(settings)["ogni_minuti"],
             "dalle": opening}
+
+
+USUAL_TIMES: dict[str, Any] = {}  # {"giorno": "AAAA-MM-GG", "ore": {"<id>": "HH:MM"}}: conti fatti una volta per esecuzione
+
+
+def usual_time(shop: dict[str, Any]) -> str:
+    """Orario medio di pubblicazione del locale ("HH:MM", lo stesso della tabella "Chi pubblica il
+    menu"), "" se non c'è ancora o se i conti non riescono. Serve ai cartelli IN ATTESA
+    (wait_sign_image per PDF/video e waitSign nella pagina, campo "ora_media" dei dati)."""
+    today = date.today().isoformat()
+    if USUAL_TIMES.get("giorno") != today:
+        try:
+            rows = publication_stats(read_json(CONFIG, {"impostazioni": {}, "locali": []}))["righe"]
+            hours = {row["id"]: row["ora"] for row in rows}
+        except Exception as exc:
+            print(f"Orari medi di pubblicazione non calcolati: {exc!r}")
+            hours = {}
+        USUAL_TIMES.update({"giorno": today, "ore": hours})
+    return USUAL_TIMES["ore"].get(shop.get("id", ""), "")
 
 
 def frequency_percent(row: dict[str, Any]) -> str:
