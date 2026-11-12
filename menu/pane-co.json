@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-11",
+  "data": "2026-11-12",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -41,6 +41,11 @@
           "descrizione": "Melanzane, zucchina e peperoni."
         },
         {
+          "nome": "Funghi pleurotus con bresaola, rucola e grana",
+          "prezzo": "€6.50",
+          "descrizione": ""
+        },
+        {
           "nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto",
           "prezzo": "€5.50",
           "descrizione": ""
@@ -66,29 +71,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pasta e patate con provola alla napoletana",
+          "nome": "Pennette all'arrabbiata",
           "prezzo": "€6.50",
-          "descrizione": ""
+          "descrizione": "Salsa di pomodoro, olio e peperoncino"
         },
         {
-          "nome": "Risotto con asparagi e speck croccante",
+          "nome": "Risotto con vellutata di zucca e stracciatella",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con vellutata di zucca e salsiccia a punta di coltello",
+          "nome": "Rigatoni con cavolfiore e pancetta",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Tagliolino con ragù di pesce spada, pomodorini, capperi e origano",
+          "nome": "Cavatelli al grano arso con cernia, rucola e ciliegino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa del casale",
+          "nome": "Minestra di piselli",
           "prezzo": "€6.00",
-          "descrizione": "Fagioli, lenticchie, ceci, orzo e farro. Con o senza pasta."
+          "descrizione": "Con o senza pasta"
         }
       ]
     },
@@ -96,14 +101,19 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di merluzzo gratinato con zucchina",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
           "nome": "Scaloppe di lonza con funghi misti",
           "prezzo": "€7.50",
           "descrizione": "2 pezzi"
+        },
+        {
+          "nome": "Spezzatino di capocollo con carciofi",
+          "prezzo": "€7.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Trancio di baccalà con olive e pomodori",
+          "prezzo": "€8.50",
+          "descrizione": ""
         }
       ]
     }
