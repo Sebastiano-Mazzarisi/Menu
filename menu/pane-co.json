@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-12",
+  "data": "2026-11-13",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -26,19 +26,14 @@
           "descrizione": "Al pezzo"
         },
         {
-          "nome": "Insalata di riso",
-          "prezzo": "€6.50",
-          "descrizione": "Con acetelli, olive, capperi, cetrioli, tonno, prosciutto cotto, olio e limone"
+          "nome": "Orzo con caponata di verdure",
+          "prezzo": "€5.50",
+          "descrizione": "Melanzane, cetrioli, zucchina, peperoni"
         },
         {
           "nome": "Cous cous con melanzane, zucchine, carote, sedano, peperoni e pollo",
           "prezzo": "€5.50",
           "descrizione": ""
-        },
-        {
-          "nome": "Farro con caponata di verdure",
-          "prezzo": "€5.50",
-          "descrizione": "Melanzane, zucchina e peperoni."
         },
         {
           "nome": "Funghi pleurotus con bresaola, rucola e grana",
@@ -48,16 +43,6 @@
         {
           "nome": "Insalata di pollo con prosciutto cotto, insalata e insalatina in aceto",
           "prezzo": "€5.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Orzo con ceci, gamberetti e cetrioli",
-          "prezzo": "€6.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Riso venere e riso basmati con zucchina, gamberetti e mais",
-          "prezzo": "€6.50",
           "descrizione": ""
         },
         {
@@ -71,27 +56,22 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pennette all'arrabbiata",
+          "nome": "Strozzapreti alla boscaiola",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
         },
         {
-          "nome": "Risotto con vellutata di zucca e stracciatella",
-          "prezzo": "€7.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Rigatoni con cavolfiore e pancetta",
+          "nome": "Orecchiette con cavolfiore e salsiccia a punta di coltello",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con cernia, rucola e ciliegino",
+          "nome": "Cavatellucci con ragù di baccalà, pomodoro, capperi, olive e origano",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Minestra di piselli",
+          "nome": "Zuppa di lenticchie",
           "prezzo": "€6.00",
           "descrizione": "Con o senza pasta"
         }
@@ -101,18 +81,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Scaloppe di lonza con funghi misti",
-          "prezzo": "€7.50",
-          "descrizione": "2 pezzi"
-        },
-        {
-          "nome": "Spezzatino di capocollo con carciofi",
-          "prezzo": "€7.50",
+          "nome": "Filetto di pesce persico con vongole e zucchina",
+          "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Trancio di baccalà con olive e pomodori",
-          "prezzo": "€8.50",
+          "nome": "Bocconcini di capocollo con carciofi",
+          "prezzo": "€7.50",
           "descrizione": ""
         }
       ]
