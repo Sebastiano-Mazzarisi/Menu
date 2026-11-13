@@ -1,0 +1,101 @@
+{
+  "data": "2026-11-13",
+  "testo": "MENÙ DI VENERDÌ\nPRIMI PIATTI\n●FAVE BIANCHE 4,0\n●FAVE E CICORIA 5,0\n●FAVE E CORNALETTI 5,0\n●LASAGNA AL FORNO 5,0\n●LASAGNETTA SUGO DI PORCINI, PROSCIUTTO COTTO E MOZZARELLA 5,5\n●PENNETTE CON FUNGHI MISTI CON PORCINI, GUANCIALE E PISELLI 5,5\n●SPAGHETTI AGLI SCAMPI 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●FUSI DI POLLO ARROSTO ALLA PAPRIKA\n●INVOLTINI DI SOVRAVOSCIA DI POLLO CON PESTO DI MELANZANE\n●ROTOLO DI CARNE BIANCA CON SALSA ALLA GENOVESE\n●FETTINA DI VITELLO ALLA PIZZAIOLA\n●PARMIGIANA\n●BACCALÀ IN PASTELLA\n●RUSTICO CON PROSCIUTTO COTTO E SCAMORZA AFFUMICATA",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI VENERDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE BIANCHE 4,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE E CICORIA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAVE E CORNALETTI 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNETTA SUGO DI PORCINI, PROSCIUTTO COTTO E MOZZARELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PENNETTE CON FUNGHI MISTI CON PORCINI, GUANCIALE E PISELLI 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPAGHETTI AGLI SCAMPI 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FUSI DI POLLO ARROSTO ALLA PAPRIKA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INVOLTINI DI SOVRAVOSCIA DI POLLO CON PESTO DI MELANZANE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ROTOLO DI CARNE BIANCA CON SALSA ALLA GENOVESE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FETTINA DI VITELLO ALLA PIZZAIOLA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BACCALÀ IN PASTELLA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RUSTICO CON PROSCIUTTO COTTO E SCAMORZA AFFUMICATA",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
