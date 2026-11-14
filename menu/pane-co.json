@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-13",
+  "data": "2026-11-14",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -56,24 +56,24 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Strozzapreti alla boscaiola",
+          "nome": "Penne all'amatriciana",
           "prezzo": "€6.50",
-          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
+          "descrizione": ""
         },
         {
-          "nome": "Orecchiette con cavolfiore e salsiccia a punta di coltello",
+          "nome": "Gnocchi di patate alla sorrentina",
+          "prezzo": "€8.00",
+          "descrizione": "Con salsa di pomodoro, mozzarella e formaggio."
+        },
+        {
+          "nome": "Risotto con asparagi e gamberetti",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatellucci con ragù di baccalà, pomodoro, capperi, olive e origano",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Zuppa di lenticchie",
+          "nome": "Minestra di patate, piselli e orzo",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": ""
         }
       ]
     },
@@ -81,12 +81,12 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di pesce persico con vongole e zucchina",
+          "nome": "Filetto di cernia in guazzetto di vongole e zucchina",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Bocconcini di capocollo con carciofi",
+          "nome": "Straccetti di lonza alla boscaiola",
           "prezzo": "€7.50",
           "descrizione": ""
         }
