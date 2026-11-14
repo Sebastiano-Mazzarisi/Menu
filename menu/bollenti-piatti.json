@@ -1,0 +1,96 @@
+{
+  "data": "2026-11-14",
+  "testo": "MENÙ DI SABATO\nPRIMI PIATTI\n●TIMBALLO DI CICORIA, PATATE SPECK E MOZZARELLA 5,0\n●LASAGNA AL FORNO 5,0\n●ORECCHIETTE CON CARDONCELLI E SPECK CROCCANTE 5,5\n●RAVIOLI ALLA ZUCCA IN SALSA AURORA 5,5\n●SPAGHETTI AGLI SCAMPI 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●FUSI DI POLLO ALLA PAPRIKA\n●ROLLÉ DI SOVRAVOSCIA DI POLLO IN SALSA DI VERDURE\n●SCALOPPINE DI VITELLO AL VINO BIANCO\n●MAXI HAMBURGER DI VITELLO CON PISELLI\n●SOVRAVOSCIE DI POLLO IN SALSA DI MELANZANE\n●FUNGHI PLEOS GRATINATI AL FORNO\n●PARMIGIANA\n●BOCCONCINI DI BACCALÀ IN PASTELLA",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI SABATO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TIMBALLO DI CICORIA, PATATE SPECK E MOZZARELLA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ORECCHIETTE CON CARDONCELLI E SPECK CROCCANTE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RAVIOLI ALLA ZUCCA IN SALSA AURORA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPAGHETTI AGLI SCAMPI 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FUSI DI POLLO ALLA PAPRIKA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ROLLÉ DI SOVRAVOSCIA DI POLLO IN SALSA DI VERDURE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SCALOPPINE DI VITELLO AL VINO BIANCO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MAXI HAMBURGER DI VITELLO CON PISELLI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SOVRAVOSCIE DI POLLO IN SALSA DI MELANZANE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FUNGHI PLEOS GRATINATI AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BOCCONCINI DI BACCALÀ IN PASTELLA",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
