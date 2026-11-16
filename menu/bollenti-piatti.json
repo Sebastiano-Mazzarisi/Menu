@@ -1,0 +1,91 @@
+{
+  "data": "2026-11-16",
+  "testo": "MENÙ DI LUNEDÌ\nPRIMI PIATTI\n●CICORIA ALL'OLIO 5,0\n●CAVATELLI E CECI CREMOSI 5,0\n●PENNETTE CON SALSA DI DATTERINO GIALLO, CARDONCELLI E SPECK 5,5\n●GNOCCHI ALLA SORRENTINA AL FORNO 5,0\n●RAVIOLI ALLA ZUCCA IN SALSA DI VERDURE 5,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●BRACIOLE DI VITELLO AL SUGO\n●POLPETTE DI POLLO CON SPINACI E CAROTE IN SALSA DI VERDURE\n●BRACIOLONE DI POLLO IN CREMA DI VERDURE\n●COSCETTE DI POLLO CON IMPANATURA ALL'ASSASINA CON PATATE\n●COTOLETTE DI SOVRAVOSCIE DI POLLO GRATINATE AL FORNO\n●TRIANGOLO DI MERLUZZO CON IMPANATURA DI PATATE AL FORNO\n●ZUCCHINE RIPIENE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI LUNEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CICORIA ALL'OLIO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CAVATELLI E CECI CREMOSI 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PENNETTE CON SALSA DI DATTERINO GIALLO, CARDONCELLI E SPECK 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●GNOCCHI ALLA SORRENTINA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RAVIOLI ALLA ZUCCA IN SALSA DI VERDURE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BRACIOLE DI VITELLO AL SUGO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI POLLO CON SPINACI E CAROTE IN SALSA DI VERDURE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BRACIOLONE DI POLLO IN CREMA DI VERDURE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●COSCETTE DI POLLO CON IMPANATURA ALL'ASSASINA CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●COTOLETTE DI SOVRAVOSCIE DI POLLO GRATINATE AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRIANGOLO DI MERLUZZO CON IMPANATURA DI PATATE AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ZUCCHINE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
