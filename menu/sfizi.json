@@ -1,0 +1,77 @@
+{
+  "data": "2026-11-17",
+  "testo": "Troccoli all'amatriciana\nGnocchi con salsiccia e crema di bietole\nCostata alla brace\nSalsiccia di maiale alla pizzaiola\nPollo e patate al forno\nPatate al forno\nPizza rustica con funghi e ricotta\nParmigiana di patate\nCardoncelli gratinati\nPeperoni gratinati\nInvoltini di verza\nOlive fritte\nCicorie e fave",
+  "da_foto": "2026-11-17_online.jpg",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Troccoli all'amatriciana",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Gnocchi con salsiccia e crema di bietole",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Costata alla brace",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Salsiccia di maiale alla pizzaiola",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pollo e patate al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Patate al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pizza rustica con funghi e ricotta",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Parmigiana di patate",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cardoncelli gratinati",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Peperoni gratinati",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Involtini di verza",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Olive fritte",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cicorie e fave",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
