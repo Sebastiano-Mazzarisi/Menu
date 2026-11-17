@@ -1,0 +1,111 @@
+{
+  "data": "2026-11-17",
+  "testo": "MENÙ DI MARTEDÌ\nPRIMI PIATTI\n●MINESTRONE DI VERDURE FRESCHE 5,0\n●PASTA E MINESTRONE 5,0\n●TIMBALLO DI CICORIA CON POLETTINE, MOZZARELLA E SPECK 5,5\n●GNOCCHI AL FORNO CON SUGO, BASILICO E MOZZARELLA 5,0\n●SPAGHETTI ALLA CARBONARA 5,0\n●CASERECCIA CON TONNO, PESTO DI PEPERONI E CAPPERI 5,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●COTOLETTE DI SOVRAVOSCIE DI POLLO GRATINATE AL FORNO\n●POLPETTE DI POLLO ALLE VERDURE IN SALSA DI PORCINI\n●ROTELLA DI SALSICCIA CON RUCOLA E GRANA AL FORNO\n●SPIEDINO DI INVOLTINI DI ZUCCHINE AL SALMONE CREMOSO GRATINATI AL FORNO\n●MELANZANE RIPIENE\n●ZUCCHINE RIPIENE\n●RUSTICO CON SPECK E GALBANINO\n●OLIVE FRITTE\n●BRACIOLE AL SUGO\n●TRIANGOLO DI MERLUZZO IMPANATO CON CONTORNO DI PATATE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI MARTEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MINESTRONE DI VERDURE FRESCHE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PASTA E MINESTRONE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TIMBALLO DI CICORIA CON POLETTINE, MOZZARELLA E SPECK 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●GNOCCHI AL FORNO CON SUGO, BASILICO E MOZZARELLA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPAGHETTI ALLA CARBONARA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CASERECCIA CON TONNO, PESTO DI PEPERONI E CAPPERI 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●COTOLETTE DI SOVRAVOSCIE DI POLLO GRATINATE AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI POLLO ALLE VERDURE IN SALSA DI PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ROTELLA DI SALSICCIA CON RUCOLA E GRANA AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPIEDINO DI INVOLTINI DI ZUCCHINE AL SALMONE CREMOSO GRATINATI AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MELANZANE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ZUCCHINE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RUSTICO CON SPECK E GALBANINO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●OLIVE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BRACIOLE AL SUGO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRIANGOLO DI MERLUZZO IMPANATO CON CONTORNO DI PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
