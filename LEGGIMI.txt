@@ -1158,7 +1158,7 @@ con la data di ieri e un eventuale "menu di oggi" sbagliato va in
 dati/scartati. Lo stesso controllo vale per le storie Facebook. Usano lo stesso profilo Chrome
 collegato a Instagram (%LOCALAPPDATA%\AuferInstagram\chrome); per un nuovo
 locale con le storie basta copiare la fonte e cambiare "url" e "utente".
-L'Eclettico Bistrot è chiuso il martedì ("riposo": ["martedì"]).
+L'Eclettico Bistrot, Santoro Gastronomia e A Braciami sono chiusi il martedì ("riposo": ["martedì"]).
 Post solo testo: viene preso come menu solo se lo è davvero (es. "menù del
 giorno", "MENÙ DI GIOVEDÌ", almeno due sezioni come primi/secondi, o una data).
 La sola parola "menu" non basta: "Polpette fritte... Menu su Whatsapp" non è
@@ -2782,3 +2782,7 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   1080x1350 centrata nel foglio A4 come le altre schede finali; immagine in dati\frequenza\pdf.jpg);
   render_frequency raccoglie le zone delle righe (data-shop); publish_complete la mette prima di
   info_pages. Se la tabella è spenta o non riesce, menu.pdf esce come prima.
+- 17/11/2026 (18:10): GIORNO DI CHIUSURA. Santoro Gastronomia e A Braciami sono chiusi il martedì
+  (indicazione di Nino): in locali.json aggiunto "riposo": ["martedì"] a entrambi. Il martedì la scheda
+  mostra il cartello CHIUSO, il menu non viene cercato e il giorno non conta nella % di pubblicazione.
+  Copia precedente: backup\locali_2026-11-17_prima-del-riposo-martedi.json

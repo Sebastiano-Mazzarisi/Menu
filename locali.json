@@ -101,6 +101,7 @@
     {
       "id": "santoro",
       "nome": "Santoro Gastronomia",
+      "riposo": ["martedì"],
       "nomi_precedenti": ["Santoro (Castellana)"],
       "telefono": "080-859.83.13",
       "indirizzo": "Via Mazzini 28, 70013 Castellana Grotte (BA)",
@@ -158,6 +159,7 @@
     {
       "id": "abraciami",
       "nome": "A Braciami",
+      "riposo": ["martedì"],
       "telefono": "080-645.86.74",
       "indirizzo": "Via Aldo Moro 46/48 - Noci",
       "comune": "Noci",
