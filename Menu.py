@@ -4431,6 +4431,9 @@ PUSH_GRACE = 12                           # secondi dall'inizio della scrittura 
 PUSH_WINDOW = 6                           # secondi su cui si misura la velocità
 PUSH_TRIES = 4                            # server provati al massimo (l'ultimo va fino in fondo)
 GITHUB_HOST = "github.com"
+# 18/11/2026 (07:55): server FISSO per tutti gli invii (Europa; quello andato meglio nelle prove).
+# "" = quello dato dal DNS. Sorveglianza e cambio di server (sopra) restano nel codice ma non si usano.
+PUSH_SERVER = "140.82.121.4"
 # indirizzi noti di github.com (Europa per primi); si aggiungono quelli dati dal DNS al momento
 GITHUB_IPS = ("140.82.121.3", "140.82.121.4", "140.82.112.3", "140.82.112.4", "140.82.113.3",
               "140.82.113.4", "140.82.114.3", "140.82.114.4")
@@ -4688,39 +4691,37 @@ def publish_pdf_site() -> bool:
                 pass
     # se nello stesso momento un altro invio aggiorna il sito (es. Rifai-PDF.bat mentre gira il
     # controllo automatico) GitHub rifiuta con "cannot lock ref": si aspetta un attimo e si riprova
-    # 18/11/2026: invio sorvegliato; se va piano si riprova SUBITO con un altro server di GitHub (vedi
-    # PUSH_GRACE e github_servers). I rifiuti veri (es. "cannot lock ref") si riprovano come prima.
+    # 18/11/2026 (07:55, Nino): i server di GitHub vanno tutti uguali e le prove (interrompere l'invio
+    # lento e passare a un altro server) facevano solo perdere tempo: si usa SEMPRE il server fisso
+    # PUSH_SERVER, senza sorveglianza. Solo se con quello l'invio fallisce si riprova col server del DNS.
+    # I rifiuti veri (es. "cannot lock ref") si riprovano come prima.
     try:
         size = bytes_to_send(branch)
     except Exception:
         size = 0
-    servers = github_servers() or [""]
+    servers = [PUSH_SERVER, ""] if PUSH_SERVER else [""]
     started = time.time()
     tries = rejected = 0
     server = ""
     notes = []
     while True:
-        server = servers[tries % len(servers)]
-        last = tries >= PUSH_TRIES - 1 or rejected >= 3
+        server = servers[min(tries - rejected, len(servers) - 1)] if tries else servers[0]
         begun = time.time()
-        pushed = push_with_progress(git, branch, server, watch=not last)
+        pushed = push_with_progress(git, branch, server, watch=False)
         tries += 1
-        if pushed.returncode == -9 and (pushed.stdout or "").startswith("LENTO"):
-            _, rate, sent, seconds = pushed.stdout.split()
-            push_record(server, int(float(sent)), float(seconds), "lento")
-            notes.append(f"{server}: lento ({float(rate):.0f} KB/s)")
-            print(f"Invio lento ({float(rate):.0f} KB/s) con il server {server or 'del DNS'}: "
-                  f"lo interrompo e riprovo subito con un altro server di GitHub...")
-            continue
         if pushed.returncode == 0:
             if size >= 1_500_000:
                 notes.append(push_record(server, size, time.time() - begun, "ok"))
             break
-        if last:
+        text = (pushed.stderr or pushed.stdout or "").lower()
+        if tries >= 5:
             break
-        rejected += 1
-        print(f"Invio dei PDF rifiutato da GitHub, riprovo tra {10 * rejected} secondi...")
-        time.sleep(10 * rejected)
+        if "lock" in text or "rejected" in text or "rifiutat" in text:
+            rejected += 1
+            print(f"Invio dei PDF rifiutato da GitHub, riprovo tra {10 * rejected} secondi...")
+            time.sleep(10 * rejected)
+        else:
+            print(f"Invio non riuscito con il server {server or 'del DNS'}: riprovo con il server del DNS...")
     # nel registro: quanto è durato l'invio vero e proprio (rete + GitHub), il resto è il lavoro sul PC
     print(f"  invio vero e proprio a GitHub (rete + risposta di GitHub): {time.time() - started:.0f} s, "
           f"{tries} tentativ{'o' if tries == 1 else 'i'}" + (f" ({'; '.join(notes)})" if notes else ""))
@@ -4757,16 +4758,27 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     # riga 1: nome a sinistra, telefono a destra con lo stesso carattere (cliccabile nel PDF)
     phone = (entry.get("telefono") or "").strip()
     phone_room = draw.textlength(phone, font=video_font(round(48 * k), True)) + round(40 * k) if phone else 0
+    if not phone:  # senza telefono sulla riga del nome c'è il giorno della settimana (vedi sotto)
+        phone_room = max((draw.textlength(day, font=video_font(round(48 * k), True)) for day in SUMMARY_WEEKDAYS
+                          if when.lower().startswith(day.lower())), default=0) + round(40 * k)
     name_font, name = video_fit_text(draw, entry["nome"], round(48 * k), True, page_w - text_x - margin - phone_room)
     draw.text((text_x, margin + round(44 * k)), name, font=name_font, fill=(40, 40, 40), anchor="ls")
     if phone:
         draw.text((page_w - margin, margin + round(44 * k)), phone, font=name_font, fill=(40, 40, 40), anchor="rs")
         add_link(page, draw.textbbox((page_w - margin, margin + round(44 * k)), phone, font=name_font, anchor="rs"),
                  tel_link(phone))
+    # 18/11/2026 (richiesta di Nino): in alto a destra, SOTTO il telefono, il giorno della settimana
+    # del menu ("Mercoledì") con lo stesso carattere del telefono; senza telefono va sulla riga del nome
+    weekday = next((day for day in SUMMARY_WEEKDAYS if when.lower().startswith(day.lower())), "")
+    weekday_room = 0
+    if weekday:
+        weekday_y = margin + round((100 if phone else 44) * k)
+        draw.text((page_w - margin, weekday_y), weekday, font=name_font, fill=(40, 40, 40), anchor="rs")
+        weekday_room = draw.textlength(weekday, font=name_font) + round(30 * k) if phone else 0
     draw.text((text_x, margin + round(83 * k)), f"Menu di {when.lower()}",
               font=video_font(round(31 * k)), fill=(110, 110, 110), anchor="ls")
     address = entry.get("indirizzo") or entry.get("comune", "")
-    address_font, address = video_fit_text(draw, address, round(28 * k), False, page_w - text_x - margin)
+    address_font, address = video_fit_text(draw, address, round(28 * k), False, page_w - text_x - margin - weekday_room)
     draw.text((text_x, margin + round(117 * k)), address, font=address_font, fill=(110, 110, 110), anchor="ls")
     if entry.get("indirizzo"):  # nome, "Menu di ..." e indirizzo: tutti aprono la mappa
         uri = maps_link(entry.get("nome", ""), entry["indirizzo"])

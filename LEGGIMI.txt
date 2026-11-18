@@ -2827,3 +2827,19 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   "esito" ok/lento]}. Nel registro: "invio vero e proprio a GitHub: N s, K tentativi (ip: lento (40
   KB/s); 900 KB/s, server ip)". Un invio bloccato costa così ~15 secondi invece di 2-4 minuti. Copia
   precedente: backup\Menu_2026-11-18_prima-di-invio-sorvegliato.py
+- 18/11/2026 (07:35): GIORNO DELLA SETTIMANA NELLE SCHEDE DEI LOCALI (richiesta di Nino). In photo_page,
+  in alto a destra SOTTO il numero di telefono, il giorno della settimana del menu ("Martedì",
+  "Mercoledì"...) con lo stesso carattere del telefono (grassetto 48, stesso colore), allineato a destra.
+  Preso dalla prima parola di "when" (SUMMARY_WEEKDAYS). Se il locale non ha telefono il giorno va sulla
+  riga del nome, al posto del telefono. L'indirizzo si stringe un poco per non toccarlo. Vale per tutte
+  le schede fatte con photo_page: menu.pdf, <id>.pdf (anche le pagine dei giorni passati), video, Reel.
+- 18/11/2026 (07:55): SERVER FISSO PER L'INVIO A GITHUB (Nino: i server vanno tutti uguali, le prove fanno
+  perdere molto tempo). Stamattina tutti i server provati sono andati lenti (66-114 KB/s quelli europei,
+  quelli americani 140.82.112-114 non partivano nemmeno): interrompere e cambiare server costava solo
+  tempo. Ora publish_pdf_site usa SEMPRE PUSH_SERVER = "140.82.121.4" (Europa), senza sorveglianza
+  (push_with_progress(..., watch=False)): l'invio va fino in fondo. Solo se con quel server l'invio
+  FALLISCE (errore, non lentezza) si riprova con il server dato dal DNS; i rifiuti "cannot lock ref"
+  si riprovano come prima (10, 20, 30 s). Al massimo 5 tentativi. Per tornare al server del DNS:
+  PUSH_SERVER = "". github_servers e la sorveglianza restano nel codice ma non si usano.
+  Nota: il salvataggio delle 07:30 (giorno della settimana nelle schede) non era arrivato sul PC; è
+  stato rimandato insieme a questa modifica.
