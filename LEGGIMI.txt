@@ -1924,8 +1924,10 @@ MENU COMPLETO OGNI 30 MINUTI: PDF DI OGNI LOCALE, PDF UNICO, VIDEO
 ------------------------------------------------------------------------------------------------
 A ogni giro automatico (ogni 30 minuti, dalle 8 alle 20), dopo aver aggiornato i menu, Menu.py
 pubblica sul sito senza nome e cognome https://menurosticcerie.github.io/ :
-  <id>.pdf    PDF A4 di ogni locale: il menu di oggi, oppure il cartello CHIUSO (riposo
-              settimanale), oppure il cartello IN ATTESA (aperto ma menu non ancora pubblicato)
+  <id>.pdf    PDF A4 di ogni locale: pagina 1 = il menu di oggi, oppure il cartello CHIUSO (riposo
+              settimanale), oppure il cartello IN ATTESA (aperto ma menu non ancora pubblicato);
+              dal 18/11/2026 seguono i menu dei 7 giorni precedenti presi dall'archivio (vedi
+              "PDF DEL SINGOLO LOCALE CON GLI ULTIMI 8 GIORNI" nel registro delle modifiche)
   menu.pdf    PDF unico con TUTTI i locali in ordine alfabetico
               -> https://menurosticcerie.github.io/menu.pdf  (pulsante "call to action" della
                  Pagina Facebook: l'indirizzo non cambia mai, si imposta una volta sola)
@@ -2786,3 +2788,42 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   (indicazione di Nino): in locali.json aggiunto "riposo": ["martedì"] a entrambi. Il martedì la scheda
   mostra il cartello CHIUSO, il menu non viene cercato e il giorno non conta nella % di pubblicazione.
   Copia precedente: backup\locali_2026-11-17_prima-del-riposo-martedi.json
+- 18/11/2026 (00:45): PDF DEL SINGOLO LOCALE CON GLI ULTIMI 8 GIORNI (richiesta di Nino). Il bottone
+  verde "PDF" delle pagine di menu.pdf apre https://menurosticcerie.github.io/<id>.pdf, che prima aveva
+  solo la pagina di oggi. Ora: pagina 1 = oggi, come prima (menu, cartello CHIUSO o IN ATTESA); poi i 7
+  giorni precedenti, dal più recente al più vecchio, una pagina per ogni giorno in cui il locale ha
+  pubblicato il menu, così si capisce in quale giorno della settimana fa un piatto (es. Fantasia: Fave
+  e cicorie il mercoledì). Il menu di ogni giorno si prende da archivio\<id>\AAAA-MM-GG_HHMMSS.*
+  (foto .jpg/.png oppure menu di testo .json con "sezioni" o solo "testo"); se nello stesso giorno ci
+  sono più versioni vale l'ULTIMA. I giorni senza menu (riposo, chiusura, non pubblicato) non hanno
+  pagina: la data in testa a ogni pagina ("Menu di mercoledì 11 novembre 2026") dice il giorno.
+  Pagine uguali a quella di oggi (photo_page), senza bottoni. Numero di giorni (oggi compreso):
+  locali.json > impostazioni > "pdf_giorni" (facoltativo; 8 se manca; 1 = solo oggi come prima).
+  Per non rallentare i giri e non rimandare a GitHub file uguali, il PDF di un locale si riscrive SOLO
+  se cambia la pagina di oggi o cambiano i file d'archivio usati: impronte in dati\pdf-locali.json
+  (cancellandolo si rifanno tutti al giro successivo). Nel registro: "PDF dei singoli locali (ultimi 8
+  giorni): N riscritti, M invariati". Funzioni nuove: menu_lines (righe dei menu di testo, usata anche
+  da video_shops), shop_pdf_days, day_text, archived_menus, archived_entry, write_shop_pdfs (chiamata
+  da publish_complete al posto del vecchio ciclo save_pdf). Fumetto del bottone PDF: "Apri il PDF di
+  <nome> con i menu degli ultimi 8 giorni". Ogni PDF passa da circa 150 KB a circa 1 MB: a inizio
+  giornata (tutti i PDF cambiano) l'invio a GitHub è più grande, durante il giorno si rimanda solo il
+  PDF del locale che ha pubblicato. Copia precedente: backup\Menu_2026-11-18_prima-del-pdf-8-giorni.py
+- 18/11/2026 (01:10): INVIO A GITHUB SORVEGLIATO, CON CAMBIO DI SERVER (Nino: caricamento molto lento).
+  Dalle 40 prove in dati\invio-github.json (15-17 novembre): gli invii vanno o a 500-2100 KB/s (5-7 s)
+  o bloccati a 36-48 KB/s (1-4 minuti), con TUTTI e quattro i "modi" del 11/11 (nessuno serve) e a
+  gruppi di 1-2 ore: il blocco dipende dal collegamento con GitHub, non dalla grandezza né dal modo.
+  Tolta la rotazione dei modi (PUSH_MODES, push_mode): si usa sempre il push normale. Nuovo:
+  push_with_progress(git, branch, server, watch) legge l'avanzamento di git in un filo a parte e
+  misura la velocità sugli ultimi PUSH_WINDOW (6) secondi; dopo PUSH_GRACE (12) secondi di scrittura,
+  se va sotto PUSH_SLOW_KB (150 KB/s) e non è oltre il 95%, ferma git (kill_tree: taskkill /T, così si
+  ferma anche git-remote-https) e restituisce "LENTO". Un invio interrotto non cambia niente su GitHub
+  (vale solo se arriva intero). publish_pdf_site allora riprova SUBITO con un altro indirizzo IP di
+  github.com (git -c http.curloptResolve=github.com:443:<ip>, serve git 2.37 o più recente; con un git
+  più vecchio l'opzione è ignorata e si riprova comunque con un collegamento nuovo). Al massimo
+  PUSH_TRIES (4) server; l'ultimo tentativo non viene interrotto. github_servers(): indirizzi dal DNS +
+  GITHUB_IPS (140.82.121.3/4 Europa, poi 140.82.112-114.3/4), in ordine: prima quelli andati veloci di
+  recente, poi i mai provati, in fondo quelli andati lenti (dopo 6 ore tornano "mai provati").
+  dati\invio-github.json ora: {"server": {ip: {"kb_s", "ora"}}, "prove": [ultime 60, con "server" ed
+  "esito" ok/lento]}. Nel registro: "invio vero e proprio a GitHub: N s, K tentativi (ip: lento (40
+  KB/s); 900 KB/s, server ip)". Un invio bloccato costa così ~15 secondi invece di 2-4 minuti. Copia
+  precedente: backup\Menu_2026-11-18_prima-di-invio-sorvegliato.py

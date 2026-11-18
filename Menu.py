@@ -4093,6 +4093,23 @@ def video_font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
+def menu_lines(sections: list[dict[str, Any]]) -> list[tuple[str, bool]]:
+    """Sezioni di un menu di testo (stato.json "sections" o archivio\\<id>\\*.json "sezioni") ->
+    righe (testo, è un titolo di sezione) per photo_menu_text."""
+    lines: list[tuple[str, bool]] = []
+    for section in sections or []:
+        title = section.get("titolo") or section.get("nome") or ""
+        if title:
+            lines.append((title, True))
+        for dish in section.get("piatti", []):
+            raw = (dish.get("nome") or "").strip()
+            text = raw.lstrip("●•·-* ").strip()
+            if text:
+                # "PRIMI PIATTI", "MENÙ DI SABATO": intestazioni scritte come piatti (senza pallino)
+                lines.append((text, raw == text and text.isupper() and len(text) <= 28))
+    return lines
+
+
 def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
     """Rosticcerie con il menu di oggi in ORDINE ALFABETICO (per i PDF):
     per ognuna nome, paese, logo e foto del menu o righe dei piatti."""
@@ -4107,17 +4124,7 @@ def video_shops(config: dict[str, Any]) -> list[dict[str, Any]]:
         if not shop or item.get("menu_date") != today:
             continue
         picture = ROOT / item["image"] if item.get("image") else None
-        lines: list[tuple[str, bool]] = []  # (testo, è un titolo di sezione)
-        for section in item.get("sections") or []:
-            title = section.get("titolo") or section.get("nome") or ""
-            if title:
-                lines.append((title, True))
-            for dish in section.get("piatti", []):
-                raw = (dish.get("nome") or "").strip()
-                text = raw.lstrip("●•·-* ").strip()
-                if text:
-                    # "PRIMI PIATTI", "MENÙ DI SABATO": intestazioni scritte come piatti (senza pallino)
-                    lines.append((text, raw == text and text.isupper() and len(text) <= 28))
+        lines = menu_lines(item.get("sections") or [])  # (testo, è un titolo di sezione)
         if not (picture and picture.is_file()) and not lines:
             continue
         found.append({"id": shop["id"], "nome": shop.get("nome", ""), "comune": shop_town(shop),
@@ -4295,7 +4302,8 @@ def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str, s
                 f"Metti {name} sul telefono o sul desktop, o condividilo"),
                ("Inizio", "#pagina=1", "Torna alla prima pagina"),
                ("Fine", f"#pagina={news_page}", "Vai alle ultime pagine: chi pubblica il menu, notizie, meteo e farmacia di turno"),
-               ("PDF", f"{pdf_site()[0]}{entry['id']}.pdf", f"Apri il PDF del solo menu di {name}, da stampare")]
+               ("PDF", f"{pdf_site()[0]}{entry['id']}.pdf",  # 18/11/2026: menu degli ultimi giorni
+                f"Apri il PDF di {name} con i menu degli ultimi {shop_pdf_days()} giorni")]
     if entry.get("indirizzo"):
         buttons.append(("Mappa", maps_link(name, entry["indirizzo"]), f"Apri la mappa: {entry['indirizzo']}"))
     if tel_link(entry.get("telefono", "")):
@@ -4404,101 +4412,190 @@ GIT_BINARY_ATTRIBUTES = "*.pdf -delta\n*.mp4 -delta\n*.mp3 -delta\n*.jpg -delta\
 
 # INVIO LENTO A GITHUB (11/11/2026). Dal registro: gli invii del sito dei PDF vanno O a piena velocità
 # (600-2000 KB/s, 5-6 secondi) O bloccati intorno a 40 KB/s (1-5 minuti), senza vie di mezzo e senza
-# legame con la grandezza: non è la linea, è il modo in cui git parla con GitHub in quel collegamento.
-# Rimedi noti, provati DA SOLI: ogni invio usa un "modo"; se va piano (sotto PUSH_SLOW_KB al secondo)
-# la volta dopo si passa al modo successivo, se va forte si resta su quello. Così il programma si
-# ferma da solo sul modo che funziona su questo PC. Stato e ultime velocità: dati\invio-github.json.
-PUSH_STATE = DATA / "invio-github.json"   # {"modo": "...", "prove": [{"ora", "modo", "mb", "secondi", "kb_s"}]}
+# legame con la grandezza: non è la linea, è il collegamento con GitHub in quel momento.
+# 11/11/2026: provati i "modi" di invio (HTTP/1.1, pacchetto intero, solo IPv4). 18/11/2026: dalle 40
+# prove registrate in dati\invio-github.json i modi NON cambiano niente (tutti e quattro sia veloci sia
+# bloccati a ~40 KB/s, e i blocchi arrivano a gruppi di 1-2 ore): tolta la rotazione dei modi, si usa
+# sempre il modo normale (l'unico in cui si vede davvero quanto è stato inviato).
+# RIMEDIO DEL 18/11/2026 - SORVEGLIANZA DELL'INVIO E CAMBIO DI SERVER: mentre git invia, il programma
+# misura la velocità sugli ultimi PUSH_WINDOW secondi; se dopo PUSH_GRACE secondi va sotto PUSH_SLOW_KB
+# (cioè è nel "blocco" a ~40 KB/s) interrompe l'invio (su GitHub non cambia niente: l'invio vale solo
+# se arriva intero) e lo rifà SUBITO con un ALTRO server di GitHub (github.com ha più indirizzi IP;
+# git lo forza con http.curloptResolve, il certificato resta quello di github.com). Fino a PUSH_TRIES
+# server diversi; l'ultimo tentativo va comunque fino in fondo. La velocità di ogni server è in
+# dati\invio-github.json ("server"): la volta dopo si parte dal server andato più forte di recente.
+# Così un invio bloccato costa ~15 secondi invece di 2-4 minuti.
+PUSH_STATE = DATA / "invio-github.json"   # {"server": {ip: {"kb_s", "ora"}}, "prove": [{"ora", "server", "mb", "secondi", "kb_s", "esito"}]}
 PUSH_SLOW_KB = 150                        # sotto questa velocità (KB/s) l'invio è "lento"
-PUSH_MODES: dict[str, dict[str, list[str]]] = {
-    # HTTP/1.1 al posto di HTTP/2 (con HTTP/2 gli invii grandi di git a volte restano strozzati)
-    "http1": {"config": ["-c", "http.version=HTTP/1.1"], "push": []},
-    # in più tutto il pacchetto in un colpo solo (non a pezzetti): la riga "Invio a GitHub" arriva
-    # subito al totale e poi resta ferma finché GitHub non ha ricevuto tutto
-    "http1-intero": {"config": ["-c", "http.version=HTTP/1.1", "-c", "http.postBuffer=209715200"], "push": []},
-    # in più solo indirizzi IPv4 (un percorso IPv6 lento darebbe proprio questo effetto a volte sì a volte no)
-    "http1-ipv4": {"config": ["-c", "http.version=HTTP/1.1"], "push": ["--ipv4"]},
-    "normale": {"config": [], "push": []},  # come prima del 11/11/2026
-}
+PUSH_GRACE = 12                           # secondi dall'inizio della scrittura prima di giudicare
+PUSH_WINDOW = 6                           # secondi su cui si misura la velocità
+PUSH_TRIES = 4                            # server provati al massimo (l'ultimo va fino in fondo)
+GITHUB_HOST = "github.com"
+# indirizzi noti di github.com (Europa per primi); si aggiungono quelli dati dal DNS al momento
+GITHUB_IPS = ("140.82.121.3", "140.82.121.4", "140.82.112.3", "140.82.112.4", "140.82.113.3",
+              "140.82.113.4", "140.82.114.3", "140.82.114.4")
 
 
-def push_mode() -> str:
-    mode = read_json(PUSH_STATE, {}).get("modo", "")
-    return mode if mode in PUSH_MODES else next(iter(PUSH_MODES))
+def github_servers() -> list[str]:
+    """Indirizzi IP di github.com nell'ordine in cui provarli: prima quelli andati veloci di recente
+    (dati\\invio-github.json > "server"), poi quelli mai provati (DNS di adesso, poi GITHUB_IPS),
+    in fondo quelli andati lenti. Lento di più di 6 ore fa = come mai provato."""
+    import socket
+    found: list[str] = []
+    try:
+        for info in socket.getaddrinfo(GITHUB_HOST, 443, socket.AF_INET, socket.SOCK_STREAM):
+            if info[4][0] not in found:
+                found.append(info[4][0])
+    except OSError:
+        pass
+    found += [ip for ip in GITHUB_IPS if ip not in found]
+    known = read_json(PUSH_STATE, {}).get("server", {})
+    now = datetime.now()
+
+    def rank(ip: str) -> tuple[int, float]:
+        item = known.get(ip)
+        try:
+            age = (now - datetime.fromisoformat(item["ora"])).total_seconds() if item else None
+        except (KeyError, ValueError, TypeError):
+            age = None
+        if age is None:
+            return 1, 0
+        if item.get("kb_s", 0) >= PUSH_SLOW_KB:
+            return 0, -item["kb_s"]
+        return (1, 0) if age > 6 * 3600 else (2, age * -1)
+    return sorted(found, key=rank)
 
 
-def push_record(mode: str, size: int, seconds: float) -> str:
-    """Scrive la velocità dell'invio e, se è stato lento, sceglie il modo successivo per la prossima
-    volta. Gli invii piccoli (sotto 1,5 MB) non dicono niente sulla velocità: non contano.
-    Restituisce il testo da aggiungere alla riga del registro."""
-    if size < 1_500_000 or seconds <= 0:
-        return f"modo {mode}"
-    speed = size / 1000 / seconds
+def push_record(server: str, size: int, seconds: float, outcome: str) -> str:
+    """Scrive in dati\\invio-github.json la velocità di un tentativo d'invio (riuscito o interrotto
+    perché lento) e la ricorda per quel server. Restituisce il testo per il registro."""
+    speed = size / 1000 / seconds if seconds > 0 else 0
     state = read_json(PUSH_STATE, {})
-    tests = (state.get("prove", []) + [{"ora": datetime.now().isoformat(timespec="seconds"), "modo": mode,
-                                         "mb": round(size / 1_000_000, 1), "secondi": round(seconds),
-                                         "kb_s": round(speed)}])[-40:]
-    names = list(PUSH_MODES)
-    following = names[(names.index(mode) + 1) % len(names)] if speed < PUSH_SLOW_KB else mode
-    save_json(PUSH_STATE, {"modo": following, "prove": tests})
-    return f"{speed:.0f} KB/s, modo {mode}" + (f": lento, la prossima volta provo il modo {following}" if following != mode else "")
+    state.pop("modo", None)  # vecchia rotazione dei modi (fino al 18/11/2026)
+    stamp = datetime.now().isoformat(timespec="seconds")
+    if server and (size >= 1_500_000 or outcome == "lento"):
+        state.setdefault("server", {})[server] = {"kb_s": round(speed), "ora": stamp}
+    state["prove"] = (state.get("prove", []) + [{"ora": stamp, "server": server or "DNS", "mb": round(size / 1_000_000, 1),
+                                                "secondi": round(seconds), "kb_s": round(speed), "esito": outcome}])[-60:]
+    save_json(PUSH_STATE, state)
+    return f"{speed:.0f} KB/s, server {server or 'DNS'}"
 
 
-def push_with_progress(git, branch: str, mode: str = "normale") -> subprocess.CompletedProcess:
+def kill_tree(process: subprocess.Popen) -> None:
+    """Ferma git e i suoi processi figli (git-remote-https)."""
+    try:
+        if sys.platform == "win32":
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)], capture_output=True,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        else:
+            process.kill()
+    except Exception:
+        pass
+    try:
+        process.wait(timeout=10)
+    except Exception:
+        pass
+
+
+def push_with_progress(git, branch: str, server: str = "", watch: bool = True) -> subprocess.CompletedProcess:
     """git push --force con i MB inviati su quelli da inviare che avanzano sulla stessa riga
-    ("Invio a GitHub: 1,2 MB di circa 3,1 MB"): l'invio di PDF e video può durare qualche minuto.
-    Il totale è una stima (bytes_to_send): git spesso manda meno, perché comprime le differenze."""
+    ("Invio a GitHub: 1,2 MB di circa 3,1 MB"). server = IP di github.com da usare ("" = quello del
+    DNS). watch=True: se l'invio va piano (vedi sopra) lo interrompe e restituisce returncode -9 con
+    stdout "LENTO <KB/s>". Il totale è una stima (bytes_to_send)."""
+    import threading
     try:
         total = bytes_to_send(branch)
     except Exception:
         total = 0
     if total:
-        progress(f"Da inviare a GitHub: circa {megabytes(total)}")
+        progress(f"Da inviare a GitHub: circa {megabytes(total)}" + (f" (server {server})" if server else ""))
     units = {"B": 1, "KiB": 1024, "MiB": 1048576, "GiB": 1073741824, "KB": 1000, "MB": 1000000, "GB": 1000000000}
-    how = PUSH_MODES.get(mode, PUSH_MODES["normale"])
+    resolve = ["-c", f"http.curloptResolve={GITHUB_HOST}:443:{server}"] if server else []
     command = ["git", "-c", "user.name=Menu", "-c", "user.email=menu@localhost", "-c", "core.compression=1",
-               "-c", "pack.compression=1", *how["config"], "push", "--progress", "--force", *how["push"], "origin", branch]
+               "-c", "pack.compression=1", *resolve, "push", "--progress", "--force", "origin", branch]
     process = subprocess.Popen(command, cwd=PDF_SITE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    error, piece, shown = [], b"", ""
+    shared = {"lines": [], "sent": 0.0, "percent": 0, "writing_since": None, "shown": ""}
     screen = sys.__stdout__
-    while True:
-        byte = process.stderr.read(1)
-        if not byte:
-            break
-        if byte in (b"\r", b"\n"):
+
+    def reader() -> None:  # legge l'avanzamento di git in un filo a parte: il controllo non si blocca
+        piece = b""
+        while True:
+            byte = process.stderr.read(1)
+            if not byte:
+                break
+            if byte not in (b"\r", b"\n"):
+                piece += byte
+                continue
             line = piece.decode("utf-8", "replace").strip()
             piece = b""
             if not line:
                 continue
-            error.append(line)
-            match = re.search(r"(Writing objects|Scrittura degli oggetti|Compressing objects|Compressione degli oggetti)"
-                              r"[^:]*:\s*(\d+)%", line)
-            if match:
-                phase = "Invio a GitHub" if match.group(1).startswith(("Writing", "Scrittura")) else "Compressione"
-                if phase != "Invio a GitHub":
-                    continue  # la compressione dura poco: si mostra solo l'invio
-                size = re.search(r"([\d.,]+)\s*([KMG]?i?B)\b", line)
-                sent = float(size.group(1).replace(",", ".")) * units.get(size.group(2), 1) if size else 0
-                text = f"{phase}: {megabytes(sent)}" + (f" di circa {megabytes(max(total, sent))}" if total else " inviati")
-                if text != shown and screen:
-                    shown = text
-                    try:
-                        screen.write("\r" + text.ljust(50))
-                        screen.flush()
-                    except Exception:
-                        pass
-        else:
-            piece += byte
+            shared["lines"].append(line)
+            match = re.search(r"(Writing objects|Scrittura degli oggetti)[^:]*:\s*(\d+)%", line)
+            if not match:
+                continue
+            if shared["writing_since"] is None:
+                shared["writing_since"] = time.time()
+            size = re.search(r"([\d.,]+)\s*([KMG]?i?B)\b", line)
+            shared["sent"] = float(size.group(1).replace(",", ".")) * units.get(size.group(2), 1) if size else 0
+            shared["percent"] = int(match.group(2))
+            text = f"Invio a GitHub: {megabytes(shared['sent'])}" + \
+                   (f" di circa {megabytes(max(total, shared['sent']))}" if total else " inviati")
+            if text != shared["shown"] and screen:
+                shared["shown"] = text
+                try:
+                    screen.write("\r" + text.ljust(50))
+                    screen.flush()
+                except Exception:
+                    pass
+
+    thread = threading.Thread(target=reader, daemon=True)
+    thread.start()
+    samples: list[tuple[float, float]] = []
+    slow = 0.0
+    started = time.time()
+    while process.poll() is None:
+        time.sleep(0.5)
+        if not watch:
+            continue
+        now = time.time()
+        since = shared["writing_since"]
+        if since is None:
+            if now - started > 60 and total > 1_500_000:  # la scrittura non parte nemmeno: collegamento fermo
+                slow = 0.0
+                break
+            continue
+        samples.append((now, shared["sent"]))
+        samples = [item for item in samples if now - item[0] <= PUSH_WINDOW]
+        if now - since < PUSH_GRACE or shared["percent"] >= 95 or now - samples[0][0] < PUSH_WINDOW - 1:
+            continue
+        rate = (samples[-1][1] - samples[0][1]) / 1000 / max(0.5, samples[-1][0] - samples[0][0])
+        if rate < PUSH_SLOW_KB:
+            slow = rate
+            break
+    if process.poll() is None:  # invio lento: si interrompe (GitHub non cambia, l'invio vale solo se intero)
+        kill_tree(process)
+        thread.join(timeout=5)
+        if shared["shown"] and screen:
+            try:
+                screen.write("\n")
+                screen.flush()
+            except Exception:
+                pass
+        sent = shared["sent"]
+        seconds = time.time() - (shared["writing_since"] or started)
+        return subprocess.CompletedProcess(command, -9, f"LENTO {slow:.0f} {sent:.0f} {seconds:.1f}",
+                                           "invio interrotto perché lento")
+    thread.join(timeout=10)
     out = process.stdout.read().decode("utf-8", "replace")
-    process.wait()
-    if shown and screen:
+    if shared["shown"] and screen:
         try:
             screen.write("\n")
             screen.flush()
         except Exception:
             pass
-    return subprocess.CompletedProcess(command, process.returncode, out, "\n".join(error[-5:]))
+    return subprocess.CompletedProcess(command, process.returncode, out, "\n".join(shared["lines"][-5:]))
 
 
 def publish_pdf_site() -> bool:
@@ -4591,26 +4688,42 @@ def publish_pdf_site() -> bool:
                 pass
     # se nello stesso momento un altro invio aggiorna il sito (es. Rifai-PDF.bat mentre gira il
     # controllo automatico) GitHub rifiuta con "cannot lock ref": si aspetta un attimo e si riprova
-    mode = push_mode()  # 11/11/2026: modo di invio scelto da solo in base alle velocità (vedi PUSH_MODES)
+    # 18/11/2026: invio sorvegliato; se va piano si riprova SUBITO con un altro server di GitHub (vedi
+    # PUSH_GRACE e github_servers). I rifiuti veri (es. "cannot lock ref") si riprovano come prima.
     try:
         size = bytes_to_send(branch)
     except Exception:
         size = 0
-    waited = 0.0
+    servers = github_servers() or [""]
     started = time.time()
-    for attempt in range(4):
-        pushed = push_with_progress(git, branch, mode)
-        if pushed.returncode == 0 or attempt == 3:
+    tries = rejected = 0
+    server = ""
+    notes = []
+    while True:
+        server = servers[tries % len(servers)]
+        last = tries >= PUSH_TRIES - 1 or rejected >= 3
+        begun = time.time()
+        pushed = push_with_progress(git, branch, server, watch=not last)
+        tries += 1
+        if pushed.returncode == -9 and (pushed.stdout or "").startswith("LENTO"):
+            _, rate, sent, seconds = pushed.stdout.split()
+            push_record(server, int(float(sent)), float(seconds), "lento")
+            notes.append(f"{server}: lento ({float(rate):.0f} KB/s)")
+            print(f"Invio lento ({float(rate):.0f} KB/s) con il server {server or 'del DNS'}: "
+                  f"lo interrompo e riprovo subito con un altro server di GitHub...")
+            continue
+        if pushed.returncode == 0:
+            if size >= 1_500_000:
+                notes.append(push_record(server, size, time.time() - begun, "ok"))
             break
-        if attempt == 1 and mode != "normale":  # due rifiuti di fila: non sia il modo di invio a dare errore
-            mode = "normale"
-        print(f"Invio dei PDF rifiutato da GitHub, riprovo tra {10 * (attempt + 1)} secondi...")
-        time.sleep(10 * (attempt + 1))
-        waited += 10 * (attempt + 1)
+        if last:
+            break
+        rejected += 1
+        print(f"Invio dei PDF rifiutato da GitHub, riprovo tra {10 * rejected} secondi...")
+        time.sleep(10 * rejected)
     # nel registro: quanto è durato l'invio vero e proprio (rete + GitHub), il resto è il lavoro sul PC
-    seconds = time.time() - started - waited
-    note = push_record(mode, size, seconds) if pushed.returncode == 0 and attempt == 0 else f"modo {mode}"
-    print(f"  invio vero e proprio a GitHub (rete + risposta di GitHub): {time.time() - started:.0f} s ({note})")
+    print(f"  invio vero e proprio a GitHub (rete + risposta di GitHub): {time.time() - started:.0f} s, "
+          f"{tries} tentativ{'o' if tries == 1 else 'i'}" + (f" ({'; '.join(notes)})" if notes else ""))
     if pushed.returncode != 0:
         print(f"PDF NON pubblicati su {site}: {(pushed.stderr or pushed.stdout).strip()[:200]}")
         return False
@@ -4678,6 +4791,111 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     return page
 
 
+# ------------------------------------------------------------------------------------------------
+# PDF DEL SINGOLO LOCALE CON GLI ULTIMI GIORNI (18/11/2026, richiesta di Nino)
+# Il bottone "PDF" delle pagine di menu.pdf apre https://menurosticcerie.github.io/<id>.pdf. Prima
+# conteneva solo la pagina di oggi; ora contiene gli ULTIMI 8 GIORNI, così si capisce in quale
+# giorno della settimana un locale fa un certo piatto (es. "Fave e cicorie" solo il mercoledì):
+#   pagina 1     = oggi, come prima (menu di oggi, cartello CHIUSO o cartello IN ATTESA);
+#   pagine 2...  = i 7 giorni precedenti, dal più recente al più vecchio, una pagina per ogni
+#                  giorno in cui il locale ha pubblicato il menu. Il menu di quel giorno si prende
+#                  dall'archivio (archivio\<id>\AAAA-MM-GG_HHMMSS.jpg/.png/.json): se in un giorno ci
+#                  sono più versioni (menu corretto dal locale) vale l'ULTIMA. I giorni senza menu
+#                  (riposo, chiusura, menu non pubblicato) non hanno pagina: la data scritta in testa a
+#                  ogni pagina ("Menu di mercoledì 11 novembre 2026") dice di che giorno è.
+# Le pagine sono uguali a quelle di oggi (photo_page), senza bottoni.
+# Numero di giorni (oggi compreso): locali.json > impostazioni > "pdf_giorni" (facoltativo, 8 se manca;
+# 1 = solo oggi, come prima del 18/11/2026).
+# VELOCITÀ e INVIO A GITHUB: il PDF di un locale si riscrive SOLO se è cambiato qualcosa (la pagina di
+# oggi o i file d'archivio usati); l'impronta di ogni locale è in dati\pdf-locali.json. Così le pagine
+# dei giorni passati non si ridisegnano a ogni giro e git non rimanda file uguali. Il PDF di ogni
+# locale si rifà quindi quando il locale pubblica (o cambia) il menu e una volta a inizio giornata.
+SHOP_PDF_STATE = DATA / "pdf-locali.json"   # {"<id>": "<impronta>"}
+SHOP_PDF_DAYS = 8
+
+
+def shop_pdf_days(settings: dict[str, Any] | None = None) -> int:
+    """Giorni (oggi compreso) nel PDF del singolo locale: impostazioni > "pdf_giorni", altrimenti 8."""
+    try:
+        value = (settings or read_json(CONFIG, {}).get("impostazioni", {})).get("pdf_giorni", SHOP_PDF_DAYS)
+        return max(1, min(31, int(value)))
+    except (TypeError, ValueError):
+        return SHOP_PDF_DAYS
+
+
+def day_text(day: date) -> str:
+    """date(2026, 11, 11) -> "Mercoledì 11 novembre 2026" (come in all_shop_pages)."""
+    return f"{SUMMARY_WEEKDAYS[day.weekday()]} {day.day} {list(MONTHS)[day.month - 1]} {day.year}"
+
+
+def archived_menus(shop_id: str, days: int) -> list[tuple[date, Path]]:
+    """Per ognuno dei days-1 giorni prima di oggi (dal più recente) l'ULTIMO menu archiviato di
+    quel giorno: [(giorno, file), ...]. I giorni senza menu in archivio mancano."""
+    folder = ARCHIVE / shop_id
+    if days <= 1 or not folder.is_dir():
+        return []
+    today = date.today()
+    wanted = {(today - timedelta(days=n)).isoformat() for n in range(1, days)}
+    latest: dict[str, Path] = {}
+    for path in folder.iterdir():
+        match = ARCHIVE_NAME.match(path.stem)
+        if not match or not path.is_file() or path.suffix.lower() not in MENU_EXTENSIONS:
+            continue
+        if match.group(1) in wanted and (match.group(1) not in latest or path.stem > latest[match.group(1)].stem):
+            latest[match.group(1)] = path
+    return [(date.fromisoformat(key), latest[key]) for key in sorted(latest, reverse=True)]
+
+
+def archived_entry(entry: dict[str, Any], path: Path) -> dict[str, Any] | None:
+    """Il locale (stessi nome, logo, indirizzo, telefono) con il menu di un file d'archivio: foto, o
+    righe dei piatti se è un menu di testo (.json: "sezioni", oppure solo "testo"). None se vuoto."""
+    if path.suffix.lower() != TEXT_EXTENSION:
+        return {**entry, "foto": path, "righe": []}
+    data = read_json(path, {})
+    lines = menu_lines(data.get("sezioni") or [])
+    if not lines and data.get("testo"):
+        text = clean_post_text(data["testo"])
+        lines = [(row.strip(), False) for row in text.splitlines() if row.strip()]
+    return {**entry, "foto": None, "righe": lines} if lines else None
+
+
+def write_shop_pdfs(config: dict[str, Any], pages: list[dict[str, Any]]) -> None:
+    """Scrive pdf-sito\\<id>.pdf di ogni locale: la pagina di oggi e i menu dei giorni precedenti
+    (vedi sopra). Riscrive solo i PDF cambiati (impronte in dati\\pdf-locali.json)."""
+    import hashlib
+    days = shop_pdf_days(config.get("impostazioni", {}))
+    saved = read_json(SHOP_PDF_STATE, {})
+    prints, rewritten = {}, 0
+    for page in pages:
+        entry = page["entry"]
+        target = PDF_SITE_DIR / f"{entry['id']}.pdf"
+        history = archived_menus(str(entry["id"]), days)
+        stamp = hashlib.md5()
+        stamp.update(f"v1|{days}|{date.today().isoformat()}|{page['a4'].info.get('links', [])}".encode())
+        stamp.update(page["a4"].tobytes())
+        for day, path in history:
+            try:
+                info = path.stat()
+                stamp.update(f"|{path.name}|{info.st_size}|{info.st_mtime_ns}".encode())
+            except OSError:
+                pass
+        prints[str(entry["id"])] = stamp.hexdigest()
+        if saved.get(str(entry["id"])) == prints[str(entry["id"])] and target.is_file():
+            continue
+        images = [page["a4"]]
+        for day, path in history:
+            try:
+                past = archived_entry(entry, path)
+                if past is not None:
+                    images.append(photo_page(past, photo_menu(past), day_text(day)))
+            except Exception as exc:
+                print(f"PDF di {entry.get('nome', '')}: menu del {day:%d/%m} non messo ({path.name}: {exc})")
+        save_pdf(images, target)
+        rewritten += 1
+    save_json(SHOP_PDF_STATE, prints)
+    print(f"PDF dei singoli locali (ultimi {days} giorni): {rewritten} riscritti, {len(pages) - rewritten} invariati")
+
+
 def photo_menu(entry: dict[str, Any], width: int = 1000):
     """Il menu della rosticceria come immagine: la foto intera o, se è solo testo, i piatti riscritti."""
     return photo_menu_picture(entry, width) if entry["foto"] else photo_menu_text(entry, width)
@@ -4735,7 +4953,8 @@ def photo_menu_picture(entry: dict[str, Any], width: int):
 # ------------------------------------------------------------------------------------------------
 # MENU COMPLETO OGNI 30 MINUTI (a ogni giro automatico, dopo l'aggiornamento dei menu)
 # Sul sito senza nome e cognome (https://menurosticcerie.github.io/, cartella pdf-sito):
-#   <id>.pdf   = PDF A4 di ogni locale (menu di oggi, cartello CHIUSO o cartello IN ATTESA)
+#   <id>.pdf   = PDF A4 di ogni locale (menu di oggi, cartello CHIUSO o cartello IN ATTESA) e, dal
+#                18/11/2026, i menu dei 7 giorni precedenti dall'archivio (write_shop_pdfs)
 #   menu.pdf   = PDF unico con TUTTI i locali in ordine alfabetico  -> pulsante "call to action"
 #                della Pagina Facebook (indirizzo fisso, si imposta una volta sola)
 #   video.mp4  = video con ESATTAMENTE le pagine di menu.pdf, una dopo l'altra (stessa grafica)
@@ -4999,8 +5218,7 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     PDF_SITE_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Solo PDF: PDF di {len(pages)} locali e PDF unico (il video NON si rifà e NON si rinvia)..." if only_pdf else
           f"Menu completo: PDF di {len(pages)} locali, PDF unico (con la pagina riepilogativa) e video...")
-    for page in pages:
-        save_pdf([page["a4"]], PDF_SITE_DIR / f"{page['entry']['id']}.pdf")
+    write_shop_pdfs(config, pages)  # 18/11/2026: oggi + i giorni precedenti dall'archivio
     tick("PDF dei singoli locali")
     try:  # 09/11/2026: pagina di ogni locale con il cuore (Metti sul telefono / Condividi)
         write_shop_pages(config, pages)

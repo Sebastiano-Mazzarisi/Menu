@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-17",
+  "data": "2026-11-18",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla carbonara",
+          "nome": "Pasta e patate con provola alla napoletana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Rigatoni alla pastorella",
+          "nome": "Risotto con zafferano e stracciatella",
           "prezzo": "€7.50",
-          "descrizione": "Con pomodoro fresco e ricotta"
+          "descrizione": ""
         },
         {
-          "nome": "Orecchiette con salsiccia , pomodorino e rucola",
+          "nome": "Rigatoni con cavolfiore e pancetta",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con asparagi e cernia",
+          "nome": "Cavatelli al grano arso con gamberetti e pesto di zucchina",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di ceci",
+          "nome": "Zuppa del casale",
           "prezzo": "€6.00",
-          "descrizione": "Con o senza pasta"
+          "descrizione": "Fagioli, lenticchie, ceci, orzo e farro. Con o senza pasta."
         }
       ]
     },
@@ -91,14 +91,19 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di merluzzo gratinato con battuto di olive e capperi",
+          "nome": "Bombette di capocollo con patate",
+          "prezzo": "€7.50",
+          "descrizione": "5 pz"
+        },
+        {
+          "nome": "Trancio di pesce spada con olive e pomodorini",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Bocconcini di petto di pollo con zucchina",
+          "nome": "Bocconcini di pollo con verdure",
           "prezzo": "€7.50",
-          "descrizione": ""
+          "descrizione": "Zucchine, carote e sedano"
         }
       ]
     }
