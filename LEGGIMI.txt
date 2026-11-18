@@ -2843,3 +2843,21 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   PUSH_SERVER = "". github_servers e la sorveglianza restano nel codice ma non si usano.
   Nota: il salvataggio delle 07:30 (giorno della settimana nelle schede) non era arrivato sul PC; è
   stato rimandato insieme a questa modifica.
+- 18/11/2026 (08:20): GIORNO DELLA SETTIMANA ANCHE SUI CARTELLI CHIUSO E IN ATTESA (richiesta di Nino).
+  In all_shop_pages, sulle pagine A4 dei cartelli: giorno della settimana in alto a destra (x=1170,
+  linea di base y=114, grassetto 48 come il telefono delle schede del menu). Il cartello non è più
+  centrato: parte da y=SIGN_TOP (215; prima 189) e in menu.pdf la fila dei bottoni sta sotto il giorno,
+  a y=SIGN_BUTTONS_Y (135; prima 80) in pdf_buttons_page. Vale per menu.pdf, <id>.pdf, video, Reel.
+- 18/11/2026 (08:45): LOCALI IN ATTESA: MENU DELLA SETTIMANA SCORSA (richiesta di Nino). A chi guarda interessa
+  solo prevedere cosa sarà pubblicato. In all_shop_pages, per un locale "attesa" (aperto, menu di oggi non
+  ancora trovato) si cerca in archivio il menu dello STESSO GIORNO DELLA SETTIMANA SCORSA (oggi - 7 giorni,
+  archived_menu_on: l'ultima versione di quel giorno). Se c'è, la pagina non è più il cartello IN ATTESA ma
+  la scheda normale (photo_page) con quel menu e la sua data ("Menu di mercoledì 11 novembre 2026"), più una
+  FASCIA ARANCIONE (WAIT_ORANGE) sotto la testata/bottoni: "Il menu di oggi è previsto per le HH:MM"
+  (usual_time; senza orario: "Il menu di oggi non è ancora pubblicato") e "Qui sotto il menu di mercoledì
+  scorso, 11 novembre" (last_week_banner; photo_page(..., banner=(riga grande, riga piccola))). Il tipo della
+  pagina resta "attesa" (ordine delle schede e prima pagina invariati). Se il menu della settimana scorsa non
+  c'è, resta il cartello IN ATTESA. Vale per menu.pdf, <id>.pdf e video (non per la pagina dell'app).
+  Insieme: il PDF del singolo locale torna a SOLO OGGI (SHOP_PDF_DAYS = 1, le 8 pagine delle 00:45 non
+  servono più; "pdf_giorni" in locali.json resta possibile) e il fumetto del bottone PDF torna "Apri il PDF
+  del solo menu di <nome>, da stampare". Manuale.txt aggiornato.

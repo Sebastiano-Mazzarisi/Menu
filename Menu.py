@@ -4233,6 +4233,10 @@ def wait_sign_image(shop: dict[str, Any]):
     return image
 
 
+SIGN_TOP = 215          # 18/11/2026: cartelli CHIUSO / IN ATTESA nel foglio A4 da y=215 in giù (prima centrati, y=189)
+SIGN_BUTTONS_Y = 135   # 18/11/2026: fila dei bottoni sopra i cartelli, sotto il giorno della settimana (prima y=80)
+
+
 def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
     """TUTTI i locali di locali.json (prima chi ha pubblicato oggi, poi chi è in attesa, ciascun
     gruppo in ordine alfabetico, come nella prima pagina di menu.pdf), ognuno con la sua pagina di oggi:
@@ -4259,14 +4263,40 @@ def all_shop_pages(config: dict[str, Any]) -> list[dict[str, Any]]:
             kind, sign = "menu", None
         else:
             kind, sign = "attesa", wait_sign_image(shop)
+            # 18/11/2026 (richiesta di Nino): a chi aspetta interessa PREVEDERE il menu di oggi. Se in
+            # archivio c'è il menu dello stesso giorno della settimana scorsa, al posto del cartello
+            # IN ATTESA si mostra QUEL menu, con in alto una fascia arancione: "Il menu di oggi è
+            # previsto per le HH:MM" (orario medio) e "Qui sotto il menu di <giorno> scorso <data>".
+            # Senza menu della settimana scorsa resta il cartello IN ATTESA.
+            try:
+                last_week = day - timedelta(days=7)
+                path = archived_menu_on(str(shop["id"]), last_week)
+                past = archived_entry(entry, path) if path else None
+            except Exception as exc:
+                past = None
+                print(f"{shop.get('nome', '')}: menu della settimana scorsa non letto ({exc})")
+            if past is not None:
+                banner = last_week_banner(shop, last_week)
+                menu = photo_menu(past)
+                past_when = day_text(last_week)
+                pages.append({"entry": past, "tipo": kind, "menu": menu, "quando": past_when, "banner": banner,
+                              "a4": photo_page(past, menu, past_when, banner=banner)})
+                continue
         if sign is not None:  # cartello: al centro della pagina A4
             links = sign.info.get("links", [])
             sign = sign.convert("RGB").resize((VIDEO_W, VIDEO_H), Image.LANCZOS)
             a4 = Image.new("RGB", (1240, 1754), "white")
             scale = min(1100 / sign.width, 1614 / sign.height)
             fitted = sign.resize((round(sign.width * scale), round(sign.height * scale)), Image.LANCZOS)
-            dx, dy = (1240 - fitted.width) // 2, (1754 - fitted.height) // 2
+            # 18/11/2026 (richiesta di Nino): anche sui cartelli CHIUSO e IN ATTESA il giorno della
+            # settimana in alto a destra, grande, con lo stesso carattere del telefono delle schede del
+            # menu (grassetto 48). Il cartello scende un poco (dy almeno SIGN_TOP) per lasciare spazio
+            # al giorno e, in menu.pdf, alla fila dei bottoni (pdf_buttons_page, y=SIGN_BUTTONS_Y)
+            dx, dy = (1240 - fitted.width) // 2, max(SIGN_TOP, (1754 - fitted.height) // 2)
             a4.paste(fitted, (dx, dy))
+            from PIL import ImageDraw
+            ImageDraw.Draw(a4).text((1240 - 70, 70 + 44), SUMMARY_WEEKDAYS[day.weekday()],
+                                    font=video_font(48, bold=True), fill=(40, 40, 40), anchor="rs")
             a4.info["links"] = move_links(links, scale * VIDEO_W / 1080, dx, dy)  # cartelli disegnati a 1080x1350
             pages.append({"entry": entry, "tipo": kind, "a4": a4})
             continue
@@ -4303,7 +4333,8 @@ def pdf_buttons(entry: dict[str, Any], news_page: int) -> list[tuple[str, str, s
                ("Inizio", "#pagina=1", "Torna alla prima pagina"),
                ("Fine", f"#pagina={news_page}", "Vai alle ultime pagine: chi pubblica il menu, notizie, meteo e farmacia di turno"),
                ("PDF", f"{pdf_site()[0]}{entry['id']}.pdf",  # 18/11/2026: menu degli ultimi giorni
-                f"Apri il PDF di {name} con i menu degli ultimi {shop_pdf_days()} giorni")]
+                f"Apri il PDF del solo menu di {name}, da stampare" if shop_pdf_days() == 1
+                else f"Apri il PDF di {name} con i menu degli ultimi {shop_pdf_days()} giorni")]
     if entry.get("indirizzo"):
         buttons.append(("Mappa", maps_link(name, entry["indirizzo"]), f"Apri la mappa: {entry['indirizzo']}"))
     if tel_link(entry.get("telefono", "")):
@@ -4355,12 +4386,12 @@ def pdf_buttons_page(page: dict[str, Any], news_page: int):
     (il menu scende un poco). Cartelli CHIUSO / IN ATTESA: fila nel margine bianco in alto."""
     buttons = pdf_buttons(page["entry"], news_page)
     if page.get("menu") is not None:
-        return photo_page(page["entry"], page["menu"], page["quando"], buttons=buttons)
+        return photo_page(page["entry"], page["menu"], page["quando"], buttons=buttons, banner=page.get("banner"))
     from PIL import ImageDraw
     a4 = page["a4"].copy()
     a4.info["links"] = list(page["a4"].info.get("links", []))
     a4.info["tips"] = dict(page["a4"].info.get("tips", {}))
-    draw_pdf_buttons(a4, ImageDraw.Draw(a4), a4.width / 2, 80, buttons)
+    draw_pdf_buttons(a4, ImageDraw.Draw(a4), a4.width / 2, SIGN_BUTTONS_Y, buttons)  # sotto il giorno della settimana
     return a4
 
 
@@ -4738,7 +4769,8 @@ def publish_pdf_site() -> bool:
 
 def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (1240, 1754),
                footer: str = "Tutti i menu di oggi: tinyurl.com/menurosticcerie",
-               buttons: list[tuple[str, str, str]] | None = None):
+               buttons: list[tuple[str, str, str]] | None = None,
+               banner: tuple[str, str] | None = None):
     """Pagina bianca del menu (la stessa del PDF): in alto logo piccolo e, alla sua destra, nome,
     data e indirizzo completo (tre righe); sotto il
     menu intero, il più grande possibile, con i colori originali; in fondo una riga grigia.
@@ -4793,6 +4825,15 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
     draw.line((margin, top - round(14 * k), page_w - margin, top - round(14 * k)), fill=(200, 200, 200), width=2)
     if buttons:  # fila di bottoni verdi sotto la linea, centrata nel rigo; il menu scende sotto
         top += draw_pdf_buttons(page, draw, page_w / 2, top + round(4 * k), buttons, k) + round(24 * k)
+    if banner:  # 18/11/2026: fascia arancione del menu della settimana scorsa (locale ancora in attesa)
+        big, small = banner
+        height = round(150 * k)
+        draw.rounded_rectangle((margin, top, page_w - margin, top + height), radius=round(28 * k), fill=WAIT_ORANGE)
+        big_font, big = video_fit_text(draw, big, round(46 * k), True, page_w - 2 * margin - round(60 * k))
+        small_font, small = video_fit_text(draw, small, round(32 * k), False, page_w - 2 * margin - round(60 * k))
+        draw.text((page_w / 2, top + round(52 * k)), big, font=big_font, fill="white", anchor="mm")
+        draw.text((page_w / 2, top + round(108 * k)), small, font=small_font, fill="white", anchor="mm")
+        top += height + round(24 * k)
     bottom = page_h - margin - round(30 * k)
     flat = Image.new("RGB", menu.size, "white")
     flat.paste(menu, (0, 0), menu)
@@ -4823,7 +4864,28 @@ def photo_page(entry: dict[str, Any], menu, when: str, size: tuple[int, int] = (
 # dei giorni passati non si ridisegnano a ogni giro e git non rimanda file uguali. Il PDF di ogni
 # locale si rifà quindi quando il locale pubblica (o cambia) il menu e una volta a inizio giornata.
 SHOP_PDF_STATE = DATA / "pdf-locali.json"   # {"<id>": "<impronta>"}
-SHOP_PDF_DAYS = 8
+SHOP_PDF_DAYS = 1   # 18/11/2026 (07:35 -> 08:40): Nino ha rinunciato alle 8 pagine; si torna a solo oggi
+WAIT_ORANGE = (199, 122, 10)  # arancione dei cartelli IN ATTESA
+
+
+def archived_menu_on(shop_id: str, day: date) -> Path | None:
+    """L'ULTIMO menu archiviato del locale per quel giorno (archivio\\<id>\\AAAA-MM-GG_*), o None."""
+    folder = ARCHIVE / shop_id
+    if not folder.is_dir():
+        return None
+    files = [path for path in folder.glob(f"{day.isoformat()}_*") if path.is_file()
+             and path.suffix.lower() in MENU_EXTENSIONS and ARCHIVE_NAME.match(path.stem)]
+    return max(files, key=lambda path: path.stem, default=None)
+
+
+def last_week_banner(shop: dict[str, Any], last_week: date) -> tuple[str, str]:
+    """Le due righe della fascia arancione sopra il menu della settimana scorsa."""
+    usual = usual_time(shop)
+    big = f"Il menu di oggi è previsto per le {usual}" if usual else "Il menu di oggi non è ancora pubblicato"
+    small = f"Qui sotto il menu di {SUMMARY_WEEKDAYS[last_week.weekday()].lower()} " \
+            f"{'scorsa' if last_week.weekday() == 6 else 'scorso'}, " \
+            f"{last_week.day} {list(MONTHS)[last_week.month - 1]}"
+    return big, small
 
 
 def shop_pdf_days(settings: dict[str, Any] | None = None) -> int:

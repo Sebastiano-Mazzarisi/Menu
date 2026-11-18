@@ -25,10 +25,10 @@ In ogni pagina trovi il nome della rosticceria, l'indirizzo, il numero di telefo
 E sotto l'intestazione ci sono dei comodi bottoni verdi:
 "Inizio", per tornare alla prima pagina.
 "Fine", per andare alle ultime pagine, quelle con notizie, meteo e farmacia.
-"PDF", per avere solo quella rosticceria, pronto da stampare o da inviare a un amico: nella prima pagina c'è il menù di oggi, nelle pagine seguenti i menù degli ultimi giorni, uno per pagina con la sua data. Così scopri in quale giorno della settimana prepara il tuo piatto preferito.
+"PDF", per avere solo il menù di quella rosticceria, pronto da stampare o da inviare a un amico.
 "Mappa", per aprire la mappa e arrivare lì senza sbagliare strada.
 E "Chiama", per telefonare subito e prenotare il tuo piatto preferito.
-Se una rosticceria oggi è chiusa, te lo dice un cartello ben visibile. E se il menù non è ancora uscito, vedrai il cartello "in attesa": appena viene pubblicato, compare al suo posto.
+Se una rosticceria oggi è chiusa, te lo dice un cartello ben visibile. E se il menù non è ancora uscito? Vedrai il menù dello stesso giorno della settimana scorsa, con una fascia arancione che ti dice a che ora è previsto quello di oggi: così puoi già farti un'idea di cosa ci sarà. Appena il menù di oggi viene pubblicato, compare al suo posto.
 
 Ti interessa una sola rosticceria?
 Nel documento con tutti i menù, in ogni pagina c'è anche un bottone rosso con il cuore: "Salva".
