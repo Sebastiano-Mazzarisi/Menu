@@ -1,0 +1,56 @@
+{
+  "data": "2026-11-18",
+  "testo": "PRANZO DI OGGI\nAnche oggi tante specialità gustose vi aspettano!\nPRIMI PIATTI\n* Orecchiette al forno\n* Pappardelle ai funghi porcini\n* Cicorielle e fave\nSECONDI PIATTI\n* Cotolette\n* Ali di pollo\nUna pausa pranzo ricca di gusto, con la bontà della cucina di casa!\nALIMENTARI DA GIUSEPPE DAL 2010\nVia Giuseppe Di Vittorio, 7 – Gioia del Colle\nPrenota al 375 749 2362\n#AlimentariDaGiuseppe #PranzoDiOggi #GioiaDelColle #Gastronomia #CucinaPronta PausaPranzo PranzoGustoso",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Anche oggi tante specialità gustose vi aspettano!",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Orecchiette al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pappardelle ai funghi porcini",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cicorielle e fave",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cotolette",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Ali di pollo",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Una pausa pranzo ricca di gusto, con la bontà della cucina di casa!",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
