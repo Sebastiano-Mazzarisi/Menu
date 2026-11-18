@@ -8864,6 +8864,73 @@ PAGE_STATS = DATA / "statistiche.json"  # ultimi numeri della Pagina, letti anch
 VIEW_METRICS = ("page_media_view", "page_views_total", "page_impressions", "page_impressions_unique")
 
 
+# CLIC DI OGGI (18/11/2026, richiesta di Nino): "Visualizzazioni: N oggi" del Monitor = clic fatti OGGI
+# sui post della Pagina (aprire la foto, avviare il video, toccare un link verso PDF/video): metrica
+# post_clicks di ogni post pubblicato negli ultimi 30 giorni (un'unica chiamata a published_posts con
+# insights.metric(post_clicks); se Facebook non accetta la forma unica, una chiamata per post).
+# post_clicks è il totale del post da quando esiste: i clic di OGGI = valore attuale - valore a inizio
+# giornata. Inizio giornata = ultimo valore letto ieri (o 0 se il post è di oggi; per un post vecchio
+# mai letto prima, il primo valore letto oggi). Siccome Menu cancella e ripubblica spesso i post, i
+# valori letti restano salvati anche dopo che il post è stato cancellato, così i suoi clic non si
+# perdono. Dati in dati\statistiche.json > "clic" {"data", "inizio": {post: n}, "ultimo": {post: n}}
+# e "clic_oggi". Le visualizzazioni dei 28 giorni non si mostrano più (poco significative).
+def post_clicks_now(page: str, token: str, version: str) -> dict[str, tuple[int, str]]:
+    """{id del post: (clic totali, created_time)} dei post della Pagina degli ultimi 30 giorni."""
+    since = int((datetime.now() - timedelta(days=30)).timestamp())
+
+    def value_of(insights: dict[str, Any]) -> int | None:
+        for item in (insights or {}).get("data") or []:
+            series = item.get("values") or []
+            value = series[-1].get("value") if series else None
+            if isinstance(value, dict):
+                value = sum(v for v in value.values() if isinstance(v, (int, float)))
+            if isinstance(value, (int, float)):
+                return int(value)
+        return None
+    found: dict[str, tuple[int, str]] = {}
+    try:
+        answer = facebook_call(f"{page}/published_posts", {"fields": "id,created_time,insights.metric(post_clicks)",
+                                                           "since": str(since), "limit": "100", "access_token": token},
+                               version=version)
+        for item in answer.get("data") or []:
+            value = value_of(item.get("insights"))
+            if value is not None:
+                found[item["id"]] = (value, item.get("created_time", ""))
+        if found or not answer.get("data"):
+            return found
+    except RuntimeError:
+        answer = facebook_call(f"{page}/published_posts", {"fields": "id,created_time", "since": str(since),
+                                                           "limit": "100", "access_token": token}, version=version)
+    for item in answer.get("data") or []:  # una chiamata per post
+        try:
+            value = value_of(facebook_call(f"{item['id']}/insights", {"metric": "post_clicks", "access_token": token},
+                                           version=version))
+        except RuntimeError:
+            continue
+        if value is not None:
+            found[item["id"]] = (value, item.get("created_time", ""))
+    return found
+
+
+def clicks_today(found: dict[str, tuple[int, str]], store: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    """Clic di oggi da post_clicks_now e dal registro "clic" di statistiche.json (vedi sopra)."""
+    today = date.today().isoformat()
+    last = dict(store.get("ultimo", {}))
+    start = dict(store.get("inizio", {})) if store.get("data") == today else dict(last)  # nuovo giorno: base = ieri
+    for post, (value, created) in found.items():
+        if post not in start:
+            try:
+                made = datetime.fromisoformat(created.replace("+0000", "+00:00")).astimezone().date().isoformat()
+            except ValueError:
+                made = ""
+            start[post] = 0 if made == today else value
+        last[post] = value
+    total = sum(max(0, last[post] - start.get(post, 0)) for post in last if post in start)
+    keep = {post for post in last if post in found or last[post] > start.get(post, 0)}
+    return total, {"data": today, "inizio": {p: start[p] for p in keep if p in start},
+                   "ultimo": {p: last[p] for p in keep}}
+
+
 def page_stats(show: bool = True) -> dict[str, Any]:
     """Numeri della Pagina Facebook letti con il collegamento ufficiale (dati/facebook.json):
     follower (followers_count, e "mi piace" = fan_count) e visualizzazioni di oggi e degli ultimi
@@ -8910,6 +8977,13 @@ def page_stats(show: bool = True) -> dict[str, Any]:
         if "metrica" not in stats and problems:
             stats["errore_visualizzazioni"] = "visualizzazioni non disponibili (forse manca il permesso read_insights)"
             stats["dettagli_visualizzazioni"] = problems
+        try:  # 18/11/2026: clic di oggi su foto, video e link dei post (vedi CLIC DI OGGI)
+            total, store = clicks_today(post_clicks_now(page, token, version), read_json(PAGE_STATS, {}).get("clic", {}))
+            stats.update({"clic_oggi": total, "clic": store})
+        except Exception as exc:
+            stats["errore_clic"] = f"clic non letti: {str(exc)[:150]}"
+            if read_json(PAGE_STATS, {}).get("clic"):
+                stats["clic"] = read_json(PAGE_STATS, {})["clic"]
     old = read_json(PAGE_STATS, {})
     if stats.get("follower") is not None:  # storico giornaliero dei follower (ultimo valore di ogni giorno)
         history = old.get("storico", {})
@@ -8925,7 +8999,9 @@ def page_stats(show: bool = True) -> dict[str, Any]:
         if "metrica" in stats:
             print(f"  Visualizzazioni oggi:     {stats.get('visualizzazioni_oggi', '?')}")
             print(f"  Visualizzazioni 28 giorni: {stats.get('visualizzazioni_28_giorni', '?')}  ({stats['metrica']})")
-        for key in ("errore", "errore_visualizzazioni"):
+        if stats.get("clic_oggi") is not None:
+            print(f"  Clic di oggi sui post:    {stats['clic_oggi']}  (foto, video, link a PDF e video)")
+        for key in ("errore", "errore_visualizzazioni", "errore_clic"):
             if stats.get(key):
                 print(f"  {stats[key]}")
         for line in dict.fromkeys(stats.get("dettagli_visualizzazioni", [])):  # senza righe doppie

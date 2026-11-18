@@ -2873,3 +2873,14 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   completo.json ha in più "video_ora", "video_pronti", "video_locali" (aggiornati solo quando il video si
   rifà); updated_line(key) usa quelli per il post "I menu in video", così la riga "Aggiornato ..." del
   video dice l'ora vera del video. link_text e update_link_comments passano la chiave.
+- 18/11/2026 (15:10): "VISUALIZZAZIONI" DEL MONITOR = CLIC DI OGGI SUI POST (richiesta di Nino). Prima il Monitor
+  mostrava page_media_view (oggi e 28 giorni): poco significativo. Ora page_stats legge anche, per i post della
+  Pagina degli ultimi 30 giorni, la metrica post_clicks (clic su foto, avvio dei video, link a PDF e video):
+  post_clicks_now (una sola chiamata published_posts con insights.metric(post_clicks), altrimenti una per post)
+  e clicks_today (clic di oggi = valore attuale - valore a inizio giornata; inizio = ultimo valore letto ieri,
+  0 per i post nati oggi; i valori dei post cancellati e ripubblicati da Menu restano nel conto). Dati in
+  statistiche.json > "clic" e "clic_oggi"; errore in "errore_clic". Monitor.py (show_stats): "Visualizzazioni:
+  N oggi" = clic_oggi; tolto "in 28 giorni"; se i clic non sono ancora stati letti oggi: "non ancora lette".
+  Statistiche.bat mostra anche la riga "Clic di oggi sui post". Il primo giorno il conto parte dalla prima
+  lettura (i clic fatti prima sui post vecchi non si conoscono); dal giorno dopo vale per tutta la giornata.
+  Copia precedente del Monitor: backup\Monitor_2026-11-18_prima-dei-clic.py

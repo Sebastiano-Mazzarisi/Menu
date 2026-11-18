@@ -964,7 +964,7 @@ class Monitor(tk.Tk):
         self.say("Pubblicazione su Facebook avviata: un paio di minuti")
 
     def show_stats(self) -> None:
-        """Due righe: "Facebook: 73 follower (+3 da ieri) (alle 10:59)" e "Visualizzazioni: 370 oggi · 781 in 28 giorni"
+        """Due righe: "Facebook: 73 follower (+3 da ieri) (alle 10:59)" e "Visualizzazioni: 12 oggi" (clic di oggi sui post)
         letta da dati/statistiche.json (Menu.py la aggiorna a ogni giro automatico e con Statistiche.bat)."""
         stats = read_json(STATS, {})
         if not stats:
@@ -977,13 +977,13 @@ class Monitor(tk.Tk):
             # due righe, così la finestra non si allarga
             text = (f"Facebook: {stats['follower']} follower" + (f" ({change:+d} da ieri)" if change else "")
                     + f" (alle {str(stats.get('ora', ''))[11:16]})")
-            views = []
-            if stats.get("visualizzazioni_oggi") is not None:
-                views.append(f"{stats['visualizzazioni_oggi']} oggi")
-            if stats.get("visualizzazioni_28_giorni") is not None:
-                views.append(f"{stats['visualizzazioni_28_giorni']} in 28 giorni")
-            if views:
-                text += "\nVisualizzazioni: " + " · ".join(views)
+            # 18/11/2026 (Nino): "Visualizzazioni" = CLIC di oggi sui post della Pagina (foto, video,
+            # link a PDF e video), calcolati da Menu.py (statistiche.json > "clic_oggi"); tolte le
+            # visualizzazioni dei 28 giorni, poco significative
+            if stats.get("clic_oggi") is not None and str(stats.get("clic", {}).get("data", "")) == str(stats.get("ora", ""))[:10]:
+                text += f"\nVisualizzazioni: {stats['clic_oggi']} oggi"
+            else:
+                text += "\nVisualizzazioni: non ancora lette"
         if self.stats.cget("text") != text:
             self.stats.config(text=text)
 
