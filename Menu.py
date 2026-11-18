@@ -5264,11 +5264,16 @@ def info_pages() -> list:
     return pages
 
 
-def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool = False) -> bool:
+def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool = False,
+                     with_video: bool = False) -> bool:
     """PDF di ogni locale, PDF completo e video con le stesse pagine sul sito dei PDF (vedi sopra).
     only_pdf=True (Rifai-solo-PDF.bat, --solo-pdf): rifà e pubblica SOLO i PDF (più mappa.html e le
     pagine di ascolta.html), senza video e senza toccare il post di Facebook; l'impronta in
-    completo.json non cambia, così il giro automatico rifà il video se serve."""
+    completo.json non cambia, così il giro automatico rifà il video se serve.
+    VIDEO SOLO QUANDO SERVE (18/11/2026, Nino): video.mp4 NON si rifà più a ogni giro (3,7 MB in più
+    da mandare a GitHub ogni volta) ma solo con with_video=True: quando esce il Reel del giorno
+    (reel_post), con Rifai-PDF-e-video.bat (--completo) o se video.mp4 non c'è ancora. Il post
+    "I menu in video" dice l'ora del video (completo.json > "video_ora"), non quella del PDF."""
     refresh_pharmacy_links(config)  # farmacia di oggi senza zone cliccabili: la rifà (niente Facebook)
     stamp = complete_fingerprint(config)
     info = info_fingerprint()
@@ -5350,8 +5355,12 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
         ok = publish_pdf_site()
         print(f"PDF pubblicati: {pdf_site(config.get('impostazioni', {}))[0]}{COMPLETE_PDF}" if ok else "PDF NON pubblicati.")
         return ok
-    video = make_pdf_video(pages, PDF_SITE_DIR / COMPLETE_VIDEO)
-    tick("video")
+    if with_video or not (PDF_SITE_DIR / COMPLETE_VIDEO).is_file():
+        video = make_pdf_video(pages, PDF_SITE_DIR / COMPLETE_VIDEO)
+        tick("video")
+    else:
+        video = None
+        print("Video non rifatto: si rifà solo quando esce il Reel del giorno (o con Rifai-PDF-e-video.bat).")
     try:  # pagina del link MP3: audio in sottofondo mentre si guardano le pagine
         write_listen_page(pages)
     except Exception as exc:
@@ -5364,9 +5373,16 @@ def publish_complete(config: dict[str, Any], force: bool = False, only_pdf: bool
     tick("invio del sito dei PDF a GitHub")
     if not sent:
         return False
-    save_json(COMPLETE_STATE, {"impronta": stamp, "info": info, "ora": datetime.now().isoformat(timespec="seconds"),
-                               "locali": sum(1 for page in pages if page["tipo"] != "riepilogo"), "pronti": sum(1 for page in pages if page["tipo"] == "menu"),
-                               "video": bool(video)})
+    old_state = read_json(COMPLETE_STATE, {})
+    new_state = {"impronta": stamp, "info": info, "ora": datetime.now().isoformat(timespec="seconds"),
+                 "locali": sum(1 for page in pages if page["tipo"] != "riepilogo"),
+                 "pronti": sum(1 for page in pages if page["tipo"] == "menu"), "video": bool(video)}
+    if video:  # ora e conteggio del video (riga "Aggiornato" del post "I menu in video")
+        new_state.update({"video_ora": new_state["ora"], "video_pronti": new_state["pronti"],
+                          "video_locali": new_state["locali"]})
+    else:
+        new_state.update({key: old_state[key] for key in ("video_ora", "video_pronti", "video_locali") if key in old_state})
+    save_json(COMPLETE_STATE, new_state)
     site = pdf_site(config.get("impostazioni", {}))[0]
     print(f"Menu completo pubblicato: {site}{COMPLETE_PDF}" + (f" e {site}{COMPLETE_VIDEO}" if video else ""))
     # PDF e video cambiati: sulla Pagina si rifà l'UNICO post (immagine del giorno + didascalia con
@@ -6022,12 +6038,16 @@ def link_post_image(title: str, target: Path, note: str = "Il link è nel primo 
     return target
 
 
-def updated_line() -> str:
+def updated_line(key: str = "pdf") -> str:
     """Seconda riga dei post "I menu in pdf" / "I menu in video", es.
     "Aggiornato martedì 20 ottobre 2026 alle ore 21:28 (3/13)": data e ora dell'ultima
     pubblicazione di PDF e video e, tra parentesi, rosticcerie con il menu di oggi / totale
     (dati/completo.json > "ora", "pronti", "locali"). "" se PDF e video non sono ancora stati fatti."""
     state = read_json(COMPLETE_STATE, {})
+    if key == "video" and state.get("video_ora"):  # 18/11/2026: il video si rifà solo col Reel
+        state = {"ora": state["video_ora"], "pronti": state.get("video_pronti"), "locali": state.get("video_locali")}
+        if state["pronti"] is None:
+            state.pop("pronti")
     try:
         when = datetime.fromisoformat(state.get("ora", ""))
     except (TypeError, ValueError):
@@ -6046,7 +6066,7 @@ def link_text(key: str, current: str = "") -> str:
     Pagina). Se la riga non c'è viene messa dopo la prima; se il post non ha testo si usa:
         Pdf: https://menurosticcerie.github.io/menu.pdf       (Video: .../video.mp4 per il video)
         Aggiornato martedì 20 ottobre 2026 alle ore 21:28 (3/13)"""
-    line = updated_line()
+    line = updated_line(key)
     if not current.strip():
         site = pdf_site()[0]
         first = f"Pdf: {site}{COMPLETE_PDF}" if key == "pdf" else f"Video: {site}{COMPLETE_VIDEO}"
@@ -6097,7 +6117,7 @@ def update_link_comments() -> None:
                 try:
                     facebook_call(entry["post"], {"message": text, "access_token": token}, version=version,
                                   method="POST")
-                    print(f"Post \"I menu in {key}\": {updated_line()}")
+                    print(f"Post \"I menu in {key}\": {updated_line(key)}")
                 except RuntimeError as exc:
                     print(f"Post \"I menu in {key}\" NON aggiornato: {exc}")
         comment = entry.get("commento")
@@ -7344,10 +7364,20 @@ def reel_post(config: dict[str, Any], force: bool = False) -> bool:
         save_json(REEL_HISTORY, [reel] + (delete_facebook_posts(old) if old else []))
         instagram_reel(video, keep_today=False)  # 08/11/2026: stesso Reel su Instagram (se collegato)
         tick("Reel del giorno")
-        try:  # il Reel è il più recente: il post dei menu torna primo
-            daily_summary(config, force=True, refresh_pdf=False)
+        # 18/11/2026: il video del sito (video.mp4) si rifà SOLO qui, quando esce il Reel.
+        # publish_complete lo invia a GitHub e ripubblica il post dei menu, che così torna primo
+        # (il Reel è il più recente); se non riesce, il post si rimette in cima come prima.
+        try:
+            refreshed = publish_complete(config, force=True, with_video=True)
         except Exception as exc:
-            print(f"Post dei menu non rimesso in cima dopo il Reel: {exc}")
+            refreshed = False
+            print(f"Video del sito non rifatto: {exc}")
+        if not refreshed or not read_json(FACEBOOK_CONFIG, {}).get("token") \
+                or not summary_settings(config.get("impostazioni", {})).get("facebook", True):
+            try:  # il Reel è il più recente: il post dei menu torna primo
+                daily_summary(config, force=True, refresh_pdf=False)
+            except Exception as exc:
+                print(f"Post dei menu non rimesso in cima dopo il Reel: {exc}")
         return True
     except LookupError as exc:
         state.update({"errore": str(exc), "tentativi": 3})
@@ -9107,7 +9137,7 @@ def main() -> None:
     if args.completo:  # PDF e video subito, anche se nulla è cambiato
         take_lock()  # se gira il controllo automatico aspetta che finisca (stesso invio a GitHub)
         try:
-            publish_complete(config, force=True)
+            publish_complete(config, force=True, with_video=True)
         finally:
             AUTO_LOCK.unlink(missing_ok=True)
         return

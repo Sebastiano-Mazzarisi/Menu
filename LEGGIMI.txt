@@ -2861,3 +2861,15 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Insieme: il PDF del singolo locale torna a SOLO OGGI (SHOP_PDF_DAYS = 1, le 8 pagine delle 00:45 non
   servono più; "pdf_giorni" in locali.json resta possibile) e il fumetto del bottone PDF torna "Apri il PDF
   del solo menu di <nome>, da stampare". Manuale.txt aggiornato.
+- 18/11/2026 (09:00): VIDEO DEL SITO SOLO QUANDO ESCE IL REEL (Nino: il video basta quando va su Facebook).
+  Prima publish_complete rifaceva video.mp4 (~3,7 MB) a ogni giro e lo mandava a GitHub: metà di ogni invio.
+  Reel e Storia usano già video propri (make_reel), quindi video.mp4 serve solo al post "I menu in video".
+  Ora publish_complete(config, force, only_pdf, with_video=False) rifà il video SOLO con with_video=True:
+  - reel_post, subito dopo che il Reel è uscito (al posto del vecchio daily_summary finale: publish_complete
+    invia a GitHub e ripubblica il post dei menu, che torna primo; se non riesce, daily_summary come prima);
+  - Rifai-PDF-e-video.bat (--completo);
+  - oppure se video.mp4 non c'è ancora in pdf-sito.
+  Negli altri giri nel registro: "Video non rifatto: si rifà solo quando esce il Reel del giorno".
+  completo.json ha in più "video_ora", "video_pronti", "video_locali" (aggiornati solo quando il video si
+  rifà); updated_line(key) usa quelli per il post "I menu in video", così la riga "Aggiornato ..." del
+  video dice l'ora vera del video. link_text e update_link_comments passano la chiave.
