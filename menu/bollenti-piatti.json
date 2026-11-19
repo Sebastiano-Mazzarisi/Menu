@@ -1,0 +1,96 @@
+{
+  "data": "2026-11-19",
+  "testo": "MENÙ DI GIOVEDÌ\nPRIMI PIATTI\n●CICORIE ALL'OLIO 5,0\n●SFORMATINO DI BIETOLE AL FORNO 5,0\n●GNOCCHI DI PATATE ALLA BOLOGNESE 5,5\n●ORECCHIETTE CON CIME DI RAPE 5,5\n●RISOTTO AI FRUTTI DI MARE 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●STRACCETTI DI POLLO IN SALSA DI PORCINI\n●ROSE DI CAPOCOLLO CON FUNGHETTI, FESA DI TACCHINO E GRANA AL FORNO\n●GOULASH DI TACCHINO CON PATATE\n●FILETTO DI ORATA AL SUGO DI CROSTACEI\n●MILLEFOGLIE DI VERDURE VEGETARIANO\n●FRITTATA DI UOVA CON SPECK, BIETOLE E MOZZARELLA\n●PIZZA DI PATATE\n●BACCALÀ IN PASTELLA",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI GIOVEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CICORIE ALL'OLIO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SFORMATINO DI BIETOLE AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●GNOCCHI DI PATATE ALLA BOLOGNESE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ORECCHIETTE CON CIME DI RAPE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RISOTTO AI FRUTTI DI MARE 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STRACCETTI DI POLLO IN SALSA DI PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ROSE DI CAPOCOLLO CON FUNGHETTI, FESA DI TACCHINO E GRANA AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●GOULASH DI TACCHINO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FILETTO DI ORATA AL SUGO DI CROSTACEI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MILLEFOGLIE DI VERDURE VEGETARIANO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FRITTATA DI UOVA CON SPECK, BIETOLE E MOZZARELLA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PIZZA DI PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BACCALÀ IN PASTELLA",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "data": "2026-11-19",
+  "testo": "PRANZO DI OGGI\nOggi vi proponiamo tante specialità preparate con gusto e tradizione!\nPRIMI PIATTI\nPennette con tonno, capperi e olive\nMezze maniche con carciofi e speck\nSECONDI PIATTI\nBraciole nel sugo\nSpezzatino al sugo\nCONTORNI\nTanti contorni assortiti\nLa bontà della cucina di casa vi aspetta!\nALIMENTARI DA GIUSEPPE DAL 2010\nVia Giuseppe Di Vittorio, 7 – Gioia del Colle\nPrenota al 375 749 2362\n#AlimentariDaGiuseppe #PranzoDiOggi #GioiaDelColle #Gastronomia #CucinaPronta PausaPranzo PranzoGustoso",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Oggi vi proponiamo tante specialità preparate con gusto e tradizione!",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pennette con tonno, capperi e olive",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Mezze maniche con carciofi e speck",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Braciole nel sugo",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Spezzatino al sugo",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "CONTORNI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Tanti contorni assortiti",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "La bontà della cucina di casa vi aspetta!",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
