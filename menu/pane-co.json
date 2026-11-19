@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-18",
+  "data": "2026-11-19",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pasta e patate con provola alla napoletana",
+          "nome": "Strozzapreti all'amatriciana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con zafferano e stracciatella",
+          "nome": "Risotto con radicchio e gorgonzola",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Rigatoni con cavolfiore e pancetta",
+          "nome": "Orecchiette con vellutata di zucca e funghi porcini",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Cavatelli al grano arso con gamberetti e pesto di zucchina",
+          "nome": "Tagliolino con pesce spada, olive e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa del casale",
+          "nome": "Minestrone di verdure",
           "prezzo": "€6.00",
-          "descrizione": "Fagioli, lenticchie, ceci, orzo e farro. Con o senza pasta."
+          "descrizione": "Zucchine, patate, carote, melenzane, piselli, cavolfiore e cipolla Con o senza pasta"
         }
       ]
     },
@@ -91,19 +91,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Bombette di capocollo con patate",
+          "nome": "Involtini di capocollo alla contadina",
           "prezzo": "€7.50",
           "descrizione": "5 pz"
         },
         {
-          "nome": "Trancio di pesce spada con olive e pomodorini",
+          "nome": "Trancio di baccalà gratinato con formaggio, prezzemolo e pan grattato",
           "prezzo": "€8.50",
           "descrizione": ""
-        },
-        {
-          "nome": "Bocconcini di pollo con verdure",
-          "prezzo": "€7.50",
-          "descrizione": "Zucchine, carote e sedano"
         }
       ]
     }
