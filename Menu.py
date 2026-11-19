@@ -2004,6 +2004,55 @@ def post_first_seen_day(shop: dict[str, Any], source: dict[str, Any], text: str,
     return None
 
 
+MENU_IN_PHOTO: dict[str, bool] = {}  # abitudine "menu scritto nella foto" per locale (calcolata una volta per giro)
+
+
+def writes_menu_in_photo(shop: dict[str, Any], source: dict[str, Any] | None = None) -> bool:
+    """Il locale pubblica SEMPRE il menu come foto con il menu scritto dentro (es. Impasta e La
+    Stella Blu: cartello grafico "Menù del giorno" con i piatti)? Lo impara da solo guardando gli
+    ultimi menu salvati in ingresso (esclusi quelli di oggi): se almeno 5 e almeno l'80% hanno,
+    letti con l'OCR, un menu scritto nella foto, il locale "scrive il menu nella foto".
+    Per questi locali una foto di un piatto (teglia di pasta, misto mare...) non è mai il menu,
+    anche se il testo del post parla di "primi, secondi e contorni" o elenca cibi: è pubblicità.
+    Vale per tutti i locali, nessuna impostazione da scrivere in locali.json; i locali che
+    scrivono il menu nel testo del post ("menu_nel_testo") o a mano (OCR illeggibile, es. Fantasia)
+    non superano la soglia e non sono toccati dalla regola."""
+    if shop["id"] in MENU_IN_PHOTO:
+        return MENU_IN_PHOTO[shop["id"]]
+    source = source or next((item for item in shop.get("fonti", []) if item.get("tipo") == "browser"), {})
+    answer = False
+    if not source.get("menu_nel_testo"):
+        folder = INPUT / shop["id"]
+        today = date.today()
+        saved = sorted((item for item in folder.glob("*_online.*")
+                        if item.suffix.lower() in IMAGE_EXTENSIONS and image_date(item) < today),
+                       key=lambda item: item.name, reverse=True)[:8]
+        if len(saved) >= 5:
+            written = 0
+            for item in saved:
+                try:
+                    written += bool(text_is_menu(ocr_image(item), source))
+                except Exception:
+                    pass
+            answer = written >= 0.8 * len(saved)
+            if answer:
+                print(f"  {shop['nome']} - scrive sempre il menu nella foto ({written} degli ultimi {len(saved)} menu)")
+    MENU_IN_PHOTO[shop["id"]] = answer
+    return answer
+
+
+def photo_lacks_written_menu(shop: dict[str, Any], source: dict[str, Any] | None, photo_text: str) -> bool:
+    """True se il locale scrive sempre il menu nella foto (writes_menu_in_photo) ma in QUESTA foto
+    non c'è un menu scritto (es. solo il logo "La Stella Blu PESCHERIA" su una foto di gamberi)."""
+    if text_is_menu(photo_text or "", source or {}):
+        return False
+    # foto piena di scritte (15 o più parole) letta male dall'OCR: probabilmente è comunque il
+    # menu, non si scarta (le pubblicità hanno al massimo il logo o una frase)
+    if len(re.findall(r"[A-Za-zÀ-ÿ]{3,}", photo_text or "")) >= 15:
+        return False
+    return writes_menu_in_photo(shop, source)
+
+
 def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, browser: "BrowserCollector",
                    checked: str) -> Result:
     """Un post Facebook/Instagram (fonte "browser"): menu, avviso o NotAMenu se non è un menu.
@@ -2069,6 +2118,11 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         print(f"  {shop['nome']} - CONTROLLO APPROFONDITO: accetto questa {'storia' if source.get('apri_storia') else 'pubblicazione'} "
               f"di oggi come menu (i controlli normali l'avevano scartata)")
         return Result(place_capture(folder, image), date.today(), source.get("nome", "browser"), checked)
+    if photo_lacks_written_menu(shop, source, photo_text):
+        # il locale scrive sempre il menu nella foto: una foto senza menu scritto è pubblicità
+        # (es. Impasta 19/11: teglia di fusilli + "ogni giorno prepariamo primi, secondi e contorni")
+        discard_wrong_menu(shop, folder, image)
+        raise NotAMenu("il locale scrive sempre il menu nella foto, in questa foto non c'è")
     # l'ultimo post è davvero un menu? (non una pubblicità, una foto di un piatto, ecc.)
     words = source.get("parole_menu", MENU_WORDS)
     seen_all = f"{browser.last_text} {photo_text}"
@@ -2234,6 +2288,15 @@ def acquire(shop: dict[str, Any], browser: BrowserCollector | None, online: bool
             remove_file(latest)  # anteprima sfocata di una storia: va ricatturata
             latest = newest_image(folder)
         # un menu solo testo viene comunque riletto: il post può essere stato completato o corretto
+        if latest and image_date(latest) == date.today() and latest.suffix.lower() in IMAGE_EXTENSIONS \
+                and latest.stem.endswith("_online") and photo_lacks_written_menu(shop, None, ocr_image(latest)):
+            # menu di oggi preso in un giro precedente (o da una versione precedente del programma)
+            # ma senza menu scritto, per un locale che lo scrive sempre nella foto: era una pubblicità.
+            # Via in dati/scartati e si ricontrolla online (il vero menu può essere uscito dopo)
+            DISCARDED.mkdir(parents=True, exist_ok=True)
+            move_file(latest, DISCARDED / f"{shop['id']}_{latest.name}")
+            print(f"  {shop['nome']} - tolto {latest.name}: nella foto non c'è il menu scritto (ora in dati/scartati)")
+            latest = newest_image(folder)
         if latest and image_date(latest) == date.today() and not latest.stem.endswith("_testo") \
                 and not is_reported(shop, latest):
             return Result(latest, date.today(), skip_if_today, checked)

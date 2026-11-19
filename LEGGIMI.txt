@@ -2884,3 +2884,25 @@ Copia precedente: backup\Menu_2026-10-22_prima-del-post-unico.py
   Statistiche.bat mostra anche la riga "Clic di oggi sui post". Il primo giorno il conto parte dalla prima
   lettura (i clic fatti prima sui post vecchi non si conoscono); dal giorno dopo vale per tutta la giornata.
   Copia precedente del Monitor: backup\Monitor_2026-11-18_prima-dei-clic.py
+- 19/11/2026 (08:45): FOTO PUBBLICITARIE SCAMBIATE PER MENU (Impasta e La Stella Blu). Alle 07:15 il primo
+  post di Impasta era una teglia di fusilli con il testo "Ogni giorno prepariamo primi, secondi e contorni
+  diversi... Menu su WhatsApp" (le parole primi/secondi/contorni bastavano a text_lists_menu) e quello di
+  La Stella Blu una foto di misto mare con il logo (Facebook la descrive "gamberetto e testo", e il testo
+  del post elenca cibi): entrambe salvate come menu di oggi, e nei giri dopo il locale non veniva più
+  ricontrollato (c'era già "il menu di oggi"); il vero menu di Impasta, uscito dopo, non veniva preso.
+  Regola nuova, generale e senza impostazioni in locali.json:
+  - writes_menu_in_photo(shop): il programma impara da solo se il locale pubblica SEMPRE il menu scritto
+    nella foto: guarda gli ultimi 8 menu salvati in ingresso/<id> (*_online.*, esclusi quelli di oggi);
+    se sono almeno 5 e almeno l'80% supera text_is_menu sul testo OCR della foto, sì. Calcolato una volta
+    per giro (MENU_IN_PHOTO); mai per le fonti con "menu_nel_testo". I locali con menu scritto a mano
+    (OCR illeggibile, es. Fantasia) non arrivano alla soglia e non sono toccati.
+  - photo_lacks_written_menu(shop, source, photo_text): True se il locale scrive sempre il menu nella
+    foto ma in questa foto l'OCR non trova un menu (text_is_menu falso) e ci sono meno di 15 parole
+    (una foto piena di scritte lette male resta valida).
+  - browser_result: dopo il controllo dei post vecchi (e dopo il controllo approfondito "tollerante",
+    che resta prioritario) un post così viene scartato: NotAMenu("il locale scrive sempre il menu nella
+    foto, in questa foto non c'è"); si passa al post successivo come per gli altri scarti.
+  - acquire, modalità automatica (skip_if_today): se il "menu di oggi" già salvato è una foto _online
+    senza menu scritto per uno di questi locali, va in dati/scartati ("tolto ...: nella foto non c'è il
+    menu scritto") e il locale si ricontrolla online. Così si correggono da sole anche le foto sbagliate
+    prese nei giri precedenti (com'è successo il 19/11).
