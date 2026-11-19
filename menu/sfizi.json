@@ -1,0 +1,72 @@
+{
+  "data": "2026-11-19",
+  "testo": "Lasagne al pesto\nGnocchetti con zucchine e speck\nPolpettone\nScaloppine burro e salvia\nCostata alla brace\nPatate al forno\nParmigiana di zucca\nParmigiana di melanzane\nOmelette farcita\nOlive fritte\nCicorie e crema di fave\nPizza rustica di verdure e provola",
+  "da_foto": "2026-11-19_online.jpg",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Lasagne al pesto",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Gnocchetti con zucchine e speck",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Polpettone",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Scaloppine burro e salvia",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Costata alla brace",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Patate al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Parmigiana di zucca",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Parmigiana di melanzane",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Omelette farcita",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Olive fritte",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cicorie e crema di fave",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pizza rustica di verdure e provola",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
