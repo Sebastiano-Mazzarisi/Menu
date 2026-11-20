@@ -1,0 +1,51 @@
+{
+  "data": "2026-11-20",
+  "testo": "PRANZO DI OGGI – SAPORI DI MARE!\nOggi vi portiamo in tavola tutto il gusto del mare!\nPRIMI PIATTI\n* Calamarata ai frutti di mare\n* Linguine con le cozze\nSECONDI PIATTI\n* Frittura di pesce\n* Baccalà\nFreschezza e bontà per una pausa pranzo tutta da gustare!\nALIMENTARI DA GIUSEPPE DAL 2010\nVia Giuseppe Di Vittorio, 7 – Gioia del Colle\nPrenota al 375 749 2362\n#AlimentariDaGiuseppe #PranzoDiOggi #GioiaDelColle #CucinaDiMare #FritturaDiPesce Gastronomia PausaPranzo",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Oggi vi portiamo in tavola tutto il gusto del mare!",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Calamarata ai frutti di mare",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Linguine con le cozze",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Frittura di pesce",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Baccalà",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Freschezza e bontà per una pausa pranzo tutta da gustare!",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
