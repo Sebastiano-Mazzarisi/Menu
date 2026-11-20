@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-19",
+  "data": "2026-11-20",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -61,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Strozzapreti all'amatriciana",
+          "nome": "Pennette all'arrabbiata",
           "prezzo": "€6.50",
-          "descrizione": ""
+          "descrizione": "Salsa di pomodoro, olio e peperoncino"
         },
         {
-          "nome": "Risotto con radicchio e gorgonzola",
+          "nome": "Risotto con spinaci e scamorza affumicata",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con vellutata di zucca e funghi porcini",
+          "nome": "Cavatelli al grano arso ai frutti di mare",
           "prezzo": "€8.50",
+          "descrizione": "Vongole,seppie,cozze e gamberetti."
+        },
+        {
+          "nome": "Orecchiette con salsiccia a punta di coltello e cardoncelli",
+          "prezzo": "€9.00",
           "descrizione": ""
         },
         {
-          "nome": "Tagliolino con pesce spada, olive e pomodorino",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Minestrone di verdure",
+          "nome": "Zuppa di legumi e cereali",
           "prezzo": "€6.00",
-          "descrizione": "Zucchine, patate, carote, melenzane, piselli, cavolfiore e cipolla Con o senza pasta"
+          "descrizione": "Fagioli, lenticchie, ceci, orzo e farro. Con o senza pasta."
         }
       ]
     },
@@ -91,14 +91,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Involtini di capocollo alla contadina",
-          "prezzo": "€7.50",
-          "descrizione": "5 pz"
-        },
-        {
-          "nome": "Trancio di baccalà gratinato con formaggio, prezzemolo e pan grattato",
+          "nome": "Filetto di merluzzo in crosta di patate",
           "prezzo": "€8.50",
           "descrizione": ""
+        },
+        {
+          "nome": "Scaloppe di capocollo con carciofi",
+          "prezzo": "€7.50",
+          "descrizione": "2 pezzi"
         }
       ]
     }
