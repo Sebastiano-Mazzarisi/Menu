@@ -1,0 +1,86 @@
+{
+  "data": "2026-11-21",
+  "testo": "MENÙ DI SABATO\nPRIMI PIATTI\n●TIMBALLO DI CICORIA CON PROSCIUTTO COTTO E SCAMORZA AFFUMICATA 5,0\n●LASAGNA AL FORNO 5,0\n●LASAGNETTA AL SUGO DI PORCINI PROSCIUTTO COTTO E MOZZARELLA 5,5\n●PENNETTE CON PESTO DI MELANZANE E CAPOCOLLO DI MARTINA 5,5\n●SPAGHETTI ALLE VONGOLE 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●INVOLTINI DI SOVRAVOSCIA DI POLLO PANCETTATI AL ROSMARINO IN CREMA DI PATATE\n●BOCCONCINO DI POLLO AL SUGO CON PATATE\n●ZAMPINA DI VITELLO ARROSTO\n●PARMIGIANA\n●INVOLTINI DI ZUCCHINE AL SALMONE CREMOSI GRATINATI AL FORNO\n●RUSTICO SPECK E GALBANINO",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI SABATO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TIMBALLO DI CICORIA CON PROSCIUTTO COTTO E SCAMORZA AFFUMICATA 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNETTA AL SUGO DI PORCINI PROSCIUTTO COTTO E MOZZARELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PENNETTE CON PESTO DI MELANZANE E CAPOCOLLO DI MARTINA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPAGHETTI ALLE VONGOLE 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INVOLTINI DI SOVRAVOSCIA DI POLLO PANCETTATI AL ROSMARINO IN CREMA DI PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BOCCONCINO DI POLLO AL SUGO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ZAMPINA DI VITELLO ARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PARMIGIANA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●INVOLTINI DI ZUCCHINE AL SALMONE CREMOSI GRATINATI AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RUSTICO SPECK E GALBANINO",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
