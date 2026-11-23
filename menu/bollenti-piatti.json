@@ -1,0 +1,101 @@
+{
+  "data": "2026-11-23",
+  "testo": "MENÙ DI LUNEDÌ\nPRIMI PIATTI\n●CICORIE CON POLPETTINE 5,5\n●CANNELLONI ALLA CARNE 5,5\n●PASTA E LENTICCHIE 4,5\n●PENNETTE ALL'ARRABBIATA 4,5\n●CASERECCIA CON TONNO, ZUCCHINA E SALSA DI DATTERINO GIALLO 5,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●BRACIOLE AL SUGO\n●FETTINA DI VITELLO AL VINO BIANCO CON PATATE\n●ZAMPINA ARROSTO\n●BOMBETTE DI VITELLO CREMOSE CON IMPANATURA AL LIMONE\n●SALTIMBOCCA DI VITELLO AVVOLTI ALLA PANCETTA FARCITI CON LO SPECK CON FUNGHI\n●PIZZA DI PATATE\n●PEPERONI RIPIENI AL TONNO\n●OLIVE NERE FRITTE\n●CALZONE DI SPONZALE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI LUNEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CICORIE CON POLPETTINE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CANNELLONI ALLA CARNE 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PASTA E LENTICCHIE 4,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PENNETTE ALL'ARRABBIATA 4,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CASERECCIA CON TONNO, ZUCCHINA E SALSA DI DATTERINO GIALLO 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BRACIOLE AL SUGO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FETTINA DI VITELLO AL VINO BIANCO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●ZAMPINA ARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BOMBETTE DI VITELLO CREMOSE CON IMPANATURA AL LIMONE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SALTIMBOCCA DI VITELLO AVVOLTI ALLA PANCETTA FARCITI CON LO SPECK CON FUNGHI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PIZZA DI PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PEPERONI RIPIENI AL TONNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●OLIVE NERE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CALZONE DI SPONZALE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
