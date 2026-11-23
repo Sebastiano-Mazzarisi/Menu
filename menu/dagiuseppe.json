@@ -1,0 +1,56 @@
+{
+  "data": "2026-11-23",
+  "testo": "PRANZO DI OGGI\nOggi vi aspettano tante bontà, con sapori gustosi e piatti preparati con cura!\nPRIMI PIATTI\n* Pennette al salmone\n* Pennette con gorgonzola, speck e noci\nPIATTI DEL GIORNO\n* Parmigiana\n* Spezzatino al sugo\n* Frittata di zucchine\nLa vostra pausa pranzo, con tutto il gusto della cucina di casa!\nALIMENTARI DA GIUSEPPE DAL 2010\nVia Giuseppe Di Vittorio, 7 – Gioia del Colle\nPrenota al 375 749 2362\n#AlimentariDaGiuseppe #PranzoDiOggi #GioiaDelColle #Gastronomia #CucinaPronta PausaPranzo PranzoGustoso",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Oggi vi aspettano tante bontà, con sapori gustosi e piatti preparati con cura!",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pennette al salmone",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pennette con gorgonzola, speck e noci",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PIATTI DEL GIORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Parmigiana",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Spezzatino al sugo",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Frittata di zucchine",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "La vostra pausa pranzo, con tutto il gusto della cucina di casa!",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
