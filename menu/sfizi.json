@@ -1,0 +1,72 @@
+{
+  "data": "2026-11-24",
+  "testo": "Orecchiette con cime di rapa\nGnocchi zucca e polpettine\nBaccalà alla pugliese\nPollo alla cacciatora\nSalsicce arrosto e patate\nPatate al forno\nInvoltini di verza\nPeperoni arrosto\nOlive fritte\nCardoncelli gratinati\nParmigiana di zucca\nCrema di fave e cicoria",
+  "da_foto": "2026-11-24_online.jpg",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Orecchiette con cime di rapa",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Gnocchi zucca e polpettine",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Baccalà alla pugliese",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pollo alla cacciatora",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Salsicce arrosto e patate",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Patate al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Involtini di verza",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Peperoni arrosto",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Olive fritte",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cardoncelli gratinati",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Parmigiana di zucca",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Crema di fave e cicoria",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
