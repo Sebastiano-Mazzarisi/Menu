@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-23",
+  "data": "2026-11-24",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -21,8 +21,13 @@
           "descrizione": ""
         },
         {
-          "nome": "Cime di rapa a vapore",
+          "nome": "Funghi pleurotus con bresaola, rucola e grana",
           "prezzo": "€6.50",
+          "descrizione": ""
+        },
+        {
+          "nome": "Straccetti di pollo panato con rucola, pomodorini e grana",
+          "prezzo": "€5.50",
           "descrizione": ""
         },
         {
@@ -61,22 +66,22 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Orecchiette e cime di rapa con pane profumato, acciughe e aglio",
-          "prezzo": "€8.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Pennette all'arrabbiata",
+          "nome": "Spaghetti alla carbonara",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+          "descrizione": ""
         },
         {
-          "nome": "Risotto ai frutti di mare",
+          "nome": "Rigatoni alla pastorella",
+          "prezzo": "€7.50",
+          "descrizione": "Con pomodoro fresco e ricotta"
+        },
+        {
+          "nome": "Risotto con pesce persico e tocchetti di patate",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Capunti con cardoncelli, battuto di salsiccia al primitivo",
+          "nome": "Orecchiette con funghi cardoncelli e salsiccia",
           "prezzo": "€9.00",
           "descrizione": ""
         },
@@ -91,13 +96,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di cernia alla pizzaiola",
-          "prezzo": "€8.50",
+          "nome": "Bocconcini di vitello con funghi misti",
+          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Bocconcini di petto di pollo al limone e mandorle",
-          "prezzo": "€7.50",
+          "nome": "Trancio di cernia gratinato con battuto di olive, capperi e pomodorino",
+          "prezzo": "€8.50",
           "descrizione": ""
         }
       ]
