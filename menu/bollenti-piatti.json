@@ -1,0 +1,96 @@
+{
+  "data": "2026-11-24",
+  "testo": "MENÙ DI MARTEDÌ\nPRIMI PIATTI\n●MINESTRONE DI VERDURE 5,0\n●PASTA E MINESTRONE 5,0\n●SEDANINI CON SUGO DI POMODORO, PESTO DI BASILICO E MORTADELLA 5,5\n●RIGATONI ALL'AMATRICIANA 5,5\n●FETTUCCINE CON GAMBERI E PESTO DI ZUCCHINA 6,0\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●COSCIA E SOVRAVOSCIA DI POLLO AL FORNO CON PATATE\n●STINCO DI SUINO ARROSTO\n●SPEZZATINO DI MANZO CREMOSO CON CAROTE, SEDANO CIPOLLA E PISELLI\n●PIZZA DI PATATE\n●SFORMATO DI VERDURE VEGETARIANO\n●MELANZANE RIPIENE\n●TRIANGOLO DI MERLUZZO IMPANATO AL FORNO CON SALSA ROSA\n●OLIVE FRITTE",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI MARTEDÌ",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MINESTRONE DI VERDURE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PASTA E MINESTRONE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SEDANINI CON SUGO DI POMODORO, PESTO DI BASILICO E MORTADELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RIGATONI ALL'AMATRICIANA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FETTUCCINE CON GAMBERI E PESTO DI ZUCCHINA 6,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●COSCIA E SOVRAVOSCIA DI POLLO AL FORNO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●STINCO DI SUINO ARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPEZZATINO DI MANZO CREMOSO CON CAROTE, SEDANO CIPOLLA E PISELLI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●PIZZA DI PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SFORMATO DI VERDURE VEGETARIANO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●MELANZANE RIPIENE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TRIANGOLO DI MERLUZZO IMPANATO AL FORNO CON SALSA ROSA",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●OLIVE FRITTE",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
