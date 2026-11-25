@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-24",
+  "data": "2026-11-25",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -21,6 +21,11 @@
           "descrizione": ""
         },
         {
+          "nome": "Cime di rapa a vapore",
+          "prezzo": "€6.50",
+          "descrizione": ""
+        },
+        {
           "nome": "Funghi pleurotus con bresaola, rucola e grana",
           "prezzo": "€6.50",
           "descrizione": ""
@@ -36,12 +41,12 @@
           "descrizione": "Al pezzo"
         },
         {
-          "nome": "Orzo con melanzane, zucchine, peperoni e carote",
+          "nome": "Farro con caponata di verdure",
           "prezzo": "€5.50",
-          "descrizione": ""
+          "descrizione": "Melanzane, zucchina, carote, cetrioli e peperoni."
         },
         {
-          "nome": "Cous cous con melanzane, zucchine, carote, peperoni e pollo",
+          "nome": "Cous cous con melanzane, zucchine, carote, cetrioli, peperoni e pollo",
           "prezzo": "€5.50",
           "descrizione": ""
         },
@@ -66,27 +71,27 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Spaghetti alla carbonara",
+          "nome": "Pasta e patate con provola alla napoletana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Rigatoni alla pastorella",
-          "prezzo": "€7.50",
-          "descrizione": "Con pomodoro fresco e ricotta"
+          "nome": "Gnocchi con vellutata di zucca e gorgonzola",
+          "prezzo": "€8.00",
+          "descrizione": ""
         },
         {
-          "nome": "Risotto con pesce persico e tocchetti di patate",
+          "nome": "Risotto con ragù di mare",
+          "prezzo": "€8.50",
+          "descrizione": "Vongole, cozze, cernia, gamberetti e seppie. In bianco."
+        },
+        {
+          "nome": "Fricielli tricolore con cavolfiore e pancetta",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con funghi cardoncelli e salsiccia",
-          "prezzo": "€9.00",
-          "descrizione": ""
-        },
-        {
-          "nome": "Zuppa di lenticchie",
+          "nome": "Zuppa di ceci",
           "prezzo": "€6.00",
           "descrizione": "Con o senza pasta"
         }
@@ -96,13 +101,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Bocconcini di vitello con funghi misti",
-          "prezzo": "€7.50",
-          "descrizione": ""
+          "nome": "Filetto di merluzzo gratinato con zucchina",
+          "prezzo": "€8.50",
+          "descrizione": "Con pan grattato e formaggio."
         },
         {
-          "nome": "Trancio di cernia gratinato con battuto di olive, capperi e pomodorino",
-          "prezzo": "€8.50",
+          "nome": "Straccetti di vitello alla boscaiola",
+          "prezzo": "€7.50",
           "descrizione": ""
         }
       ]
