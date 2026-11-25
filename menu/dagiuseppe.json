@@ -1,0 +1,76 @@
+{
+  "data": "2026-11-25",
+  "testo": "PRANZO DI OGGI\nOggi vi aspettano tante specialità saporite, preparate con gusto e tradizione!\nPRIMI PIATTI\n* Orecchiette con salsiccia e funghi\n* Fave e cicorie\n* Caserecce con carciofi e speck\nSECONDI PIATTI\n* Fagottino di pollo\n* Salsiccia e funghi\n* Cotolette di pollo\nCONTORNI\n* Tanti contorni assortiti\nLa bontà della cucina di casa vi aspetta!\nPassate a trovarci per scegliere il vostro piatto preferito!\nALIMENTARI DA GIUSEPPE DAL 2010\nVia Giuseppe Di Vittorio, 7 – Gioia del Colle\nPrenota al 375 749 2362\n#AlimentariDaGiuseppe #PranzoDiOggi #GioiaDelColle #Gastronomia #CucinaPronta PausaPranzo PranzoGustoso",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Oggi vi aspettano tante specialità saporite, preparate con gusto e tradizione!",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Orecchiette con salsiccia e funghi",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Fave e cicorie",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Caserecce con carciofi e speck",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Fagottino di pollo",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Salsiccia e funghi",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cotolette di pollo",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "CONTORNI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Tanti contorni assortiti",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "La bontà della cucina di casa vi aspetta!",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Passate a trovarci per scegliere il vostro piatto preferito!",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
