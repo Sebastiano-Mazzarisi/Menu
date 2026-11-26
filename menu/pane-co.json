@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-25",
+  "data": "2026-11-26",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -71,27 +71,27 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pasta e patate con provola alla napoletana",
+          "nome": "Penne all'amatriciana",
           "prezzo": "€6.50",
           "descrizione": ""
         },
         {
-          "nome": "Gnocchi con vellutata di zucca e gorgonzola",
-          "prezzo": "€8.00",
+          "nome": "Risotto con asparagi e zafferano",
+          "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Risotto con ragù di mare",
-          "prezzo": "€8.50",
-          "descrizione": "Vongole, cozze, cernia, gamberetti e seppie. In bianco."
-        },
-        {
-          "nome": "Fricielli tricolore con cavolfiore e pancetta",
+          "nome": "Cavatelli al grano arso con ceci, gamberetti e pomodorino",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Zuppa di ceci",
+          "nome": "Fricielli tricolore con ragù bianco di carne e funghi cardoncelli",
+          "prezzo": "€9.00",
+          "descrizione": ""
+        },
+        {
+          "nome": "Minestra di piselli",
           "prezzo": "€6.00",
           "descrizione": "Con o senza pasta"
         }
@@ -101,13 +101,13 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Filetto di merluzzo gratinato con zucchina",
-          "prezzo": "€8.50",
-          "descrizione": "Con pan grattato e formaggio."
+          "nome": "Alette di pollo al forno con patate",
+          "prezzo": "€7.50",
+          "descrizione": "4 pezzi"
         },
         {
-          "nome": "Straccetti di vitello alla boscaiola",
-          "prezzo": "€7.50",
+          "nome": "Baccalà al forno con olive, pomodorino, origano e pan grattato",
+          "prezzo": "€8.50",
           "descrizione": ""
         }
       ]
