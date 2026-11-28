@@ -1,5 +1,5 @@
 {
-  "data": "2026-11-27",
+  "data": "2026-11-28",
   "fonte": "https://www.paneeco.it/menu",
   "sezioni": [
     {
@@ -21,18 +21,8 @@
           "descrizione": ""
         },
         {
-          "nome": "Cime di rapa a vapore",
-          "prezzo": "€6.50",
-          "descrizione": ""
-        },
-        {
           "nome": "Funghi pleurotus con bresaola, rucola e grana",
           "prezzo": "€6.50",
-          "descrizione": ""
-        },
-        {
-          "nome": "Straccetti di pollo panato con rucola, pomodorini e grana",
-          "prezzo": "€5.50",
           "descrizione": ""
         },
         {
@@ -71,29 +61,29 @@
       "titolo": "Primi Piatti del giorno",
       "piatti": [
         {
-          "nome": "Pennette all'arrabbiata",
+          "nome": "Cannerozzetti alla boscaiola",
           "prezzo": "€6.50",
-          "descrizione": "Salsa di pomodoro, olio e peperoncino"
+          "descrizione": "Con macinato di carne, pancetta, funghi misti, prosciutto cotto, salsa di pomodoro e besciamella"
         },
         {
-          "nome": "Risotto con vellutata di zucca e speck croccante",
+          "nome": "Risotto con radicchio e gorgonzola",
           "prezzo": "€7.50",
           "descrizione": ""
         },
         {
-          "nome": "Capunti al primitivo con cernia e zucchina",
+          "nome": "Gnocchi di patate alla sorrentina",
+          "prezzo": "€8.00",
+          "descrizione": "Con salsa di pomodoro, mozzarella e formaggio."
+        },
+        {
+          "nome": "Cavatelli al grano arso con pesce spada, capperi, origano e pomodoro",
           "prezzo": "€8.50",
           "descrizione": ""
         },
         {
-          "nome": "Orecchiette con braciola di vitello al sugo",
-          "prezzo": "€9.00",
-          "descrizione": ""
-        },
-        {
-          "nome": "Zuppa del casale",
+          "nome": "Minestra di farro, piselli e ceci",
           "prezzo": "€6.00",
-          "descrizione": "Ceci, fagioli, lenticchie, orzo e farro. Con o senza pasta."
+          "descrizione": ""
         }
       ]
     },
@@ -101,14 +91,14 @@
       "titolo": "Secondi piatti del giorno",
       "piatti": [
         {
-          "nome": "Scaloppe di lonza al limone",
-          "prezzo": "€7.50",
-          "descrizione": "2 pezzi"
+          "nome": "Filetto di platessa gratinato con zucchina",
+          "prezzo": "€8.50",
+          "descrizione": "Pan grattato, formaggio, prezzemolo."
         },
         {
-          "nome": "Trancio di spada alla pizzaiola",
-          "prezzo": "€8.50",
-          "descrizione": "Pomodoro, capperi, origano e prezzemolo."
+          "nome": "Straccetti di vitello con verdurine",
+          "prezzo": "€7.50",
+          "descrizione": "Sedano, carote, cipolla, zucchina."
         }
       ]
     }
