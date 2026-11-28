@@ -1067,6 +1067,44 @@ def closure_period(text: str) -> tuple[date, date] | None:
         found = closure_in_segment(segment)
         if found:
             return found
+    return reopening_period(text)
+
+
+# 28/11/2026 (richiesta di Nino): un avviso può non dire "chiusi" ma solo quando si riapre, es.
+# Via Roma Gastronomia "CI VEDIAMO MARTEDÌ 1/12/2026" (foto) con "la riapertura prevista per domani
+# è rimandata a martedì" (testo). Vuol dire: chiusi da oggi fino al giorno prima della data indicata.
+REOPEN_WORDS = r"\bci\s+vediamo\b|\briapertura\b|\briapr(?:e|iamo|iremo|ir[àa])\b|\briapriamo\b"
+# "ci vediamo sabato 29/11 alla sagra" in un post col menu non è una chiusura: "ci vediamo" vale solo
+# se nel testo c'è anche una di queste parole, oppure se il testo è corto (scritta di un cartello/foto)
+REOPEN_CONTEXT = r"riapert|riapr|chius|ferie|imprevist|rimandat|pausa|vacanz|riposo"
+REOPEN_MAX_DAYS = 60  # una riapertura più lontana di così non è un avviso di questi giorni
+
+
+def reopening_period(text: str) -> tuple[date, date] | None:
+    """Avviso di riapertura ("Ci vediamo martedì 1/12/2026", "Riapriamo il 3 dicembre",
+    "riapertura lunedì 7/12"): restituisce (oggi, giorno prima della riapertura) oppure None.
+    Serve una data scritta (un "martedì" da solo, in un post vecchio, darebbe la settimana sbagliata)
+    e la data deve essere dopo oggi ed entro REOPEN_MAX_DAYS giorni; "domani" non vale per lo stesso
+    motivo (non si sa di quando è il post)."""
+    text = text or ""
+    short = len(" ".join(text.split())) <= 120
+    context = re.search(REOPEN_CONTEXT, text, re.IGNORECASE)
+    today = date.today()
+    for keyword in re.finditer(REOPEN_WORDS, text, re.IGNORECASE):
+        if keyword.group(0).lower().startswith("ci") and not (context or short):
+            continue
+        segment = text[keyword.start():keyword.start() + 120]
+        segment = re.split(r"[.!?;](?:\s|$)", segment)[0]  # solo la frase dell'avviso
+        segment = fix_ocr_dates(segment)
+        days = []  # data con l'anno scritto ("1/12/2026"): vale quell'anno (un avviso vecchio resta vecchio)
+        for found in re.finditer(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\b", segment):
+            try:
+                days.append(date(int(found.group(3)), int(found.group(2)), int(found.group(1))))
+            except ValueError:
+                pass
+        for day in days or dates_in_text(segment):
+            if today < day <= today + timedelta(days=REOPEN_MAX_DAYS):
+                return today, day - timedelta(days=1)
     return None
 
 
@@ -2082,7 +2120,15 @@ def browser_result(shop: dict[str, Any], source: dict[str, Any], folder: Path, b
         return text_post_result(shop, source, folder, browser.last_text, checked, published)
     if source.get("menu_nel_testo") and (browser.last_text or "").strip():
         # il locale scrive il menu nel testo del post e le foto sono solo piatti (es. Da Giuseppe,
-        # "PRANZO DI OGGI DA GIUSEPPE!" + elenco): vale il testo, la foto resta in C:\Temp\Menu\catture
+        # "PRANZO DI OGGI DA GIUSEPPE!" + elenco): vale il testo, la foto resta in C:\Temp\Menu\catture.
+        # 28/11/2026: prima però si legge la foto, che può essere un avviso di chiusura o riapertura
+        # (Via Roma: testo "riapertura rimandata a martedì", foto "CI VEDIAMO MARTEDÌ 1/12/2026")
+        photo_text = ocr_image(image)
+        closed = closure_today(f"{browser.last_text}\n{photo_text}")
+        if closed and closure_today(photo_text):
+            print(f"  {shop['nome']} - avviso di chiusura (foto) dal {closed[0]:%d/%m} al {closed[1]:%d/%m}")
+            image, _ = keep_first_seen(folder, image)
+            return Result(save_closure(folder, closed, image), date.today(), source.get("nome", "browser"), checked)
         return text_post_result(shop, source, folder, browser.last_text, checked, published)
     photo_text = ocr_image(image)  # testo scritto nella foto (es. avviso di chiusura)
     seen = " ".join(f"{browser.last_text} {photo_text or browser.last_alt}".split())

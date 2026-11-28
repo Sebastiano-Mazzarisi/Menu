@@ -1344,6 +1344,23 @@ al mercoledì più vicini. Gli errori tipici dell'OCR ("7110" invece di
 "7/10", "8/ IO" invece di "8/10") vengono corretti da soli. Prima dell'OCR
 la foto viene ingrandita (con Pillow) perché Windows legga meglio.
 Il file in ingresso si chiama AAAA-MM-GG_chiusura_fino_AAAAMMGG.jpg.
+AVVISI DI RIAPERTURA (dal 28/11/2026, reopening_period): un avviso può non
+dire "chiusi" ma solo quando si riapre, es. Via Roma Gastronomia con la foto
+"CI VEDIAMO MARTEDÌ 1/12/2026" e il testo "la riapertura prevista per
+domani è rimandata a martedì". Parole chiave: "ci vediamo", "riapertura",
+"riapre", "riapriamo", "riapriremo", "riaprirà". Vuol dire: chiuso da oggi
+fino al giorno PRIMA della data indicata (nota "Chiuso fino al 30/11").
+Regole contro gli errori: serve una data scritta nella stessa frase (un
+"martedì" da solo o "domani", in un post vecchio, darebbero il giorno
+sbagliato); se c'è l'anno (1/12/2026) vale quell'anno; la data deve essere
+dopo oggi ed entro REOPEN_MAX_DAYS (60) giorni; "ci vediamo" conta solo se
+il testo è corto (scritta di un cartello) o contiene anche riapertura,
+chiusi, ferie, imprevisti, rimandata, pausa, vacanze o riposo (così "ci
+vediamo sabato 29/11 alla sagra" in un post col menu non chiude il locale).
+Per i locali con "menu_nel_testo" (il menu è nel testo e la foto è solo un
+piatto) la foto viene comunque letta con l'OCR: se è un avviso di chiusura
+o riapertura vale l'avviso (foto salvata come ..._chiusura_fino_...jpg).
+Prova: python Menu.py --ocr <foto>  (mostra anche la chiusura calcolata).
 Il testo dentro la foto è letto con l'OCR integrato in Windows tramite
 ocr.ps1 (nessuna installazione; serve la lingua italiana in Windows). Le
 foto già lette sono ricordate in dati/ocr.json. Prova su una foto:
