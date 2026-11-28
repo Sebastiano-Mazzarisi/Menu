@@ -1,0 +1,62 @@
+{
+  "data": "2026-11-28",
+  "testo": "Orecchiette con cime di rapa\nPatate riso e cozze\nSpezzatino alla pizzaiola\nPollo e patate\nCapocollo arrosto\nPatate al forno\nTiella carciofi e patate\nCardoncelli gratinati\nFrittata di verdure\nCrema di fave e cicorie",
+  "da_foto": "2026-11-28_online.jpg",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "Orecchiette con cime di rapa",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Patate riso e cozze",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Spezzatino alla pizzaiola",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Pollo e patate",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Capocollo arrosto",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Patate al forno",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Tiella carciofi e patate",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Cardoncelli gratinati",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Frittata di verdure",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "Crema di fave e cicorie",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
