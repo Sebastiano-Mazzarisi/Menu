@@ -1,0 +1,106 @@
+{
+  "data": "2026-11-28",
+  "testo": "MENÙ DI SABATO\nPRIMI PIATTI\n●TIMBALLO DI CICORIA, SPECK E PATATE 5,0\n●LASAGNA AL FORNO 5,0\n●LASAGNETTA AL SUGO DI PORCINI, PROSCIUTTO COTTO E MOZZARELLA 5,5\n●LASAGNETTA AL PESTO DI PISTACCHIO, MORTADELLA E MOZZARELLA 5,5\n●LINGUINE CON VONGOLE E COZZE 6,5\n●FETTUCCINE CON GAMBERI E PORCINI IN SALSA AURORA 6,5\nSECONDI PIATTI\n●POLLI AL GIRARROSTO\n●COTOLETTA DI SOVRAVOSCIA DI POLLO AL FORNO\n●SCALOPPINE DI VITELLO AI FUNGHI\n●POLPETTE DI POLLO ALLE VERDURE IN SALSA DI PORCINI\n●SPIEDINO DI BOMBETTE CON SPECK E GALBANINO AL FORNO CON PATATE\n●FAGOTTO DI POLLO FARCITO IN SALSA VERDE\n●BACCALÀ AL FORNO CON PATATE\n●CARCIOFI AL FORNO CON PATATE\n●RUSTICO SPECK E GALBANINO\n●CALZONE DI SPONZALI",
+  "sezioni": [
+    {
+      "titolo": "Menu del giorno",
+      "piatti": [
+        {
+          "nome": "MENÙ DI SABATO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "PRIMI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●TIMBALLO DI CICORIA, SPECK E PATATE 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNA AL FORNO 5,0",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNETTA AL SUGO DI PORCINI, PROSCIUTTO COTTO E MOZZARELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LASAGNETTA AL PESTO DI PISTACCHIO, MORTADELLA E MOZZARELLA 5,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●LINGUINE CON VONGOLE E COZZE 6,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FETTUCCINE CON GAMBERI E PORCINI IN SALSA AURORA 6,5",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "SECONDI PIATTI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLLI AL GIRARROSTO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●COTOLETTA DI SOVRAVOSCIA DI POLLO AL FORNO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SCALOPPINE DI VITELLO AI FUNGHI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●POLPETTE DI POLLO ALLE VERDURE IN SALSA DI PORCINI",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●SPIEDINO DI BOMBETTE CON SPECK E GALBANINO AL FORNO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●FAGOTTO DI POLLO FARCITO IN SALSA VERDE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●BACCALÀ AL FORNO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CARCIOFI AL FORNO CON PATATE",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●RUSTICO SPECK E GALBANINO",
+          "prezzo": "",
+          "descrizione": ""
+        },
+        {
+          "nome": "●CALZONE DI SPONZALI",
+          "prezzo": "",
+          "descrizione": ""
+        }
+      ]
+    }
+  ]
+}
